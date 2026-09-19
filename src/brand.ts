@@ -11,7 +11,7 @@ export function brandBlock(compact = false): string {
     <div class="brand ${compact ? "brand-compact" : ""}">
       ${flame}
       <div class="brand-text">
-        <h1><span>Fire</span> Fellowship</h1>
+        <h1><span>Fire</span> and Fellowship</h1>
         <p>Men's Fellowship</p>
       </div>
     </div>

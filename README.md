@@ -1,10 +1,10 @@
-# Fire Fellowship Captions
+# Fire and Fellowship Captions
 
 Live speech captions for **Men's Fellowship**, plus the **topic of the day**. A phone captures the speaker and chooses the meeting topic; a TV (any browser) joins the same room and shows the verse, a short handout, and English / Spanish / Portuguese caption windows.
 
 This is one caption app. The topic list is a small built-in seed in this repo — not another product.
 
-**Meeting night shape:** install **Fire Fellowship** on the Galaxy Z Fold 7 from a public HTTPS URL (Chrome → Install app). Open the same URL on the TV. No git, no `npm run dev`.
+**Meeting night shape:** install **Fire and Fellowship** on the Galaxy Z Fold 7 from a public HTTPS URL (Chrome → Install app). Open the same URL on the TV. No git, no `npm run dev`.
 
 ## Install on the Fold (Chrome on Android)
 
@@ -15,7 +15,7 @@ Freddy’s phone: **Samsung Galaxy Z Fold 7**, **Chrome** (not Samsung Internet)
 3. Install like a normal app:
    - If the page shows **Install app**, tap it and confirm.
    - Or tap Chrome’s menu **⋮ → Install app** / **Add to Home screen**.
-4. Open **Fire Fellowship** from the home-screen icon. It should launch **standalone** (no Chrome address bar).
+4. Open **Fire and Fellowship** from the home-screen icon. It should launch **standalone** (no Chrome address bar).
 5. Tap **Create room on this phone**. That phone/control + mic route is the same PWA — it stays in the installed app.
 
 Keep Chrome (or the installed PWA, which is Chrome) in the **foreground** while speaking. Allow the microphone when asked.
@@ -112,7 +112,7 @@ The script checks:
 
 - `/health` is OK
 - `/` and `/?view=phone&room=ABCD` / `/?view=tv&room=ABCD` serve the app shell (so the home-screen icon can open both routes)
-- Manifest: name **Fire Fellowship**, short name, standalone, theme, 192/512 icons
+- Manifest: name **Fire and Fellowship**, short name, standalone, theme, 192/512 icons
 - Service worker registers a `fetch` handler and does not intercept `/caption-ws`
 - Two WebSocket clients in room `ABCD`: a phone **topic of the day** push arrives on the TV
 
@@ -194,6 +194,6 @@ Local LAN Fold testing still works with `npm run dev` (Chrome will warn about th
 
 ## PWA notes
 
-- Manifest: **Fire Fellowship** name and short name, standalone display, theme `#120c09`, 192/512 (any + maskable) icons.
+- Manifest: **Fire and Fellowship** name and short name, standalone display, theme `#120c09`, 192/512 (any + maskable) icons.
 - Service worker: offline app shell (HTML/CSS/JS/icons/fonts after first load). Live captions still need the network so the relay can reach the TV.
 - `start_url` is `/`. Phone and TV are query routes (`/?view=phone&room=ABCD`, `/?view=tv&room=ABCD`) inside that scope, so both work from the installed icon and from copied links.

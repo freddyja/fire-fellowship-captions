@@ -80,7 +80,7 @@ async function main() {
   assert(health.ok === true, "health.ok");
 
   const home = await text("/");
-  assert(home.body.includes("Fire Fellowship"), "home shell");
+  assert(home.body.includes("Fire and Fellowship"), "home shell");
   assert(home.body.includes("manifest.webmanifest"), "manifest link");
 
   const phone = await text("/?view=phone&room=ABCD");
@@ -90,8 +90,8 @@ async function main() {
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);
-  assert(manifest.name === "Fire Fellowship", "manifest name");
-  assert(manifest.short_name === "Fire Fellowship", "manifest short_name");
+  assert(manifest.name === "Fire and Fellowship", "manifest name");
+  assert(manifest.short_name === "Fire and Fellowship", "manifest short_name");
   assert(manifest.display === "standalone", "manifest display");
   assert(manifest.start_url === "/", "manifest start_url");
   assert(manifest.theme_color === "#120c09", "manifest theme");

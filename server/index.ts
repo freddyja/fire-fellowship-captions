@@ -123,6 +123,6 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const server = createCaptionServer();
   server.listen(PORT, HOST, () => {
-    console.log(`Fire Fellowship listening on http://${HOST}:${PORT}`);
+    console.log(`Fire and Fellowship listening on http://${HOST}:${PORT}`);
   });
 }

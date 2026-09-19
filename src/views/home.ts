@@ -51,7 +51,7 @@ export function mountHome(root: HTMLElement): () => void {
 
     if (standalone) {
       installCopy.textContent =
-        "This is the installed Fire Fellowship app. Create a room here, then open the TV link on the meeting TV.";
+        "This is the installed Fire and Fellowship app. Create a room here, then open the TV link on the meeting TV.";
       installSteps.innerHTML = `
         <li>Tap <strong>Create room on this phone</strong>.</li>
         <li>Pick the topic of the day, then tap <strong>Copy TV link</strong>.</li>
@@ -61,9 +61,9 @@ export function mountHome(root: HTMLElement): () => void {
     }
 
     if (wasJustInstalled()) {
-      installCopy.textContent = "Installed. Open Fire Fellowship from your home screen for meeting night.";
+      installCopy.textContent = "Installed. Open Fire and Fellowship from your home screen for meeting night.";
       installSteps.innerHTML = `
-        <li>Find the <strong>Fire Fellowship</strong> icon on the Fold home screen.</li>
+        <li>Find the <strong>Fire and Fellowship</strong> icon on the Fold home screen.</li>
         <li>Launch it — you should see this app without the Chrome address bar.</li>
         <li>Create a room, then open the TV link on the TV.</li>
       `;
@@ -71,17 +71,17 @@ export function mountHome(root: HTMLElement): () => void {
     }
 
     installCopy.textContent =
-      "Add Fire Fellowship to the Fold home screen like a normal app. Meeting night is then a tap — no git or npm.";
+      "Add Fire and Fellowship to the Fold home screen like a normal app. Meeting night is then a tap — no git or npm.";
     installSteps.innerHTML = canPromptInstall()
       ? `
         <li>Tap <strong>Install app</strong> above and confirm.</li>
-        <li>Open <strong>Fire Fellowship</strong> from the home screen (standalone, no address bar).</li>
+        <li>Open <strong>Fire and Fellowship</strong> from the home screen (standalone, no address bar).</li>
         <li>Create the room on the Fold, then open the TV link on the TV.</li>
       `
       : `
         <li>Stay in <strong>Chrome</strong> (not Samsung Internet).</li>
         <li>Tap Chrome’s menu (⋮) → <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-        <li>Open <strong>Fire Fellowship</strong> from the home screen, then create a room.</li>
+        <li>Open <strong>Fire and Fellowship</strong> from the home screen, then create a room.</li>
       `;
   };
 
