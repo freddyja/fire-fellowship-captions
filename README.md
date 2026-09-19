@@ -84,7 +84,7 @@ Do not deploy mid-meeting (a new machine can drop the in-memory room).
 1. New project → deploy this repo.
 2. Railway should pick up `railway.toml` + `Dockerfile` (`npm run build` then `npm start`).
 3. Generate a public HTTPS domain in the service settings.
-4. Replicas: **1**. Railway injects `PORT`; do not add secrets for the default MyMemory translator.
+4. Replicas: **1**. Railway injects `PORT`. Add `TRANSLATE_PROVIDER=deepl` and `DEEPL_AUTH_KEY` for meeting night; without them the app uses MyMemory (no key).
 
 ### Render
 
@@ -158,45 +158,76 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 - Stand close; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption instead.
 
-Demo line (works on MyMemory and on the built-in mock dictionary):
+Demo line (works on DeepL, MyMemory, and the built-in mock dictionary):
 
 > Welcome brothers. Thank you for coming tonight. Let us begin.
 
 ## Translation / env
 
-The phone translates **before** it sends captions to the TV. The Fold calls `POST /api/translate` on the same host. Source language → the other TV windows (**EN / ES / PT**, any direction).
+The phone translates **before** it sends captions to the TV. The Fold calls `POST /api/translate` on the same host. Source language → the other TV windows (**EN / ES / PT**, any direction). Keys stay on the server. Do **not** put `DEEPL_AUTH_KEY` or a Google key in any `VITE_*` variable.
 
-**Meeting-night / hosted default: [MyMemory](https://mymemory.translated.net/doc/spec.php).** Free, no API key, no Google account. Hosted demos work without secrets. It is rate-limited (about **5,000 characters/day** per host IP; optional `MYMEMORY_EMAIL` raises that to about **50,000**). Captions are short spoken lines, so a fellowship meeting usually stays under the anonymous cap. If MyMemory errors or hits quota, that request falls back to the mock dictionary.
+**Recommended meeting-night path: [DeepL API Free](https://www.deepl.com/pro-api).** Create a Free plan account, copy the auth key, set it on the host, restart. No Google Cloud billing admin. Portuguese **targets** use DeepL `PT-BR` (Brazilian Portuguese, matching the topic seeds). English targets use `EN-US`. Free keys end with `:fx` and use `https://api-free.deepl.com`. If DeepL errors or the monthly Free quota is hit, that request falls back to MyMemory, then mock.
 
-**Google Cloud Translation is optional and needs a billing admin.** Cloud Translation Basic (v2) will not enable on a project until billing is turned on. If you cannot do that, leave Google unset and use MyMemory.
+**If the DeepL key is missing:** [MyMemory](https://mymemory.translated.net/doc/spec.php) (free, no key, about 5,000 characters/day per host IP), then the mock dictionary. Hosted demos still translate without secrets.
 
-**Mock** is the offline built-in EN/ES/PT dictionary. Use it when there is no network, or for a laptop demo of the seeded phrases.
+**Mock** (`TRANSLATE_PROVIDER=mock`) is the offline built-in EN/ES/PT dictionary.
 
-**Never commit secrets.** Copy `.env.example` to `.env` for local runs. Do **not** put a Google key in any `VITE_*` variable (Vite would bake it into the browser bundle).
+**Google Cloud Translation** needs a **billing admin** on a GCP project. Skip it unless someone can enable billing.
+
+**Never commit secrets.** Copy `.env.example` to `.env` for local runs.
 
 | Server env | Behavior |
 | --- | --- |
-| *(unset)* or `TRANSLATE_PROVIDER=mymemory` | MyMemory. No key. Hosted / meeting-night path. Falls back to mock if MyMemory fails. |
+| `TRANSLATE_PROVIDER=deepl` + `DEEPL_AUTH_KEY` | DeepL (recommended). Default host `https://api-free.deepl.com`. Optional `DEEPL_API_URL=https://api.deepl.com` for Pro. |
+| *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory. No key. Demo / fallback path. |
 | `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
-| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. If Google errors (including billing), that request falls back to MyMemory, then mock. |
+| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then mock. |
 
-`GET /health` includes `"translate": "mymemory"`, `"google"`, or `"mock"` (it never returns a key). After deploy, confirm `"translate":"mymemory"` unless you intentionally set mock or Google.
-
-Optional: `MYMEMORY_EMAIL=you@example.com` (a contact email, **not** an API key) so MyMemory can raise the daily cap. Leave it empty if you prefer anonymous IP limits.
+`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
 
 ```bash
-# Hosted / meeting night — no secrets
+# Meeting night — DeepL Free (set your real key; do not invent one)
+TRANSLATE_PROVIDER=deepl
+DEEPL_AUTH_KEY=
+
+# Hosted demo without secrets
 TRANSLATE_PROVIDER=mymemory
 
 # Offline laptop
 TRANSLATE_PROVIDER=mock
 ```
 
-`npm run verify:translate` checks provider selection and live MyMemory EN↔ES↔PT (skip the live calls with `--offline`).
+Optional: `MYMEMORY_EMAIL=you@example.com` (a contact email, **not** an API key) raises MyMemory's daily cap. `npm run verify:translate` checks provider selection, DeepL language mapping, and live MyMemory EN↔ES↔PT (`--offline` skips live calls).
+
+### DeepL API Free auth key
+
+1. Open [DeepL API plans](https://www.deepl.com/pro-api) and create an account on the **Free** plan (API Free). This is the unpaid-ish path — no Google billing.
+2. In the DeepL account, open **API Keys** and copy the authentication key. Free keys end with `:fx`.
+3. On the host, set env and **restart** the app (secrets are read at process start):
+
+   ```bash
+   # Fly
+   fly secrets set TRANSLATE_PROVIDER=deepl DEEPL_AUTH_KEY=your-deepl-key-here
+
+   # Railway / Render: add the same two variables in the service env UI, then redeploy/restart.
+   ```
+
+   Local `.env` (gitignored):
+
+   ```bash
+   TRANSLATE_PROVIDER=deepl
+   DEEPL_AUTH_KEY=your-deepl-key-here
+   # Optional. Leave unset for Free (api-free.deepl.com). Pro:
+   # DEEPL_API_URL=https://api.deepl.com
+   ```
+
+   Then `npm run dev` or `npm run build && npm start`.
+
+4. Confirm `GET /health` shows `"translate":"deepl"`. On the Fold, speak or type a caption — the TV windows should fill in the other languages.
 
 ### Optional: Google Cloud Translation API key
 
-Only do this if a **billing admin** can enable billing on a Google Cloud project. Freddy cannot turn Cloud Translation on without that.
+Only do this if a **billing admin** can enable billing on a Google Cloud project. Freddy cannot turn Cloud Translation on without that. Prefer DeepL Free above.
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), create or pick a project and enable billing.
 2. **APIs & Services → Library** → enable **Cloud Translation API**.
@@ -204,26 +235,7 @@ Only do this if a **billing admin** can enable billing on a Google Cloud project
 4. Restrict the key if you can:
    - **API restriction:** Cloud Translation API only.
    - **Application restriction:** none is typical for a server key. If your host has a stable egress IP, restrict to that IP. Do **not** use HTTP-referrer restriction — the key is used from the Node server, not the Fold browser.
-5. On the host, set env and **restart** the app (secrets are read at process start):
-
-   ```bash
-   # Fly
-   fly secrets set TRANSLATE_PROVIDER=google GOOGLE_TRANSLATE_API_KEY=your-key-here
-
-   # Railway / Render: add the same two variables in the service env UI, then redeploy/restart.
-   ```
-
-   Local:
-
-   ```bash
-   # .env (gitignored)
-   TRANSLATE_PROVIDER=google
-   GOOGLE_TRANSLATE_API_KEY=your-key-here
-   ```
-
-   Then `npm run dev` or `npm run build && npm start`.
-
-6. Confirm `GET /health` shows `"translate":"google"`. On the Fold, speak or type a caption — the TV windows should fill in the other languages.
+5. On the host, set `TRANSLATE_PROVIDER=google` and `GOOGLE_TRANSLATE_API_KEY`, then restart. Confirm `GET /health` shows `"translate":"google"`.
 
 Optional client-only overrides (`VITE_TRANSLATE_PROVIDER=passthrough` / `mymemory` / `libretranslate` / `mock`) still exist for local experiments. Leave them unset so production uses `/api/translate`.
 
@@ -242,7 +254,7 @@ npm run build        # typecheck + production bundle
 npm start            # production server: static PWA + relay (use after build)
 npm run preview      # Vite preview + same relay (local production bundle)
 npm run verify:prod       # PWA + relay checks (optional public URL argument)
-npm run verify:translate  # MyMemory default + EN/ES/PT live pairs
+npm run verify:translate  # DeepL/MyMemory selection + EN/ES/PT live pairs
 ```
 
 Local LAN Fold testing still works with `npm run dev` (Chrome will warn about the self-signed certificate — **Advanced → Proceed**). Meeting night should use the public HTTPS URL so there is no laptop in the loop.

@@ -1,9 +1,10 @@
+import { deeplTranslate } from "../src/translate/deepl.ts";
 import { mockTranslator } from "../src/translate/mock.ts";
 import { createMyMemoryTranslator } from "../src/translate/mymemory.ts";
 import type { Translator } from "../src/translate/types.ts";
 import type { Lang } from "../src/types.ts";
 
-export type TranslateProvider = "google" | "mymemory" | "mock";
+export type TranslateProvider = "deepl" | "google" | "mymemory" | "mock";
 
 const LANGS: Lang[] = ["en", "es", "pt"];
 const MAX_TEXT = 2000;
@@ -26,19 +27,29 @@ export function googleKey(): string {
   return String(process.env.GOOGLE_TRANSLATE_API_KEY || "").trim();
 }
 
+export function deeplKey(): string {
+  return String(process.env.DEEPL_AUTH_KEY || "").trim();
+}
+
+function deeplApiUrlOverride(): string {
+  return String(process.env.DEEPL_API_URL || "").trim();
+}
+
 function myMemoryEmailFromEnv(): string | undefined {
   return String(process.env.MYMEMORY_EMAIL || "").trim() || undefined;
 }
 
 /**
- * Meeting-night default is MyMemory (free, no key) so hosted demos work
- * without Google billing. Mock is opt-in for offline. Google only when a key
- * is present.
+ * Recommended meeting-night provider is DeepL Free when DEEPL_AUTH_KEY is set.
+ * If that key is missing, MyMemory (no key) keeps hosted demos working.
+ * Mock is opt-in for offline. Google only when a Cloud key is present.
  */
 export function resolveTranslateProvider(): TranslateProvider {
   const requested = requestedProvider();
-  if ((requested === "google" || requested === "google-cloud") && googleKey()) return "google";
   if (requested === "mock") return "mock";
+  if (requested === "mymemory") return "mymemory";
+  if ((requested === "google" || requested === "google-cloud") && googleKey()) return "google";
+  if ((requested === "deepl" || requested === "") && deeplKey()) return "deepl";
   return "mymemory";
 }
 
@@ -90,6 +101,20 @@ export async function translateCaption(
   const out = emptyLocalized(source, from);
   const provider = resolveTranslateProvider();
 
+  if (provider === "deepl") {
+    try {
+      await Promise.all(
+        unique.map(async (to) => {
+          out[to] = await cachedDeepL(source, from, to);
+        }),
+      );
+      return { provider: "deepl", text: out };
+    } catch (err) {
+      console.warn("[translate] DeepL failed; trying MyMemory");
+      console.warn(err instanceof Error ? err.message : "translate error");
+    }
+  }
+
   if (provider === "google") {
     try {
       await Promise.all(
@@ -104,7 +129,7 @@ export async function translateCaption(
     }
   }
 
-  if (provider === "google" || provider === "mymemory") {
+  if (provider !== "mock") {
     try {
       await fillTargets(getMyMemoryTranslator(), source, from, unique, out);
       return { provider: "mymemory", text: out };
@@ -130,10 +155,22 @@ function cacheSet(key: string, value: string): void {
   cache.set(key, value);
 }
 
+async function cachedDeepL(text: string, from: Lang, to: Lang): Promise<string> {
+  const cacheKey = `deepl:${from}:${to}:${text}`;
+  const hit = cacheGet(cacheKey);
+  if (hit !== undefined) return hit;
+  const translated = await deeplTranslate(text, from, to, {
+    authKey: deeplKey(),
+    apiUrl: deeplApiUrlOverride(),
+  });
+  cacheSet(cacheKey, translated);
+  return translated;
+}
+
 async function googleTranslate(text: string, from: Lang, to: Lang): Promise<string> {
   const key = googleKey();
   if (!key) throw new Error("GOOGLE_TRANSLATE_API_KEY is not set");
-  const cacheKey = `${from}:${to}:${text}`;
+  const cacheKey = `google:${from}:${to}:${text}`;
   const hit = cacheGet(cacheKey);
   if (hit !== undefined) return hit;
 
@@ -159,6 +196,11 @@ async function googleTranslate(text: string, from: Lang, to: Lang): Promise<stri
 
 export function warnIfGoogleRequestedWithoutKey(): void {
   const requested = requestedProvider();
+  if (requested === "deepl" && !deeplKey()) {
+    console.warn(
+      "[translate] TRANSLATE_PROVIDER=deepl but DEEPL_AUTH_KEY is empty; using MyMemory (no key). Set TRANSLATE_PROVIDER=mock for offline.",
+    );
+  }
   if ((requested === "google" || requested === "google-cloud") && !googleKey()) {
     console.warn(
       "[translate] TRANSLATE_PROVIDER=google but GOOGLE_TRANSLATE_API_KEY is empty; using MyMemory (no key). Set TRANSLATE_PROVIDER=mock for offline.",

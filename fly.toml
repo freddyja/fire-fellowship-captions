@@ -16,9 +16,10 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   HOST = "0.0.0.0"
-  # Default translator is MyMemory (no key). Offline: TRANSLATE_PROVIDER=mock.
-  # Do not put GOOGLE_TRANSLATE_API_KEY here. Optional paid path after deploy:
-  #   fly secrets set TRANSLATE_PROVIDER=google GOOGLE_TRANSLATE_API_KEY=...
+  # Recommended: DeepL Free (no Google billing). After deploy:
+  #   fly secrets set TRANSLATE_PROVIDER=deepl DEEPL_AUTH_KEY=...
+  # Without a DeepL key the app uses MyMemory (no key). Offline: TRANSLATE_PROVIDER=mock.
+  # Do not put DEEPL_AUTH_KEY or GOOGLE_TRANSLATE_API_KEY here.
 
 [http_service]
   internal_port = 8080

@@ -15,7 +15,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      # Default translator is MyMemory (no key). Optional paid path in the
-      # Render dashboard (never commit a real key; needs GCP billing):
-      # TRANSLATE_PROVIDER=google
-      # GOOGLE_TRANSLATE_API_KEY=...
+      # Recommended: DeepL Free in the Render dashboard (never commit a key):
+      # TRANSLATE_PROVIDER=deepl
+      # DEEPL_AUTH_KEY=...
+      # Without a DeepL key the app uses MyMemory (no key).
