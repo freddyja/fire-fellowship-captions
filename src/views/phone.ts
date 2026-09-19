@@ -66,7 +66,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         <div class="phone-main">
           <div class="controls topic-controls">
             <div>
-              <p class="control-label">Topic of the day</p>
+              <p class="control-label">Topic of the day <button class="ghost topic-clear" data-clear-topic type="button">Clear</button></p>
               <div class="chips" data-topics></div>
               <form class="topic-insert" data-topic-form>
                 <input name="topic" autocomplete="off" enterkeyhint="search" placeholder="Insert or search a topic or verse" />
@@ -75,7 +75,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <div class="topic-preview" data-topic-preview></div>
             </div>
           </div>
+        </div>
 
+        <div class="phone-side">
           <div class="mic-wrap">
             <button class="mic" data-mic type="button" aria-pressed="false">
               ${micIcon}
@@ -84,9 +86,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
             <p class="hint" data-error></p>
             <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
           </div>
-        </div>
 
-        <div class="phone-side">
           <div class="controls">
             <div>
               <p class="control-label">Spoken language</p>
@@ -127,13 +127,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   layoutBox.innerHTML = LAYOUTS.map(
     (item) => `<button class="chip" type="button" data-layout="${item.id}">${item.label}</button>`,
   ).join("");
-  topicBox.innerHTML = [
-    `<button class="chip" type="button" data-topic="">None</button>`,
-    ...TOPIC_LIST.map(
-      (topic) =>
-        `<button class="chip" type="button" data-topic="${topic.id}">${escapeHtml(topic.title.en)}</button>`,
-    ),
-  ].join("");
+  topicBox.innerHTML = TOPIC_LIST.map(
+    (topic) =>
+      `<button class="chip" type="button" data-topic="${topic.id}">${escapeHtml(topic.title.en)}</button>`,
+  ).join("");
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
 
@@ -170,8 +167,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       btn.classList.toggle("active", btn.dataset.layout === state.layout);
     }
     for (const btn of topicBox.querySelectorAll<HTMLButtonElement>("[data-topic]")) {
-      const id = btn.dataset.topic ?? "";
-      btn.classList.toggle("active", state.topic ? id === state.topic.id : id === "");
+      btn.classList.toggle("active", state.topic?.id === btn.dataset.topic);
     }
     topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
   }
@@ -270,12 +266,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-topic]");
     if (!btn) return;
     const id = btn.dataset.topic ?? "";
-    if (!id) {
-      applyTopic(null);
-      return;
-    }
     applyTopic(TOPIC_LIST.find((topic) => topic.id === id) ?? null);
   };
+
+  const onClearTopic = () => applyTopic(null);
 
   const onTopicForm = (event: Event) => {
     event.preventDefault();
@@ -318,6 +312,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   sourceBox.addEventListener("click", onSource);
   layoutBox.addEventListener("click", onLayout);
   topicBox.addEventListener("click", onTopicChip);
+  root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
   root.querySelector("[data-copy]")?.addEventListener("click", onCopy);

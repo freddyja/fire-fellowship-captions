@@ -514,6 +514,16 @@ textarea {
   font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.topic-clear {
+  letter-spacing: 0.06em;
+  min-height: 44px;
+  padding: 0.35rem 0.55rem;
 }
 
 .chips {
@@ -578,12 +588,35 @@ textarea {
   margin-top: 0.5rem;
 }
 
+.phone-main,
+.phone-side,
+.phone-main *,
+.topic-controls {
+  min-width: 0;
+}
+
+.phone-main,
+.phone-side,
+.topic-preview {
+  max-width: 100%;
+}
+
+.topic-preview {
+  overflow-wrap: anywhere;
+}
+
 .topic-insert,
 .typed-caption {
   display: flex;
   gap: 0.55rem;
   margin-top: 0.65rem;
   align-items: stretch;
+  min-width: 0;
+}
+
+.topic-insert input,
+.typed-caption input {
+  min-width: 0;
 }
 
 .topic-insert .secondary,
@@ -667,7 +700,12 @@ textarea {
 /* Folded cover (~6.5" Galaxy Z Fold): keep the mic in the thumb zone. */
 @media (max-width: 599px) {
   .phone-screen {
-    padding-bottom: calc(8.25rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+
+  .phone-screen .topic-controls .chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .phone-screen .mic-wrap {
@@ -676,9 +714,18 @@ textarea {
     right: 0;
     bottom: 0;
     margin: 0;
-    padding: 0.7rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, transparent, rgba(18, 12, 9, 0.94) 32%, var(--bg) 58%);
+    padding: 0.45rem 1rem calc(0.55rem + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, rgba(18, 12, 9, 0.94) 28%, var(--bg) 52%);
     z-index: 5;
+  }
+
+  .phone-screen .mic {
+    width: 132px;
+    height: 132px;
+  }
+
+  .phone-screen .mic-chrome-hint {
+    display: none;
   }
 }
 
@@ -694,7 +741,7 @@ textarea {
   .phone-screen .mic-wrap {
     position: sticky;
     top: 0.6rem;
-    margin-top: 1.35rem;
+    margin: 0 0 1.1rem;
     background: none;
   }
 

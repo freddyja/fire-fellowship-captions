@@ -68,7 +68,7 @@ Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only dis
 - `Proverbs 27:17`
 - `Joshua 1:9`
 
-If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **None** to clear it.
+If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **Clear** to remove it.
 
 Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the languages of the current caption layout. Custom titles stay in the text you typed, with room in the data to add translations later.
 
