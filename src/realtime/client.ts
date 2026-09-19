@@ -17,6 +17,14 @@ export function connectRoom(opts: {
   let attempt = 0;
   let retryTimer = 0;
 
+  let queued: RoomState | null = null;
+
+  const flush = () => {
+    if (queued && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "push", state: queued }));
+    }
+  };
+
   const open = () => {
     if (closed) return;
     opts.onStatus("connecting");
@@ -27,6 +35,7 @@ export function connectRoom(opts: {
       attempt = 0;
       ws?.send(JSON.stringify({ type: "join", room: opts.room, role: opts.role }));
       opts.onStatus("live");
+      flush();
     };
 
     ws.onmessage = (event) => {
@@ -63,9 +72,8 @@ export function connectRoom(opts: {
 
   return {
     push(state) {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "push", state }));
-      }
+      queued = state;
+      flush();
     },
     close() {
       closed = true;
