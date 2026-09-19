@@ -85,8 +85,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <button class="ghost" data-clear type="button">Clear windows</button>
           <button class="ghost" data-home type="button">Leave</button>
         </div>
-        <form class="typed-caption" data-type hidden>
-          <input name="caption" autocomplete="off" placeholder="Type a caption if the mic is unavailable" />
+        <form class="typed-caption" data-type>
+          <input name="caption" autocomplete="off" placeholder="Or type a caption" />
           <button class="primary" type="submit">Send</button>
         </form>
       </div>
@@ -103,7 +103,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   ).join("");
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
-  if (!speech.supported) typeForm.hidden = false;
+
 
   const els = {
     room: root.querySelector("[data-room]") as HTMLElement,

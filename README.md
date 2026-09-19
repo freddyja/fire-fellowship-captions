@@ -42,7 +42,7 @@ npm run dev:http
 - Allow microphone permission when prompted.
 - Keep the phone on the same Wi-Fi as the computer running `npm run dev`.
 - Stand close to the phone; continuous recognition pauses in silence and then resumes.
-- If the mic is blocked or unavailable, a type-to-send box appears so you can still drive the TV.
+- If the mic is blocked or unavailable, type a caption on the phone instead.
 
 Demo lines that the built-in mock translator handles well:
 
