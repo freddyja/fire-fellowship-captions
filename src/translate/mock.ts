@@ -1,5 +1,5 @@
 import type { Lang } from "../types";
-import { PHRASES, WORDS, type Triple } from "./mock-dict";
+import { PHRASES, WORDS, type Triple } from "./mock-dict.ts";
 import type { Translator } from "./types";
 
 function fold(value: string): string {

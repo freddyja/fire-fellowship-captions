@@ -19,15 +19,20 @@ type Inbound =
   | { type: "join"; room: string; role?: string }
   | { type: "push"; state: unknown };
 
-export function attachCaptionRelay(httpServer: Server | null): void {
-  if (!httpServer) return;
+export type CaptionRelay = {
+  roomCount(): number;
+};
 
-  const flagged = httpServer as Server & { __ffRelay?: boolean };
-  if (flagged.__ffRelay) return;
-  flagged.__ffRelay = true;
+export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
+  if (!httpServer) return { roomCount: () => 0 };
+
+  const flagged = httpServer as Server & { __ffRelay?: CaptionRelay };
+  if (flagged.__ffRelay) return flagged.__ffRelay;
 
   const wss = new WebSocketServer({ noServer: true });
   const rooms = new Map<string, Room>();
+  const api: CaptionRelay = { roomCount: () => rooms.size };
+  flagged.__ffRelay = api;
 
   httpServer.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = req.url ?? "";
@@ -98,6 +103,8 @@ export function attachCaptionRelay(httpServer: Server | null): void {
       client = null;
     }
   });
+
+  return api;
 }
 
 function peerCounts(bucket: Room): { phones: number; tvs: number } {

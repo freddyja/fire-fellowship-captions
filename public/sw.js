@@ -1,31 +1,88 @@
-const CACHE = "fire-fellowship-v1";
+const CACHE = "fire-fellowship-v4";
+const PRECACHE = [
+  "/",
+  "/index.html",
+  "/favicon.svg",
+  "/manifest.webmanifest",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-192-maskable.png",
+  "/icon-512-maskable.png",
+];
+
+const PASS = new Set(["/caption-ws", "/health", "/api/translate"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(["/", "/index.html", "/favicon.svg", "/manifest.webmanifest"])),
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting()),
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
-  if (new URL(req.url).pathname === "/caption-ws") return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) {
+    if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
+      event.respondWith(staleWhileRevalidate(req));
+    }
+    return;
+  }
+
+  if (PASS.has(url.pathname) || url.pathname.startsWith("/caption-ws")) return;
+
+  if (req.mode === "navigate") {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put("/index.html", copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match("/index.html").then((hit) => hit || caches.match("/"))),
+    );
+    return;
+  }
 
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+    caches.match(req).then((hit) => {
+      if (hit) return hit;
+      return fetch(req).then((res) => {
+        if (res.ok && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+        }
         return res;
-      })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match("/index.html"))),
+      });
+    }),
   );
 });
+
+function staleWhileRevalidate(req) {
+  return caches.open(CACHE).then((cache) =>
+    cache.match(req).then((hit) => {
+      const pending = fetch(req)
+        .then((res) => {
+          if (res.ok) cache.put(req, res.clone()).catch(() => {});
+          return res;
+        })
+        .catch(() => hit);
+      return hit || pending;
+    }),
+  );
+}
