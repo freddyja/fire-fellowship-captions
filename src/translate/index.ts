@@ -12,7 +12,10 @@ export function createTranslator(): Translator {
   const provider = String(import.meta.env.VITE_TRANSLATE_PROVIDER || "").toLowerCase();
 
   if (provider === "passthrough") return passthroughTranslator;
-  if (provider === "mymemory") return withFallback(createMyMemoryTranslator());
+  if (provider === "mymemory") {
+    const email = String(import.meta.env.VITE_MYMEMORY_EMAIL || "").trim() || undefined;
+    return withFallback(createMyMemoryTranslator({ email }));
+  }
   if (provider === "libretranslate") return withFallback(createLibreTranslator());
   if (provider === "mock") return mockTranslator;
   return withFallback(createServerTranslator());

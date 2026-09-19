@@ -16,7 +16,8 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   HOST = "0.0.0.0"
-  # Do not put GOOGLE_TRANSLATE_API_KEY here. After deploy:
+  # Default translator is MyMemory (no key). Offline: TRANSLATE_PROVIDER=mock.
+  # Do not put GOOGLE_TRANSLATE_API_KEY here. Optional paid path after deploy:
   #   fly secrets set TRANSLATE_PROVIDER=google GOOGLE_TRANSLATE_API_KEY=...
 
 [http_service]

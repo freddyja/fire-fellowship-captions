@@ -84,7 +84,7 @@ Do not deploy mid-meeting (a new machine can drop the in-memory room).
 1. New project → deploy this repo.
 2. Railway should pick up `railway.toml` + `Dockerfile` (`npm run build` then `npm start`).
 3. Generate a public HTTPS domain in the service settings.
-4. Replicas: **1**. Railway injects `PORT`; do not add secrets for the default mock translator.
+4. Replicas: **1**. Railway injects `PORT`; do not add secrets for the default MyMemory translator.
 
 ### Render
 
@@ -158,26 +158,47 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 - Stand close; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption instead.
 
-Demo line that the built-in mock translator handles well:
+Demo line (works on MyMemory and on the built-in mock dictionary):
 
 > Welcome brothers. Thank you for coming tonight. Let us begin.
 
 ## Translation / env
 
-The phone translates **before** it sends captions to the TV. **Google Cloud Translation** is the meeting-night provider. The API key stays on the server: the Fold calls `POST /api/translate` on the same host. Do **not** put the key in any `VITE_*` variable (Vite would bake it into the browser bundle).
+The phone translates **before** it sends captions to the TV. The Fold calls `POST /api/translate` on the same host. Source language → the other TV windows (**EN / ES / PT**, any direction).
 
-**Never commit secrets.** Copy `.env.example` to `.env` for local runs. The default is **mock** (built-in EN/ES/PT dictionary) until a Google key is set.
+**Meeting-night / hosted default: [MyMemory](https://mymemory.translated.net/doc/spec.php).** Free, no API key, no Google account. Hosted demos work without secrets. It is rate-limited (about **5,000 characters/day** per host IP; optional `MYMEMORY_EMAIL` raises that to about **50,000**). Captions are short spoken lines, so a fellowship meeting usually stays under the anonymous cap. If MyMemory errors or hits quota, that request falls back to the mock dictionary.
+
+**Google Cloud Translation is optional and needs a billing admin.** Cloud Translation Basic (v2) will not enable on a project until billing is turned on. If you cannot do that, leave Google unset and use MyMemory.
+
+**Mock** is the offline built-in EN/ES/PT dictionary. Use it when there is no network, or for a laptop demo of the seeded phrases.
+
+**Never commit secrets.** Copy `.env.example` to `.env` for local runs. Do **not** put a Google key in any `VITE_*` variable (Vite would bake it into the browser bundle).
 
 | Server env | Behavior |
 | --- | --- |
-| *(unset)* or `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
-| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Source language → the other TV windows (EN/ES/PT). If Google errors, that request falls back to mock. |
+| *(unset)* or `TRANSLATE_PROVIDER=mymemory` | MyMemory. No key. Hosted / meeting-night path. Falls back to mock if MyMemory fails. |
+| `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
+| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. If Google errors (including billing), that request falls back to MyMemory, then mock. |
 
-`GET /health` includes `"translate": "google"` or `"translate": "mock"` so you can confirm the host picked up the key (it never returns the key).
+`GET /health` includes `"translate": "mymemory"`, `"google"`, or `"mock"` (it never returns a key). After deploy, confirm `"translate":"mymemory"` unless you intentionally set mock or Google.
 
-### Google Cloud Translation API key
+Optional: `MYMEMORY_EMAIL=you@example.com` (a contact email, **not** an API key) so MyMemory can raise the daily cap. Leave it empty if you prefer anonymous IP limits.
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create or pick a project. Cloud Translation Basic (v2) needs billing enabled on the project (Google gives a monthly free allotment; usage beyond that is billed).
+```bash
+# Hosted / meeting night — no secrets
+TRANSLATE_PROVIDER=mymemory
+
+# Offline laptop
+TRANSLATE_PROVIDER=mock
+```
+
+`npm run verify:translate` checks provider selection and live MyMemory EN↔ES↔PT (skip the live calls with `--offline`).
+
+### Optional: Google Cloud Translation API key
+
+Only do this if a **billing admin** can enable billing on a Google Cloud project. Freddy cannot turn Cloud Translation on without that.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or pick a project and enable billing.
 2. **APIs & Services → Library** → enable **Cloud Translation API**.
 3. **APIs & Services → Credentials → Create credentials → API key**.
 4. Restrict the key if you can:
@@ -202,9 +223,9 @@ The phone translates **before** it sends captions to the TV. **Google Cloud Tran
 
    Then `npm run dev` or `npm run build && npm start`.
 
-6. Confirm `GET /health` shows `"translate":"google"`. On the Fold, speak or type a caption that is **not** in the mock dictionary — the TV windows should still fill in ES/PT (or EN if you spoke Spanish/Portuguese).
+6. Confirm `GET /health` shows `"translate":"google"`. On the Fold, speak or type a caption — the TV windows should fill in the other languages.
 
-Optional client-only overrides (`VITE_TRANSLATE_PROVIDER=passthrough` / `mymemory` / `libretranslate`) still exist for local experiments. Leave them unset so production uses `/api/translate`.
+Optional client-only overrides (`VITE_TRANSLATE_PROVIDER=passthrough` / `mymemory` / `libretranslate` / `mock`) still exist for local experiments. Leave them unset so production uses `/api/translate`.
 
 Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`).
 
@@ -220,7 +241,8 @@ npm run dev:http     # HTTP, localhost-friendly
 npm run build        # typecheck + production bundle
 npm start            # production server: static PWA + relay (use after build)
 npm run preview      # Vite preview + same relay (local production bundle)
-npm run verify:prod  # PWA + relay checks (optional public URL argument)
+npm run verify:prod       # PWA + relay checks (optional public URL argument)
+npm run verify:translate  # MyMemory default + EN/ES/PT live pairs
 ```
 
 Local LAN Fold testing still works with `npm run dev` (Chrome will warn about the self-signed certificate — **Advanced → Proceed**). Meeting night should use the public HTTPS URL so there is no laptop in the loop.

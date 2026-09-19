@@ -15,6 +15,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      # Add in the Render dashboard (never commit the real key):
+      # Default translator is MyMemory (no key). Optional paid path in the
+      # Render dashboard (never commit a real key; needs GCP billing):
       # TRANSLATE_PROVIDER=google
       # GOOGLE_TRANSLATE_API_KEY=...

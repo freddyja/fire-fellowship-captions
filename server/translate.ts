@@ -1,7 +1,9 @@
 import { mockTranslator } from "../src/translate/mock.ts";
+import { createMyMemoryTranslator } from "../src/translate/mymemory.ts";
+import type { Translator } from "../src/translate/types.ts";
 import type { Lang } from "../src/types.ts";
 
-export type TranslateProvider = "google" | "mock";
+export type TranslateProvider = "google" | "mymemory" | "mock";
 
 const LANGS: Lang[] = ["en", "es", "pt"];
 const MAX_TEXT = 2000;
@@ -9,19 +11,44 @@ const GOOGLE_URL = "https://translation.googleapis.com/language/translate/v2";
 const cache = new Map<string, string>();
 const CACHE_LIMIT = 400;
 
+let myMemory: Translator | null = null;
+let myMemoryEmail: string | undefined;
+
 export function isLang(value: unknown): value is Lang {
   return value === "en" || value === "es" || value === "pt";
 }
 
-export function resolveTranslateProvider(): TranslateProvider {
-  const requested = String(process.env.TRANSLATE_PROVIDER || "").trim().toLowerCase();
-  const key = googleKey();
-  if ((requested === "google" || requested === "google-cloud") && key) return "google";
-  return "mock";
+function requestedProvider(): string {
+  return String(process.env.TRANSLATE_PROVIDER || "").trim().toLowerCase();
 }
 
 export function googleKey(): string {
   return String(process.env.GOOGLE_TRANSLATE_API_KEY || "").trim();
+}
+
+function myMemoryEmailFromEnv(): string | undefined {
+  return String(process.env.MYMEMORY_EMAIL || "").trim() || undefined;
+}
+
+/**
+ * Meeting-night default is MyMemory (free, no key) so hosted demos work
+ * without Google billing. Mock is opt-in for offline. Google only when a key
+ * is present.
+ */
+export function resolveTranslateProvider(): TranslateProvider {
+  const requested = requestedProvider();
+  if ((requested === "google" || requested === "google-cloud") && googleKey()) return "google";
+  if (requested === "mock") return "mock";
+  return "mymemory";
+}
+
+function getMyMemoryTranslator(): Translator {
+  const email = myMemoryEmailFromEnv();
+  if (!myMemory || myMemoryEmail !== email) {
+    myMemory = createMyMemoryTranslator({ email });
+    myMemoryEmail = email;
+  }
+  return myMemory;
 }
 
 export function emptyLocalized(source: string, from: Lang): Record<Lang, string> {
@@ -30,6 +57,20 @@ export function emptyLocalized(source: string, from: Lang): Record<Lang, string>
     es: from === "es" ? source : "",
     pt: from === "pt" ? source : "",
   };
+}
+
+async function fillTargets(
+  translator: { translate(text: string, from: Lang, to: Lang): Promise<string> },
+  source: string,
+  from: Lang,
+  targets: Lang[],
+  out: Record<Lang, string>,
+): Promise<void> {
+  await Promise.all(
+    targets.map(async (to) => {
+      out[to] = await translator.translate(source, from, to);
+    }),
+  );
 }
 
 export async function translateCaption(
@@ -58,16 +99,22 @@ export async function translateCaption(
       );
       return { provider: "google", text: out };
     } catch (err) {
-      console.warn("[translate] Google Cloud Translation failed; using mock");
+      console.warn("[translate] Google Cloud Translation failed; trying MyMemory");
       console.warn(err instanceof Error ? err.message : "translate error");
     }
   }
 
-  await Promise.all(
-    unique.map(async (to) => {
-      out[to] = await mockTranslator.translate(source, from, to);
-    }),
-  );
+  if (provider === "google" || provider === "mymemory") {
+    try {
+      await fillTargets(getMyMemoryTranslator(), source, from, unique, out);
+      return { provider: "mymemory", text: out };
+    } catch (err) {
+      console.warn("[translate] MyMemory failed; using mock");
+      console.warn(err instanceof Error ? err.message : "translate error");
+    }
+  }
+
+  await fillTargets(mockTranslator, source, from, unique, out);
   return { provider: "mock", text: out };
 }
 
@@ -111,8 +158,10 @@ async function googleTranslate(text: string, from: Lang, to: Lang): Promise<stri
 }
 
 export function warnIfGoogleRequestedWithoutKey(): void {
-  const requested = String(process.env.TRANSLATE_PROVIDER || "").trim().toLowerCase();
+  const requested = requestedProvider();
   if ((requested === "google" || requested === "google-cloud") && !googleKey()) {
-    console.warn("[translate] TRANSLATE_PROVIDER=google but GOOGLE_TRANSLATE_API_KEY is empty; using mock");
+    console.warn(
+      "[translate] TRANSLATE_PROVIDER=google but GOOGLE_TRANSLATE_API_KEY is empty; using MyMemory (no key). Set TRANSLATE_PROVIDER=mock for offline.",
+    );
   }
 }
