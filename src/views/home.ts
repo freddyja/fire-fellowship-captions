@@ -1,4 +1,11 @@
 import { brandBlock } from "../brand";
+import {
+  canPromptInstall,
+  isStandaloneDisplay,
+  promptInstall,
+  subscribeInstall,
+  wasJustInstalled,
+} from "../install";
 import { generateRoomCode, isRoomCode, normalizeRoomCode } from "../room";
 import { goto } from "../router";
 
@@ -18,14 +25,65 @@ export function mountHome(root: HTMLElement): () => void {
           </label>
           <button class="secondary" type="submit">Open TV windows</button>
         </form>
-        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). The TV can be any browser on the same network.</p>
+        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). The TV can be any browser.</p>
       </div>
+      <aside class="install-card" data-install>
+        <h2>Install on this phone</h2>
+        <p class="install-copy" data-install-copy></p>
+        <button class="primary" data-install-btn type="button" hidden>Install app</button>
+        <ol class="install-steps" data-install-steps></ol>
+      </aside>
     </section>
   `;
 
   const create = root.querySelector("[data-create]");
   const form = root.querySelector("[data-join]");
   const input = root.querySelector("input[name='room']") as HTMLInputElement;
+  const installCard = root.querySelector("[data-install]") as HTMLElement;
+  const installCopy = root.querySelector("[data-install-copy]") as HTMLElement;
+  const installBtn = root.querySelector("[data-install-btn]") as HTMLButtonElement;
+  const installSteps = root.querySelector("[data-install-steps]") as HTMLOListElement;
+
+  const paintInstall = () => {
+    const standalone = isStandaloneDisplay();
+    installCard.dataset.state = standalone ? "standalone" : canPromptInstall() ? "ready" : "guide";
+    installBtn.hidden = standalone || !canPromptInstall();
+
+    if (standalone) {
+      installCopy.textContent =
+        "This is the installed Fire Fellowship app. Create a room here, then open the TV link on the meeting TV.";
+      installSteps.innerHTML = `
+        <li>Tap <strong>Create room on this phone</strong>.</li>
+        <li>Pick the topic of the day, then tap <strong>Copy TV link</strong>.</li>
+        <li>On the TV browser, open that link (same public URL, same room code).</li>
+      `;
+      return;
+    }
+
+    if (wasJustInstalled()) {
+      installCopy.textContent = "Installed. Open Fire Fellowship from your home screen for meeting night.";
+      installSteps.innerHTML = `
+        <li>Find the <strong>Fire Fellowship</strong> icon on the Fold home screen.</li>
+        <li>Launch it — you should see this app without the Chrome address bar.</li>
+        <li>Create a room, then open the TV link on the TV.</li>
+      `;
+      return;
+    }
+
+    installCopy.textContent =
+      "Add Fire Fellowship to the Fold home screen like a normal app. Meeting night is then a tap — no git or npm.";
+    installSteps.innerHTML = canPromptInstall()
+      ? `
+        <li>Tap <strong>Install app</strong> above and confirm.</li>
+        <li>Open <strong>Fire Fellowship</strong> from the home screen (standalone, no address bar).</li>
+        <li>Create the room on the Fold, then open the TV link on the TV.</li>
+      `
+      : `
+        <li>Stay in <strong>Chrome</strong> (not Samsung Internet).</li>
+        <li>Tap Chrome’s menu (⋮) → <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+        <li>Open <strong>Fire Fellowship</strong> from the home screen, then create a room.</li>
+      `;
+  };
 
   const onCreate = () => goto("phone", generateRoomCode());
   const onInput = () => {
@@ -40,14 +98,22 @@ export function mountHome(root: HTMLElement): () => void {
     }
     goto("tv", room);
   };
+  const onInstall = () => {
+    void promptInstall().then(paintInstall);
+  };
 
   create?.addEventListener("click", onCreate);
   input.addEventListener("input", onInput);
   form?.addEventListener("submit", onJoin);
+  installBtn.addEventListener("click", onInstall);
+  const unsubscribe = subscribeInstall(paintInstall);
+  paintInstall();
 
   return () => {
     create?.removeEventListener("click", onCreate);
     input.removeEventListener("input", onInput);
     form?.removeEventListener("submit", onJoin);
+    installBtn.removeEventListener("click", onInstall);
+    unsubscribe();
   };
 }

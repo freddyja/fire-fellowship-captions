@@ -7,7 +7,13 @@
     "dev": "vite --host",
     "dev:http": "FF_HTTPS=0 vite --host",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "start": "node --experimental-strip-types server/index.ts",
+    "verify:prod": "node scripts/verify-production.mjs",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "engines": {
+    "node": ">=22.6"
   },
   "dependencies": {
     "ws": "^8.18.3"
