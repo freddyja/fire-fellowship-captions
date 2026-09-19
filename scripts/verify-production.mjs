@@ -78,6 +78,7 @@ async function main() {
   await maybeStartLocal();
   const health = await waitForHealth();
   assert(health.ok === true, "health.ok");
+  assert(health.translate === "mock" || health.translate === "google", "health.translate");
 
   const home = await text("/");
   assert(home.body.includes("Fire and Fellowship"), "home shell");
@@ -107,6 +108,29 @@ async function main() {
   const { body: sw } = await text("/sw.js");
   assert(sw.includes('addEventListener("fetch"'), "service worker fetch handler");
   assert(sw.includes("/caption-ws"), "service worker skips relay");
+  assert(sw.includes("/api/translate"), "service worker skips translate API");
+
+  const translateStatus = await json("/api/translate");
+  assert(translateStatus.provider === health.translate, "GET /api/translate provider");
+
+  const translateRes = await fetch(`${base}/api/translate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      text: "Welcome brothers. Thank you for coming tonight. Let us begin.",
+      from: "en",
+    }),
+  });
+  assert(translateRes.ok, "POST /api/translate");
+  const translated = await translateRes.json();
+  assert(translated.text?.en?.includes("Welcome brothers"), "source language passthrough");
+  assert(Boolean(translated.text?.es && translated.text?.pt), "es/pt present");
+  if (translated.provider === "mock") {
+    assert(String(translated.text.es).toLowerCase().includes("bienvenidos"), "mock es");
+    assert(String(translated.text.pt).toLowerCase().includes("irm"), "mock pt");
+  }
+  const leaked = JSON.stringify(translated).includes("GOOGLE_TRANSLATE") || JSON.stringify(translated).includes("AIza");
+  assert(!leaked, "translate response must not include a key");
 
   for (const icon of ["/icon-192.png", "/icon-512.png", "/icon-192-maskable.png", "/icon-512-maskable.png"]) {
     const res = await fetch(`${base}${icon}`);
@@ -140,7 +164,7 @@ async function main() {
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, relay, topic of the day`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, relay, topic of the day, translate=${health.translate}`);
 }
 
 main()

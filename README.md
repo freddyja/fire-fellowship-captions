@@ -164,16 +164,49 @@ Demo line that the built-in mock translator handles well:
 
 ## Translation / env
 
-Copy `.env.example` to `.env` if you want to change providers **before** `npm run build`. Vite inlines `VITE_*` at build time. **Never commit secrets.** The default (`mock`) needs no keys.
+The phone translates **before** it sends captions to the TV. **Google Cloud Translation** is the meeting-night provider. The API key stays on the server: the Fold calls `POST /api/translate` on the same host. Do **not** put the key in any `VITE_*` variable (Vite would bake it into the browser bundle).
 
-| `VITE_TRANSLATE_PROVIDER` | Behavior |
+**Never commit secrets.** Copy `.env.example` to `.env` for local runs. The default is **mock** (built-in EN/ES/PT dictionary) until a Google key is set.
+
+| Server env | Behavior |
 | --- | --- |
-| `mock` (default) | Built-in EN/ES/PT dictionary. Works offline, no keys. |
-| `passthrough` | Copies the spoken text into every window. |
-| `mymemory` | Free public API, no key, rate-limited, needs network. |
-| `libretranslate` | Uses `VITE_LIBRETRANSLATE_URL` and optional `VITE_LIBRETRANSLATE_API_KEY`. |
+| *(unset)* or `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
+| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Source language → the other TV windows (EN/ES/PT). If Google errors, that request falls back to mock. |
 
-Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`). Translation is pluggable in `src/translate/`.
+`GET /health` includes `"translate": "google"` or `"translate": "mock"` so you can confirm the host picked up the key (it never returns the key).
+
+### Google Cloud Translation API key
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or pick a project. Cloud Translation Basic (v2) needs billing enabled on the project (Google gives a monthly free allotment; usage beyond that is billed).
+2. **APIs & Services → Library** → enable **Cloud Translation API**.
+3. **APIs & Services → Credentials → Create credentials → API key**.
+4. Restrict the key if you can:
+   - **API restriction:** Cloud Translation API only.
+   - **Application restriction:** none is typical for a server key. If your host has a stable egress IP, restrict to that IP. Do **not** use HTTP-referrer restriction — the key is used from the Node server, not the Fold browser.
+5. On the host, set env and **restart** the app (secrets are read at process start):
+
+   ```bash
+   # Fly
+   fly secrets set TRANSLATE_PROVIDER=google GOOGLE_TRANSLATE_API_KEY=your-key-here
+
+   # Railway / Render: add the same two variables in the service env UI, then redeploy/restart.
+   ```
+
+   Local:
+
+   ```bash
+   # .env (gitignored)
+   TRANSLATE_PROVIDER=google
+   GOOGLE_TRANSLATE_API_KEY=your-key-here
+   ```
+
+   Then `npm run dev` or `npm run build && npm start`.
+
+6. Confirm `GET /health` shows `"translate":"google"`. On the Fold, speak or type a caption that is **not** in the mock dictionary — the TV windows should still fill in ES/PT (or EN if you spoke Spanish/Portuguese).
+
+Optional client-only overrides (`VITE_TRANSLATE_PROVIDER=passthrough` / `mymemory` / `libretranslate`) still exist for local experiments. Leave them unset so production uses `/api/translate`.
+
+Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`).
 
 ## Layouts (phone control → TV)
 

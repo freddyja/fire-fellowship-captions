@@ -15,3 +15,6 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      # Add in the Render dashboard (never commit the real key):
+      # TRANSLATE_PROVIDER=google
+      # GOOGLE_TRANSLATE_API_KEY=...

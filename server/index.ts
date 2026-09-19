@@ -3,7 +3,12 @@ import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { handleApi } from "./api.ts";
+import { loadLocalEnv } from "./env.ts";
 import { attachCaptionRelay } from "./relay.ts";
+import { resolveTranslateProvider, warnIfGoogleRequestedWithoutKey } from "./translate.ts";
+
+loadLocalEnv();
 
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -70,12 +75,14 @@ export function createCaptionServer() {
       send(
         res,
         200,
-        JSON.stringify({ ok: true, rooms: relay.roomCount() }),
+        JSON.stringify({ ok: true, rooms: relay.roomCount(), translate: resolveTranslateProvider() }),
         "application/json; charset=utf-8",
         { "cache-control": "no-store" },
       );
       return;
     }
+
+    if (await handleApi(req, res)) return;
 
     if (req.method !== "GET" && req.method !== "HEAD") {
       send(res, 405, "Method not allowed", "text/plain; charset=utf-8");
@@ -121,8 +128,10 @@ export function createCaptionServer() {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMain) {
+  warnIfGoogleRequestedWithoutKey();
   const server = createCaptionServer();
   server.listen(PORT, HOST, () => {
     console.log(`Fire and Fellowship listening on http://${HOST}:${PORT}`);
+    console.log(`Translate provider: ${resolveTranslateProvider()}`);
   });
 }

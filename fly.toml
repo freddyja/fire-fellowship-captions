@@ -16,6 +16,8 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   HOST = "0.0.0.0"
+  # Do not put GOOGLE_TRANSLATE_API_KEY here. After deploy:
+  #   fly secrets set TRANSLATE_PROVIDER=google GOOGLE_TRANSLATE_API_KEY=...
 
 [http_service]
   internal_port = 8080
