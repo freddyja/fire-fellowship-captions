@@ -20,6 +20,11 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: rgba(226, 88, 34, 0.22);
+}
+
 html,
 body {
   margin: 0;
@@ -52,7 +57,11 @@ textarea {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem 1.25rem 1.5rem;
+  padding:
+    max(1.1rem, env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right))
+    max(1.25rem, env(safe-area-inset-bottom))
+    max(1.25rem, env(safe-area-inset-left));
 }
 
 .brand {
@@ -104,7 +113,7 @@ textarea {
 
 .lede {
   margin: 1.5rem 0 1.75rem;
-  max-width: 28rem;
+  max-width: 36rem;
   color: var(--muted);
   line-height: 1.45;
   font-size: 1.05rem;
@@ -113,7 +122,8 @@ textarea {
 .stack {
   display: grid;
   gap: 0.9rem;
-  max-width: 26rem;
+  max-width: 28rem;
+  width: 100%;
 }
 
 .primary,
@@ -129,8 +139,9 @@ textarea {
 .primary,
 .secondary {
   border-radius: 999px;
-  padding: 0.9rem 1.2rem;
+  padding: 0.95rem 1.25rem;
   font-weight: 600;
+  min-height: 52px;
 }
 
 .primary {
@@ -163,9 +174,12 @@ textarea {
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 1rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  min-height: 52px;
+  font-size: 16px;
+  touch-action: manipulation;
 }
 
 .typed-caption input,
@@ -418,9 +432,16 @@ textarea {
 }
 
 .phone-screen {
-  max-width: 34rem;
+  width: min(100%, 78rem);
   margin: 0 auto;
-  width: 100%;
+  overscroll-behavior: contain;
+}
+
+.phone-body {
+  display: grid;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .phone-top {
@@ -434,7 +455,7 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: 0.45rem;
   font-size: 0.85rem;
   color: var(--muted);
 }
@@ -442,13 +463,13 @@ textarea {
 .mic-wrap {
   display: grid;
   justify-items: center;
-  gap: 0.7rem;
+  gap: 0.55rem;
   margin: 1rem 0 1.1rem;
 }
 
 .mic {
-  width: 148px;
-  height: 148px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   background: var(--bg-elev);
   border: 2px solid var(--line);
@@ -460,14 +481,14 @@ textarea {
 }
 
 .mic svg {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
 }
 
 .mic small {
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 
 .mic.hot {
@@ -477,13 +498,18 @@ textarea {
   animation: pulse 1.4s ease-out infinite;
 }
 
+.mic-chrome-hint {
+  text-align: center;
+  max-width: 22rem;
+}
+
 .controls {
   display: grid;
   gap: 1rem;
 }
 
 .control-label {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.5rem;
   color: var(--muted);
   font-size: 0.75rem;
   letter-spacing: 0.12em;
@@ -493,15 +519,17 @@ textarea {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.55rem;
 }
 
 .chip {
   border-radius: 999px;
-  padding: 0.42rem 0.7rem;
+  padding: 0.7rem 1rem;
+  min-height: 48px;
   background: transparent;
   border: 1px solid var(--line);
   color: var(--muted);
+  font-size: 1rem;
 }
 
 .chip.active {
@@ -511,11 +539,11 @@ textarea {
 }
 
 .preview {
-  margin-top: 0.4rem;
+  margin-top: 0.2rem;
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1rem;
   min-height: 4.6rem;
 }
 
@@ -532,46 +560,56 @@ textarea {
 .row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .ghost {
   background: transparent;
   color: var(--gold);
-  padding: 0.35rem 0;
+  min-height: 48px;
+  padding: 0.65rem 0.8rem;
+  display: inline-flex;
+  align-items: center;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .topic-controls {
-  margin-top: 0.85rem;
+  margin-top: 0.5rem;
 }
 
 .topic-insert,
 .typed-caption {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.55rem;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+  align-items: stretch;
+}
+
+.topic-insert .secondary,
+.typed-caption .primary {
+  padding-inline: 1.15rem;
+  flex: none;
 }
 
 .topic-preview {
-  margin-top: 0.55rem;
+  margin-top: 0.65rem;
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1rem;
 }
 
 .topic-preview-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.4rem;
 }
 
 .topic-preview-ref {
   margin: 0.15rem 0 0.4rem;
   color: var(--gold);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
 }
 
 .topic-preview-verse {
@@ -582,10 +620,6 @@ textarea {
 .topic-preview-prompt {
   margin: 0.45rem 0 0;
   color: var(--muted);
-}
-
-.typed-caption .primary {
-  padding-inline: 1rem;
 }
 
 .warn {
@@ -627,5 +661,74 @@ textarea {
   .tv-top {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* Folded cover (~6.5" Galaxy Z Fold): keep the mic in the thumb zone. */
+@media (max-width: 599px) {
+  .phone-screen {
+    padding-bottom: calc(8.25rem + env(safe-area-inset-bottom));
+  }
+
+  .phone-screen .mic-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0.7rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, rgba(18, 12, 9, 0.94) 32%, var(--bg) 58%);
+    z-index: 5;
+  }
+}
+
+/* Unfolded inner (~8" nearly square): two control columns. */
+@media (min-width: 600px) {
+  .phone-body {
+    grid-template-columns: minmax(17rem, 1fr) minmax(19rem, 1.15fr);
+    gap: 1.75rem 2rem;
+    align-items: start;
+    margin-top: 0.35rem;
+  }
+
+  .phone-screen .mic-wrap {
+    position: sticky;
+    top: 0.6rem;
+    margin-top: 1.35rem;
+    background: none;
+  }
+
+  .phone-screen .mic {
+    width: 176px;
+    height: 176px;
+  }
+}
+
+/* Flex / book-stand: map columns onto the two hinge segments. */
+@media (horizontal-viewport-segments: 2) {
+  .phone-screen {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .phone-body {
+    display: grid;
+    grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+    column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-width 0 0));
+    align-items: start;
+  }
+
+  .phone-main,
+  .phone-side {
+    min-width: 0;
+    padding-inline: 0.35rem;
+  }
+
+  .phone-screen .mic-wrap {
+    position: sticky;
+    top: 0.75rem;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    background: none;
   }
 }

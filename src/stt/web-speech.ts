@@ -88,7 +88,7 @@ export function createWebSpeechProvider(): SpeechProvider {
         if (live) provider.onResult?.({ text: live, isFinal: false });
       };
       rec.onerror = (event) => {
-        if (event.error === "no-speech" || event.error === "aborted") return;
+        if (event.error === "no-speech" || event.error === "aborted" || event.error === "network") return;
         if (event.error === "not-allowed") {
           provider.onError?.("Microphone blocked. Allow mic access for this site.");
           wantListening = false;

@@ -18,7 +18,7 @@ export function mountHome(root: HTMLElement): () => void {
           </label>
           <button class="secondary" type="submit">Open TV windows</button>
         </form>
-        <p class="hint">Use Chrome on the phone. The TV can be any browser on the same network.</p>
+        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). The TV can be any browser on the same network.</p>
       </div>
     </section>
   `;

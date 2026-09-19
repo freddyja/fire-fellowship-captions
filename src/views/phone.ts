@@ -42,6 +42,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let interimTimer = 0;
   let seq = 0;
   let hydrated = false;
+  let wakeLock: WakeLockSentinel | null = null;
 
   const push = () => conn?.push(state);
 
@@ -61,49 +62,56 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         </div>
       </div>
 
-      <div class="controls topic-controls">
-        <div>
-          <p class="control-label">Topic of the day</p>
-          <div class="chips" data-topics></div>
-          <form class="topic-insert" data-topic-form>
-            <input name="topic" autocomplete="off" placeholder="Insert or search a topic or verse" />
-            <button class="secondary" type="submit">Set</button>
-          </form>
-          <div class="topic-preview" data-topic-preview></div>
-        </div>
-      </div>
+      <div class="phone-body">
+        <div class="phone-main">
+          <div class="controls topic-controls">
+            <div>
+              <p class="control-label">Topic of the day</p>
+              <div class="chips" data-topics></div>
+              <form class="topic-insert" data-topic-form>
+                <input name="topic" autocomplete="off" enterkeyhint="search" placeholder="Insert or search a topic or verse" />
+                <button class="secondary" type="submit">Set</button>
+              </form>
+              <div class="topic-preview" data-topic-preview></div>
+            </div>
+          </div>
 
-      <div class="mic-wrap">
-        <button class="mic" data-mic type="button" aria-pressed="false">
-          ${micIcon}
-          <small data-mic-label>Start</small>
-        </button>
-        <p class="hint" data-error></p>
-      </div>
+          <div class="mic-wrap">
+            <button class="mic" data-mic type="button" aria-pressed="false">
+              ${micIcon}
+              <small data-mic-label>Start</small>
+            </button>
+            <p class="hint" data-error></p>
+            <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
+          </div>
+        </div>
 
-      <div class="controls">
-        <div>
-          <p class="control-label">Spoken language</p>
-          <div class="chips" data-source></div>
+        <div class="phone-side">
+          <div class="controls">
+            <div>
+              <p class="control-label">Spoken language</p>
+              <div class="chips" data-source></div>
+            </div>
+            <div>
+              <p class="control-label">TV layout</p>
+              <div class="chips" data-layouts></div>
+            </div>
+            <div class="preview">
+              <p class="control-label">On this phone</p>
+              <p data-preview></p>
+            </div>
+            <div class="row-actions">
+              <button class="ghost" data-open-tv type="button">Open TV view</button>
+              <button class="ghost" data-copy type="button">Copy TV link</button>
+              <button class="ghost" data-clear type="button">Clear windows</button>
+              <button class="ghost" data-home type="button">Leave</button>
+            </div>
+            <form class="typed-caption" data-type>
+              <input name="caption" autocomplete="off" enterkeyhint="send" placeholder="Or type a caption" />
+              <button class="primary" type="submit">Send</button>
+            </form>
+          </div>
         </div>
-        <div>
-          <p class="control-label">TV layout</p>
-          <div class="chips" data-layouts></div>
-        </div>
-        <div class="preview">
-          <p class="control-label">On this phone</p>
-          <p data-preview></p>
-        </div>
-        <div class="row-actions">
-          <button class="ghost" data-open-tv type="button">Open TV view</button>
-          <button class="ghost" data-copy type="button">Copy TV link</button>
-          <button class="ghost" data-clear type="button">Clear windows</button>
-          <button class="ghost" data-home type="button">Leave</button>
-        </div>
-        <form class="typed-caption" data-type>
-          <input name="caption" autocomplete="off" placeholder="Or type a caption" />
-          <button class="primary" type="submit">Send</button>
-        </form>
       </div>
     </section>
   `;
@@ -184,16 +192,35 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     setState({ ...state, lines: lines.slice(-MAX_LINES) });
   }
 
+  const releaseWake = () => {
+    void wakeLock?.release();
+    wakeLock = null;
+  };
+
+  const requestWake = async () => {
+    try {
+      wakeLock = (await navigator.wakeLock?.request("screen")) ?? null;
+    } catch {
+      /* Chrome may deny if the tab is in the background */
+    }
+  };
+
   const onMic = () => {
     error = "";
     if (state.listening) {
       speech.stop();
+      releaseWake();
       setState({ ...state, listening: false });
       return;
     }
     speech.setLang(speechLocale(state.sourceLang));
     speech.start();
+    void requestWake();
     setState({ ...state, listening: true });
+  };
+
+  const onVisibility = () => {
+    if (document.visibilityState === "visible" && state.listening) void requestWake();
   };
 
   speech.onResult = (result) => {
@@ -211,6 +238,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     error = message;
     if (message.includes("Microphone blocked") || message.includes("no Web Speech")) {
       speech.stop();
+      releaseWake();
       typeForm.hidden = false;
       setState({ ...state, listening: false });
       return;
@@ -273,6 +301,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onClear = () => setState({ ...state, lines: [] });
   const onHome = () => {
     speech.stop();
+    releaseWake();
     goto("home");
   };
   const onType = (event: Event) => {
@@ -285,6 +314,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   };
 
   els.mic.addEventListener("click", onMic);
+  document.addEventListener("visibilitychange", onVisibility);
   sourceBox.addEventListener("click", onSource);
   layoutBox.addEventListener("click", onLayout);
   topicBox.addEventListener("click", onTopicChip);
@@ -320,8 +350,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   return () => {
     speech.stop();
+    releaseWake();
     conn?.close();
     window.clearTimeout(interimTimer);
+    document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
     layoutBox.removeEventListener("click", onLayout);
