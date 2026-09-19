@@ -1,6 +1,8 @@
 import { brandBlock } from "../brand";
+import { escapeHtml } from "../dom";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
+import { hasTopicBody, localized } from "../topics";
 import {
   emptyState,
   LANG_LABEL,
@@ -10,6 +12,7 @@ import {
   type ConnStatus,
   type Lang,
   type PeerCounts,
+  type TopicContent,
 } from "../types";
 
 export function mountTv(root: HTMLElement, room: string): () => void {
@@ -27,11 +30,13 @@ export function mountTv(root: HTMLElement, room: string): () => void {
           <button class="ghost" data-home type="button">Leave</button>
         </div>
       </div>
+      <aside class="tv-topic" data-topic hidden></aside>
       <main class="tv-board" data-board></main>
     </section>
   `;
 
   const board = root.querySelector("[data-board]") as HTMLElement;
+  const topicEl = root.querySelector("[data-topic]") as HTMLElement;
   const roomEl = root.querySelector("[data-room]") as HTMLElement;
   const statusEl = root.querySelector("[data-status]") as HTMLElement;
   const dot = root.querySelector("[data-dot]") as HTMLElement;
@@ -65,6 +70,32 @@ export function mountTv(root: HTMLElement, room: string): () => void {
     `;
   }
 
+  function renderTopic(topic: TopicContent, langs: Lang[]): string {
+    const title = localized(topic.title, langs[0] ?? "en");
+    return `
+      <div class="tv-topic-kicker">Topic of the day</div>
+      <div class="tv-topic-head">
+        <h2 class="tv-topic-title">${escapeHtml(title)}</h2>
+        ${topic.reference ? `<p class="tv-topic-ref">${escapeHtml(topic.reference)}</p>` : ""}
+      </div>
+      <div class="tv-topic-grid" data-count="${langs.length}">
+        ${langs.map((lang) => renderTopicCard(topic, lang)).join("")}
+      </div>
+    `;
+  }
+
+  function renderTopicCard(topic: TopicContent, lang: Lang): string {
+    const verse = localized(topic.verse, lang);
+    const prompt = localized(topic.prompt, lang);
+    return `
+      <article class="tv-handout" lang="${lang}">
+        <h3>${LANG_SHORT[lang]}</h3>
+        ${verse ? `<p class="tv-verse">${escapeHtml(verse)}</p>` : `<p class="tv-verse muted">Verse can be added for this topic.</p>`}
+        <p class="tv-prompt">${escapeHtml(prompt)}</p>
+      </article>
+    `;
+  }
+
   function render() {
     const langs = langsForLayout(state.layout);
     roomEl.textContent = state.room;
@@ -74,13 +105,23 @@ export function mountTv(root: HTMLElement, room: string): () => void {
     board.dataset.count = String(langs.length);
     board.dataset.layout = state.layout;
     board.innerHTML = langs.map(renderWindow).join("");
+
+    const topic = state.topic;
+    if (hasTopicBody(topic) && topic) {
+      topicEl.hidden = false;
+      topicEl.dataset.count = String(langs.length);
+      topicEl.innerHTML = renderTopic(topic, langs);
+    } else {
+      topicEl.hidden = true;
+      topicEl.innerHTML = "";
+    }
   }
 
   const conn = connectRoom({
     room,
     role: "tv",
     onState(next) {
-      state = next;
+      state = { ...next, topic: next.topic ?? null };
       render();
     },
     onPeers(next) {
@@ -99,12 +140,4 @@ export function mountTv(root: HTMLElement, room: string): () => void {
     conn.close();
     home?.removeEventListener("click", onHome);
   };
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }

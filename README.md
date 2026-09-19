@@ -1,8 +1,8 @@
 # Fire Fellowship Captions
 
-Live speech captions for **Men's Fellowship**. A phone captures the speaker; a TV (any browser) joins the same room and shows English, Spanish, and Portuguese windows.
+Live speech captions for **Men's Fellowship**, plus the **topic of the day**. A phone captures the speaker and chooses the meeting topic; a TV (any browser) joins the same room and shows the verse, a short handout, and English / Spanish / Portuguese caption windows.
 
-This is a caption app only: no verse drawer, prayers, handouts, or marketing pages.
+This is one caption app. The topic list is a small built-in seed in this repo — not another product.
 
 ## Try it (two devices)
 
@@ -16,11 +16,16 @@ This is a caption app only: no verse drawer, prayers, handouts, or marketing pag
 2. Vite prints a local URL and a network URL. Chrome will warn about the self-signed HTTPS certificate — choose **Advanced → Proceed**. HTTPS is required so a real phone can use the microphone on the LAN.
 
 3. **Phone (mic + control)**  
-   Open the URL in Chrome. Tap **Create room on this phone**. Note the 4-letter room code. Tap the mic, allow microphone access, and speak.
+   Open the URL in Chrome. Tap **Create room on this phone**. Note the 4-letter room code.
+
+   - Under **Topic of the day**, tap a topic (try **Brotherhood**) **or** type a topic / verse reference and tap **Set**.
+   - The phone shows the verse and a short discussion prompt. That same content is sent to the TV.
+   - Tap the mic, allow microphone access, and speak (or type a caption).
 
 4. **TV (big windows)**  
    On the TV browser, open the same host URL, enter the room code, tap **Open TV windows**.  
-   Or from the phone, tap **Open TV view** / **Copy TV link**.
+   Or from the phone, tap **Open TV view** / **Copy TV link**.  
+   You should see the topic, verse, and handout **above** the translation windows.
 
 5. Speak on the phone. Captions should update on the TV in the selected layout:
 
@@ -36,6 +41,25 @@ HTTP-only laptop demo (mic works on `localhost`, not on a LAN IP):
 npm run dev:http
 ```
 
+## Topic of the day
+
+Freddy sets the day’s Bible / Christian topic on the **phone**. The TV only displays it.
+
+**Pick:** tap a built-in topic under **Topic of the day** (Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials).
+
+**Insert / search:** type a name or reference and tap **Set**. Examples that resolve to seed data:
+
+- `brotherhood`
+- `iron`
+- `Proverbs 27:17`
+- `Joshua 1:9`
+
+If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **None** to clear it.
+
+Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the languages of the current caption layout. Custom titles stay in the text you typed, with room in the data to add translations later.
+
+To add or edit the built-in set, change `src/topics.ts` (offline, no API keys).
+
 ## Mic tip
 
 - Use **Chrome** (or Edge) on the phone. Safari/iOS and Firefox are weak or missing for Web Speech.
@@ -44,7 +68,7 @@ npm run dev:http
 - Stand close to the phone; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption on the phone instead.
 
-Demo lines that the built-in mock translator handles well:
+Demo line that the built-in mock translator handles well:
 
 > Welcome brothers. Thank you for coming tonight. Let us begin.
 
@@ -68,6 +92,8 @@ The phone owns the layout. The TV only displays it.
 - **English / Español / Português** — one language, full-screen
 - **EN \| ES**, **EN \| PT**, **ES \| PT** — dual columns
 - **EN \| ES \| PT** — triple columns (default)
+
+The topic band follows the same language layout as the caption windows.
 
 ## Scripts
 

@@ -7,7 +7,7 @@ export function mountHome(root: HTMLElement): () => void {
     <section class="screen">
       ${brandBlock()}
       <p class="lede">
-        Phone captures live speech. TV joins the same room and shows English, Spanish, and Portuguese windows.
+        Phone captures live speech. Pick today’s Bible topic on the phone; the TV shows the verse, a short handout, and English, Spanish, and Portuguese caption windows.
       </p>
       <div class="stack">
         <button class="primary" data-create type="button">Create room on this phone</button>

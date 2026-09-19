@@ -2,6 +2,15 @@ export type Lang = "en" | "es" | "pt";
 export type Role = "phone" | "tv";
 export type Layout = "en" | "es" | "pt" | "en-es" | "en-pt" | "es-pt" | "en-es-pt";
 export type ConnStatus = "connecting" | "live" | "offline";
+export type Localized = Record<Lang, string>;
+
+export type TopicContent = {
+  id: string;
+  title: Localized;
+  reference: string;
+  verse: Localized;
+  prompt: Localized;
+};
 
 export type CaptionLine = {
   id: string;
@@ -16,6 +25,7 @@ export type RoomState = {
   sourceLang: Lang;
   listening: boolean;
   lines: CaptionLine[];
+  topic: TopicContent | null;
 };
 
 export type PeerCounts = {
@@ -60,6 +70,7 @@ export function emptyState(room: string): RoomState {
     sourceLang: "en",
     listening: false,
     lines: [],
+    topic: null,
   };
 }
 

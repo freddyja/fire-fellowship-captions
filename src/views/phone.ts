@@ -1,7 +1,9 @@
 import { brandBlock } from "../brand";
+import { escapeHtml } from "../dom";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
 import { createWebSpeechProvider } from "../stt/web-speech";
+import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
 import {
   emptyState,
@@ -17,6 +19,7 @@ import {
   type Layout,
   type PeerCounts,
   type RoomState,
+  type TopicContent,
 } from "../types";
 
 const INTERIM_ID = "interim";
@@ -58,6 +61,18 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         </div>
       </div>
 
+      <div class="controls topic-controls">
+        <div>
+          <p class="control-label">Topic of the day</p>
+          <div class="chips" data-topics></div>
+          <form class="topic-insert" data-topic-form>
+            <input name="topic" autocomplete="off" placeholder="Insert or search a topic or verse" />
+            <button class="secondary" type="submit">Set</button>
+          </form>
+          <div class="topic-preview" data-topic-preview></div>
+        </div>
+      </div>
+
       <div class="mic-wrap">
         <button class="mic" data-mic type="button" aria-pressed="false">
           ${micIcon}
@@ -95,12 +110,22 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const sourceBox = root.querySelector("[data-source]") as HTMLElement;
   const layoutBox = root.querySelector("[data-layouts]") as HTMLElement;
+  const topicBox = root.querySelector("[data-topics]") as HTMLElement;
+  const topicForm = root.querySelector("[data-topic-form]") as HTMLFormElement;
+  const topicPreview = root.querySelector("[data-topic-preview]") as HTMLElement;
   sourceBox.innerHTML = LANGS.map(
     (lang) => `<button class="chip" type="button" data-lang="${lang}">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
   ).join("");
   layoutBox.innerHTML = LAYOUTS.map(
     (item) => `<button class="chip" type="button" data-layout="${item.id}">${item.label}</button>`,
   ).join("");
+  topicBox.innerHTML = [
+    `<button class="chip" type="button" data-topic="">None</button>`,
+    ...TOPIC_LIST.map(
+      (topic) =>
+        `<button class="chip" type="button" data-topic="${topic.id}">${escapeHtml(topic.title.en)}</button>`,
+    ),
+  ].join("");
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
 
@@ -113,6 +138,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     micLabel: root.querySelector("[data-mic-label]") as HTMLElement,
     error: root.querySelector("[data-error]") as HTMLElement,
     preview: root.querySelector("[data-preview]") as HTMLElement,
+    topicInput: topicForm.elements.namedItem("topic") as HTMLInputElement,
   };
 
   function renderDynamic() {
@@ -135,6 +161,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     for (const btn of layoutBox.querySelectorAll<HTMLButtonElement>("[data-layout]")) {
       btn.classList.toggle("active", btn.dataset.layout === state.layout);
     }
+    for (const btn of topicBox.querySelectorAll<HTMLButtonElement>("[data-topic]")) {
+      const id = btn.dataset.topic ?? "";
+      btn.classList.toggle("active", state.topic ? id === state.topic.id : id === "");
+    }
+    topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
   }
 
   async function publish(text: string, isFinal: boolean) {
@@ -201,6 +232,33 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     setState({ ...state, layout: btn.dataset.layout as Layout });
   };
 
+  const applyTopic = (topic: TopicContent | null) => {
+    error = "";
+    els.topicInput.value = topic && topic.id === "custom" ? topic.title.en : "";
+    setState({ ...state, topic });
+  };
+
+  const onTopicChip = (event: Event) => {
+    const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-topic]");
+    if (!btn) return;
+    const id = btn.dataset.topic ?? "";
+    if (!id) {
+      applyTopic(null);
+      return;
+    }
+    applyTopic(TOPIC_LIST.find((topic) => topic.id === id) ?? null);
+  };
+
+  const onTopicForm = (event: Event) => {
+    event.preventDefault();
+    const query = els.topicInput.value.trim();
+    if (!query) {
+      applyTopic(null);
+      return;
+    }
+    applyTopic(resolveTopic(query));
+  };
+
   const onOpenTv = () => window.open(tvUrl(room), "ff-tv", "noopener");
   const onCopy = async () => {
     try {
@@ -229,6 +287,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   els.mic.addEventListener("click", onMic);
   sourceBox.addEventListener("click", onSource);
   layoutBox.addEventListener("click", onLayout);
+  topicBox.addEventListener("click", onTopicChip);
+  topicForm.addEventListener("submit", onTopicForm);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
   root.querySelector("[data-copy]")?.addEventListener("click", onCopy);
   root.querySelector("[data-clear]")?.addEventListener("click", onClear);
@@ -241,7 +301,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     onState(next) {
       if (hydrated) return;
       hydrated = true;
-      state = { ...next, room, listening: false };
+      state = { ...next, room, listening: false, topic: next.topic ?? null };
       speech.setLang(speechLocale(state.sourceLang));
       renderDynamic();
       push();
@@ -265,6 +325,22 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
     layoutBox.removeEventListener("click", onLayout);
+    topicBox.removeEventListener("click", onTopicChip);
+    topicForm.removeEventListener("submit", onTopicForm);
     typeForm.removeEventListener("submit", onType);
   };
+}
+
+function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {
+  if (!hasTopicBody(topic) || !topic) {
+    return `<p class="hint">Pick a topic or insert one. Verse and handout go to the TV.</p>`;
+  }
+  const verse = localized(topic.verse, lang);
+  const prompt = localized(topic.prompt, lang);
+  return `
+    <p class="topic-preview-title">${escapeHtml(localized(topic.title, lang))}</p>
+    ${topic.reference ? `<p class="topic-preview-ref">${escapeHtml(topic.reference)}</p>` : ""}
+    ${verse ? `<p class="topic-preview-verse">${escapeHtml(verse)}</p>` : "<p class=\"hint\">No built-in verse for this custom topic.</p>"}
+    <p class="topic-preview-prompt">${escapeHtml(prompt)}</p>
+  `;
 }
