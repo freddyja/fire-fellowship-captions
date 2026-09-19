@@ -1,0 +1,22 @@
+{
+  "name": "fire-fellowship-captions",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev:http": "FF_HTTPS=0 vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}
