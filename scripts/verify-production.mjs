@@ -65,7 +65,7 @@ async function maybeStartLocal() {
   } catch {
     /* start local production server */
   }
-  const child = spawn("npm", ["start"], {
+  const child = spawn(process.execPath, ["--experimental-strip-types", "server/index.ts"], {
     env: { ...process.env, PORT: "8080", HOST: "127.0.0.1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -149,5 +149,6 @@ main()
     process.exitCode = 1;
   })
   .finally(() => {
-    for (const child of started) child.kill();
+    for (const child of started) child.kill("SIGTERM");
+    process.exit(process.exitCode ?? 0);
   });
