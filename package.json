@@ -10,6 +10,7 @@
     "preview": "vite preview --host",
     "start": "node --experimental-strip-types server/index.ts",
     "verify:prod": "node scripts/verify-production.mjs",
+    "verify:translate": "node --experimental-strip-types scripts/verify-translate.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },
   "engines": {

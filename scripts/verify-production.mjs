@@ -78,7 +78,13 @@ async function main() {
   await maybeStartLocal();
   const health = await waitForHealth();
   assert(health.ok === true, "health.ok");
-  assert(health.translate === "mock" || health.translate === "google", "health.translate");
+  assert(
+    health.translate === "deepl" ||
+      health.translate === "mymemory" ||
+      health.translate === "mock" ||
+      health.translate === "google",
+    "health.translate",
+  );
 
   const home = await text("/");
   assert(home.body.includes("Fire and Fellowship"), "home shell");
@@ -129,7 +135,14 @@ async function main() {
     assert(String(translated.text.es).toLowerCase().includes("bienvenidos"), "mock es");
     assert(String(translated.text.pt).toLowerCase().includes("irm"), "mock pt");
   }
-  const leaked = JSON.stringify(translated).includes("GOOGLE_TRANSLATE") || JSON.stringify(translated).includes("AIza");
+  if (translated.provider === "mymemory") {
+    assert(String(translated.text.es).trim() !== translated.text.en, "mymemory es differs from en");
+    assert(String(translated.text.pt).trim() !== translated.text.en, "mymemory pt differs from en");
+  }
+  const leaked =
+    JSON.stringify(translated).includes("GOOGLE_TRANSLATE") ||
+    JSON.stringify(translated).includes("DEEPL_AUTH") ||
+    JSON.stringify(translated).includes("AIza");
   assert(!leaked, "translate response must not include a key");
 
   for (const icon of ["/icon-192.png", "/icon-512.png", "/icon-192-maskable.png", "/icon-512-maskable.png"]) {
