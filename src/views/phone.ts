@@ -10,10 +10,11 @@ import { createWebSpeechProvider } from "../stt/web-speech";
 import { requestTopicHandout } from "../topic-ask";
 import { renderTopicHandout } from "../topic-layout";
 import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } from "../topics";
-import { createTranslator, translateAll } from "../translate";
+import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
   emptyState,
+  isLang,
   LANG_LABEL,
   LANG_SHORT,
   LANGS,
@@ -54,6 +55,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let askBusy = false;
   let askQuery = "";
   let askAbort: AbortController | null = null;
+  let sourceTouched = false;
 
   const push = () => conn?.push(state);
 
@@ -350,7 +352,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     liveInterim = "";
     renderDynamic();
     const epoch = publishEpoch;
-    const translated = await translateAll(translator, spoken, state.sourceLang);
+    const from = detectLang(spoken, state.sourceLang);
+    const translated = await translateAll(translator, spoken, from);
     if (epoch !== publishEpoch) return;
     const line: CaptionLine = {
       id: crypto.randomUUID(),
@@ -359,7 +362,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       at: Date.now(),
     };
     const lines = coalesce
-      ? applyFinalLine(state.lines, line, state.sourceLang)
+      ? applyFinalLine(state.lines, line, from)
       : appendFinalLine(state.lines, line);
     setState({ ...state, lines });
   }
@@ -421,6 +424,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-lang]");
     if (!btn?.dataset.lang) return;
     const sourceLang = btn.dataset.lang as Lang;
+    if (!isLang(sourceLang)) return;
+    sourceTouched = true;
     speech.setLang(speechLocale(sourceLang));
     setState({ ...state, sourceLang });
   };
@@ -648,6 +653,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         ...next,
         room,
         listening: false,
+        sourceLang: sourceTouched && isLang(state.sourceLang) ? state.sourceLang : isLang(next.sourceLang) ? next.sourceLang : state.sourceLang,
         topic: normalizeTopic(next.topic),
         lines: finalizedLines(next.lines ?? []),
       };

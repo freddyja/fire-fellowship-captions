@@ -54,8 +54,18 @@ export function createWebSpeechProvider(): SpeechProvider {
     onResult: null,
     onError: null,
     setLang(next) {
-      locale = next;
-      if (rec) rec.lang = next;
+      const localeNext = next.trim() || locale;
+      if (localeNext === locale) {
+        if (rec) rec.lang = localeNext;
+        return;
+      }
+      locale = localeNext;
+      // Chrome ignores mid-session lang changes; rebuild the recognizer.
+      if (wantListening) {
+        provider.start();
+        return;
+      }
+      if (rec) rec.lang = localeNext;
     },
     start() {
       if (!Ctor) {

@@ -39,6 +39,10 @@ export type PeerCounts = {
 
 export const LANGS: Lang[] = ["en", "es", "pt"];
 
+export function isLang(value: unknown): value is Lang {
+  return value === "en" || value === "es" || value === "pt";
+}
+
 /** Topic / talk sheet is always three columns, independent of caption layout. */
 export const TOPIC_SHEET_LANGS: Lang[] = ["en", "es", "pt"];
 

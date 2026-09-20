@@ -1,4 +1,5 @@
 import type { Lang } from "../types";
+import { sameCaption, wordCount } from "./text.ts";
 import type { Translator } from "./types";
 
 const ENDPOINT = "https://api.mymemory.translated.net/get";
@@ -40,6 +41,10 @@ export function decodeHtmlEntities(text: string): string {
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&amp;/gi, "&");
+}
+
+export function isIdentityTranslation(source: string, translated: string): boolean {
+  return wordCount(source) >= 2 && sameCaption(source, translated);
 }
 
 export function isMyMemoryFailureText(text: string): boolean {
@@ -87,9 +92,15 @@ export function createMyMemoryTranslator(options: MyMemoryOptions = {}): Transla
       url.searchParams.set("langpair", pair(from, to));
       if (email) url.searchParams.set("de", email);
 
-      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      const res = await fetch(url, {
+        headers: { "user-agent": "Fire-and-Fellowship-Captions/0.1.0" },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
       if (!res.ok) throw new Error(`MyMemory HTTP ${res.status}`);
       const translated = parseMyMemoryResponse((await res.json()) as MyMemoryPayload);
+      if (isIdentityTranslation(source, translated)) {
+        throw new Error(`MyMemory left ${from}->${to} unchanged`);
+      }
       cache.set(key, translated);
       return translated;
     },

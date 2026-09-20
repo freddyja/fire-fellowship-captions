@@ -1,4 +1,5 @@
 import { isOfflineMeeting } from "../offline-mode";
+import { detectLang } from "./detect";
 import { mockTranslator } from "./mock";
 import { createLibreTranslator } from "./libretranslate";
 import { createMyMemoryTranslator } from "./mymemory";
@@ -7,6 +8,7 @@ import { createServerTranslator } from "./server";
 import { translateAll as runTranslateAll, type Translator } from "./types";
 
 export type { Translator } from "./types";
+export { detectLang } from "./detect";
 export { translateAll } from "./types";
 
 export function createTranslator(): Translator {
@@ -36,7 +38,7 @@ function withOfflineMode(primary: Translator): Translator {
       return active().translate(text, from, to);
     },
     translateAll(text, from) {
-      return runTranslateAll(active(), text, from);
+      return runTranslateAll(active(), text, detectLang(text, from));
     },
   };
 }

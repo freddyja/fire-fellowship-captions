@@ -6,7 +6,8 @@ import {
   parseDeepLResponse,
   resolveDeepLApiUrl,
 } from "../src/translate/deepl.ts";
-import { parseMyMemoryResponse, createMyMemoryTranslator } from "../src/translate/mymemory.ts";
+import { detectLang } from "../src/translate/detect.ts";
+import { parseMyMemoryResponse, createMyMemoryTranslator, isIdentityTranslation } from "../src/translate/mymemory.ts";
 import { effectiveTranslateProvider, resolveTranslateProvider, translateCaption } from "../server/translate.ts";
 
 const offline = process.argv.includes("--offline");
@@ -114,6 +115,74 @@ function checkDeepLMapping() {
   assert(threw, "deepl empty body is an error");
 }
 
+function checkDetectLang() {
+  assert(detectLang("Bienvenidos hermanos. Gracias por venir esta noche.", "en") === "es", "spanish overrides en hint");
+  assert(detectLang("Bem-vindos irmãos. Obrigado por vir esta noite.", "en") === "pt", "portuguese overrides en hint");
+  assert(detectLang("Welcome brothers. Thank you for coming tonight.", "es") === "en", "english overrides es hint");
+  assert(detectLang("Bienvenidos hermanos", "es") === "es", "keep es hint");
+  assert(detectLang("Welcome brothers", "en") === "en", "keep en hint");
+  assert(detectLang("Amen", "es") === "es", "short shared word keeps hint");
+}
+
+async function checkMockAnyDirection() {
+  const samples = [
+    {
+      from: "es",
+      text: "Bienvenidos hermanos",
+      expect: { en: /welcome|brother/i, pt: /irm/i },
+    },
+    {
+      from: "es",
+      text: "Gracias por venir esta noche",
+      expect: { en: /thank|coming|tonight/i, pt: /obrigado|noite/i },
+    },
+    {
+      from: "es",
+      text: "Buenos dias hermanos",
+      expect: { en: /morning|brother/i, pt: /dia|irm/i },
+    },
+    {
+      from: "pt",
+      text: "Bem-vindos irmãos",
+      expect: { en: /welcome|brother/i, es: /bienvenid|herman/i },
+    },
+    {
+      from: "pt",
+      text: "Obrigado por vir esta noite",
+      expect: { en: /thank|coming|tonight/i, es: /gracias|noche/i },
+    },
+    {
+      from: "en",
+      text: "Welcome brothers. Thank you for coming tonight. Let us begin.",
+      expect: { es: /bienvenid|gracias|comenc/i, pt: /bem-vind|obrigado|come[cç]/i },
+    },
+  ];
+
+  for (const sample of samples) {
+    const result = await translateCaption(sample.text, sample.from, ["en", "es", "pt"], { provider: "mock" });
+    assert(result.provider === "mock", `${sample.from} mock provider`);
+    assert(result.from === sample.from, `${sample.from} source kept (${result.from})`);
+    assert(String(result.text[sample.from]).toLowerCase().includes(sample.text.slice(0, 8).toLowerCase()), `${sample.from} pane keeps source`);
+    for (const [to, pattern] of Object.entries(sample.expect)) {
+      const value = String(result.text[to] || "");
+      assert(value.trim().length > 0, `mock ${sample.from}->${to} empty`);
+      assert(value.trim() !== sample.text, `mock ${sample.from}->${to} unchanged: ${value}`);
+      assert(pattern.test(value), `mock ${sample.from}->${to} unexpected: ${value}`);
+    }
+  }
+
+  const rescued = await translateCaption(
+    "Bienvenidos hermanos. Gracias por venir esta noche.",
+    "en",
+    ["en", "es", "pt"],
+    { provider: "mock" },
+  );
+  assert(rescued.from === "es", `detect spanish when from=en (got ${rescued.from})`);
+  assert(/welcome|thank/i.test(String(rescued.text.en)), `rescued EN pane: ${rescued.text.en}`);
+  assert(/bienvenid|gracias/i.test(String(rescued.text.es)), "rescued ES pane stays Spanish");
+  assert(/irm|obrigado/i.test(String(rescued.text.pt)), `rescued PT pane: ${rescued.text.pt}`);
+}
+
 function checkMyMemoryParser() {
   assert(
     parseMyMemoryResponse({
@@ -135,6 +204,8 @@ function checkMyMemoryParser() {
     threw = true;
   }
   assert(threw, "quota warning is an error");
+  assert(isIdentityTranslation("Bienvenidos hermanos", "Bienvenidos hermanos"), "identity two words");
+  assert(!isIdentityTranslation("amen", "amen"), "short identity is allowed");
 }
 
 async function checkLivePairs() {
@@ -159,8 +230,10 @@ async function checkLivePairs() {
 const checks = [
   ["provider defaults", checkProviderDefaults],
   ["DeepL mapping", checkDeepLMapping],
+  ["source language detect", checkDetectLang],
   ["MyMemory response parser", checkMyMemoryParser],
   ["mock request override", checkMockOverride],
+  ["mock any-direction EN/ES/PT", checkMockAnyDirection],
 ];
 
 for (const [name, fn] of checks) {

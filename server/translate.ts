@@ -1,8 +1,9 @@
+import { detectLang } from "../src/translate/detect.ts";
 import { deeplTranslate } from "../src/translate/deepl.ts";
 import { mockTranslator } from "../src/translate/mock.ts";
-import { createMyMemoryTranslator } from "../src/translate/mymemory.ts";
+import { createMyMemoryTranslator, isIdentityTranslation } from "../src/translate/mymemory.ts";
 import type { Translator } from "../src/translate/types.ts";
-import type { Lang } from "../src/types.ts";
+import { isLang, type Lang } from "../src/types.ts";
 
 export type TranslateProvider = "deepl" | "google" | "mymemory" | "mock";
 
@@ -15,9 +16,7 @@ const CACHE_LIMIT = 400;
 let myMemory: Translator | null = null;
 let myMemoryEmail: string | undefined;
 
-export function isLang(value: unknown): value is Lang {
-  return value === "en" || value === "es" || value === "pt";
-}
+export { isLang };
 
 function requestedProvider(): string {
   return String(process.env.TRANSLATE_PROVIDER || "").trim().toLowerCase();
@@ -85,6 +84,60 @@ async function fillTargets(
   );
 }
 
+async function translateOnePair(
+  source: string,
+  from: Lang,
+  to: Lang,
+  prefer: TranslateProvider,
+): Promise<{ text: string; provider: TranslateProvider }> {
+  if (from === to) return { text: source, provider: prefer };
+
+  const tryMock = async (): Promise<string> => mockTranslator.translate(source, from, to);
+
+  if (prefer === "deepl") {
+    try {
+      const text = await cachedDeepL(source, from, to);
+      if (!isIdentityTranslation(source, text)) return { text, provider: "deepl" };
+    } catch (err) {
+      console.warn("[translate] DeepL pair failed; trying next", from, to);
+      console.warn(err instanceof Error ? err.message : "translate error");
+    }
+  }
+
+  if (prefer === "google") {
+    try {
+      const text = await googleTranslate(source, from, to);
+      if (!isIdentityTranslation(source, text)) return { text, provider: "google" };
+    } catch (err) {
+      console.warn("[translate] Google pair failed; trying next", from, to);
+      console.warn(err instanceof Error ? err.message : "translate error");
+    }
+  }
+
+  if (prefer !== "mock") {
+    try {
+      const text = await getMyMemoryTranslator().translate(source, from, to);
+      if (!isIdentityTranslation(source, text)) return { text, provider: "mymemory" };
+    } catch (err) {
+      console.warn("[translate] MyMemory pair failed; trying pivot/mock", from, to);
+      console.warn(err instanceof Error ? err.message : "translate error");
+    }
+    if (from !== "en" && to !== "en") {
+      try {
+        const viaEn = await getMyMemoryTranslator().translate(source, from, "en");
+        if (!isIdentityTranslation(source, viaEn)) {
+          const pivoted = await getMyMemoryTranslator().translate(viaEn, "en", to);
+          if (!isIdentityTranslation(viaEn, pivoted)) return { text: pivoted, provider: "mymemory" };
+        }
+      } catch {
+        /* mock */
+      }
+    }
+  }
+
+  return { text: await tryMock(), provider: "mock" };
+}
+
 export function effectiveTranslateProvider(requestProvider?: string): TranslateProvider {
   if (String(requestProvider || "").trim().toLowerCase() === "mock") return "mock";
   return resolveTranslateProvider();
@@ -92,14 +145,15 @@ export function effectiveTranslateProvider(requestProvider?: string): TranslateP
 
 export async function translateCaption(
   text: string,
-  from: Lang,
+  hintedFrom: Lang,
   targets: Lang[] = LANGS,
   options?: { provider?: string },
-): Promise<{ provider: TranslateProvider; text: Record<Lang, string> }> {
+): Promise<{ provider: TranslateProvider; text: Record<Lang, string>; from: Lang }> {
   const source = text.trim();
+  const from = detectLang(source, hintedFrom);
   const provider = effectiveTranslateProvider(options?.provider);
   if (!source) {
-    return { provider, text: emptyLocalized("", from) };
+    return { provider, from, text: emptyLocalized("", from) };
   }
   if (source.length > MAX_TEXT) {
     throw Object.assign(new Error("Text is too long"), { status: 400 });
@@ -108,46 +162,23 @@ export async function translateCaption(
   const unique = [...new Set(targets.filter((lang) => lang !== from))];
   const out = emptyLocalized(source, from);
 
-  if (provider === "deepl") {
-    try {
-      await Promise.all(
-        unique.map(async (to) => {
-          out[to] = await cachedDeepL(source, from, to);
-        }),
-      );
-      return { provider: "deepl", text: out };
-    } catch (err) {
-      console.warn("[translate] DeepL failed; trying MyMemory");
-      console.warn(err instanceof Error ? err.message : "translate error");
-    }
+  if (provider === "mock") {
+    await fillTargets(mockTranslator, source, from, unique, out);
+    return { provider: "mock", from, text: out };
   }
 
-  if (provider === "google") {
-    try {
-      await Promise.all(
-        unique.map(async (to) => {
-          out[to] = await googleTranslate(source, from, to);
-        }),
-      );
-      return { provider: "google", text: out };
-    } catch (err) {
-      console.warn("[translate] Google Cloud Translation failed; trying MyMemory");
-      console.warn(err instanceof Error ? err.message : "translate error");
-    }
-  }
+  const used = new Set<TranslateProvider>();
+  await Promise.all(
+    unique.map(async (to) => {
+      const result = await translateOnePair(source, from, to, provider);
+      out[to] = result.text;
+      used.add(result.provider);
+    }),
+  );
 
-  if (provider !== "mock") {
-    try {
-      await fillTargets(getMyMemoryTranslator(), source, from, unique, out);
-      return { provider: "mymemory", text: out };
-    } catch (err) {
-      console.warn("[translate] MyMemory failed; using mock");
-      console.warn(err instanceof Error ? err.message : "translate error");
-    }
-  }
-
-  await fillTargets(mockTranslator, source, from, unique, out);
-  return { provider: "mock", text: out };
+  const reported =
+    used.has(provider) ? provider : used.has("mymemory") ? "mymemory" : used.has("mock") ? "mock" : provider;
+  return { provider: reported, from, text: out };
 }
 
 function cacheGet(key: string): string | undefined {

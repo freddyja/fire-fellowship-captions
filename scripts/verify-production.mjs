@@ -191,6 +191,22 @@ async function main() {
     assert(String(translated.text.pt).trim() !== translated.text.en, "mymemory pt differs from en");
   }
 
+  for (const sample of [
+    { from: "es", text: "Bienvenidos hermanos", expectEn: /welcome|brother/i, other: "pt", otherPat: /irm/i },
+    { from: "pt", text: "Bem-vindos irmãos", expectEn: /welcome|brother/i, other: "es", otherPat: /bienvenid|herman/i },
+  ]) {
+    const res = await fetch(`${base}/api/translate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: sample.text, from: sample.from }),
+    });
+    assert(res.ok, `POST /api/translate ${sample.from}`);
+    const body = await res.json();
+    assert(sample.expectEn.test(String(body.text.en)), `${sample.from}→en: ${body.text.en}`);
+    assert(sample.otherPat.test(String(body.text[sample.other])), `${sample.from}→${sample.other}: ${body.text[sample.other]}`);
+    assert(String(body.text[sample.from]).toLowerCase().includes(sample.text.slice(0, 6).toLowerCase()), `${sample.from} pane keeps source`);
+  }
+
   const mockRes = await fetch(`${base}/api/translate`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -205,6 +221,49 @@ async function main() {
   assert(mocked.provider === "mock", "client can force mock without env");
   assert(String(mocked.text.es).toLowerCase().includes("bienvenidos"), "forced mock es");
   assert(String(mocked.text.pt).toLowerCase().includes("irm"), "forced mock pt");
+
+  const anyDirection = [
+    {
+      from: "es",
+      text: "Bienvenidos hermanos. Gracias por venir esta noche.",
+      expect: { en: /welcome|thank|coming/i, pt: /irm|obrigado|noite/i },
+    },
+    {
+      from: "pt",
+      text: "Bem-vindos irmãos. Obrigado por vir esta noite.",
+      expect: { en: /welcome|thank|coming/i, es: /bienvenid|gracias|noche/i },
+    },
+  ];
+  for (const sample of anyDirection) {
+    const res = await fetch(`${base}/api/translate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: sample.text, from: sample.from, provider: "mock" }),
+    });
+    assert(res.ok, `POST /api/translate mock ${sample.from}`);
+    const body = await res.json();
+    assert(body.from === sample.from, `mock ${sample.from} from echo`);
+    assert(String(body.text[sample.from]).includes(sample.text.slice(0, 10)), `mock ${sample.from} pane keeps source`);
+    for (const [to, pattern] of Object.entries(sample.expect)) {
+      const value = String(body.text[to] || "");
+      assert(value.trim() && value.trim() !== sample.text, `mock ${sample.from}->${to} translated`);
+      assert(pattern.test(value), `mock ${sample.from}->${to} unexpected: ${value}`);
+    }
+  }
+
+  const wrongHint = await fetch(`${base}/api/translate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      text: "Bienvenidos hermanos. Gracias por venir esta noche.",
+      from: "en",
+      provider: "mock",
+    }),
+  });
+  assert(wrongHint.ok, "POST /api/translate Spanish with from=en");
+  const rescued = await wrongHint.json();
+  assert(/welcome|thank/i.test(String(rescued.text.en)), `EN pane English when source is Spanish: ${rescued.text.en}`);
+  assert(/bienvenid|gracias/i.test(String(rescued.text.es)), "ES pane stays Spanish when detect overrides from=en");
   const leaked =
     JSON.stringify(translated).includes("GOOGLE_TRANSLATE") ||
     JSON.stringify(translated).includes("DEEPL_AUTH") ||
