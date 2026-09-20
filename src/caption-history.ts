@@ -43,3 +43,11 @@ export function applyFinalLine(
   }
   return [...history, line].slice(-maxLines);
 }
+
+export function appendFinalLine(
+  lines: CaptionLine[],
+  line: CaptionLine,
+  maxLines = MAX_LINES,
+): CaptionLine[] {
+  return [...finalizedLines(lines), line].slice(-maxLines);
+}

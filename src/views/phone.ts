@@ -1,5 +1,5 @@
 import { brandBlock } from "../brand";
-import { applyFinalLine, finalizedLines } from "../caption-history";
+import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
@@ -270,7 +270,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     renderDynamic();
   }
 
-  async function publishFinal(text: string) {
+  async function publishFinal(text: string, coalesce = true) {
     const spoken = text.trim();
     if (!spoken) return;
     liveInterim = "";
@@ -284,7 +284,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       text: translated,
       at: Date.now(),
     };
-    setState({ ...state, lines: applyFinalLine(state.lines, line, state.sourceLang) });
+    const lines = coalesce
+      ? applyFinalLine(state.lines, line, state.sourceLang)
+      : appendFinalLine(state.lines, line);
+    setState({ ...state, lines });
   }
 
   const releaseWake = () => {
@@ -450,7 +453,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const text = input.value.trim();
     if (!text) return;
     input.value = "";
-    void publishFinal(text);
+    void publishFinal(text, false);
   };
 
   els.mic.addEventListener("click", onMic);
