@@ -649,6 +649,12 @@ textarea {
   line-height: 1.4;
 }
 
+.meeting-mode .chip.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 184, 109, 0.12);
+}
+
 .offline-banner a,
 .offline-banner .setup-link {
   color: var(--cream);
