@@ -1,3 +1,4 @@
+import { finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { hasTopicBody, localized } from "../topics";
 import {
@@ -10,27 +11,39 @@ import {
   type TopicContent,
 } from "../types";
 
-function lineClass(line: CaptionLine, index: number, total: number, allLines: CaptionLine[]): string {
-  if (!line.isFinal) return "line interim";
-  if (index === total - 1 || (index === total - 2 && !allLines[total - 1]?.isFinal)) return "line";
+export type LiveCaption = {
+  text: string;
+  sourceLang: Lang;
+};
+
+function lineClass(index: number, total: number, hasLive: boolean): string {
+  if (index === total - 1 && !hasLive) return "line";
   return "line faded";
 }
 
-function renderWindow(lang: Lang, lines: CaptionLine[]): string {
-  const visible = lines.filter((line) => line.text[lang]?.trim());
-  const body =
+function renderWindow(lang: Lang, lines: CaptionLine[], live?: LiveCaption | null): string {
+  const visible = finalizedLines(lines).filter((line) => line.text[lang]?.trim());
+  const liveText = live?.text.trim() ?? "";
+  const history =
     visible.length === 0
-      ? `<p class="empty-caption">Waiting for live speech…</p>`
+      ? ""
       : visible
           .map(
             (line, index) =>
-              `<p class="${lineClass(line, index, visible.length, lines)}">${escapeHtml(line.text[lang])}</p>`,
+              `<p class="${lineClass(index, visible.length, Boolean(liveText))}">${escapeHtml(line.text[lang])}</p>`,
           )
           .join("");
+  let extra = "";
+  if (liveText) {
+    const draft = lang === live?.sourceLang ? liveText : "Listening…";
+    extra = `<p class="line interim">${escapeHtml(draft)}</p>`;
+  } else if (visible.length === 0) {
+    extra = `<p class="empty-caption">Waiting for live speech…</p>`;
+  }
   return `
     <section class="window" data-lang="${lang}" lang="${lang}">
       <h2 class="window-label">${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</h2>
-      <div class="lines">${body}</div>
+      <div class="lines">${history}${extra}</div>
     </section>
   `;
 }
@@ -65,11 +78,12 @@ export function paintCaptionBoard(
   board: HTMLElement,
   topicEl: HTMLElement,
   state: Pick<RoomState, "layout" | "lines" | "topic">,
+  live?: LiveCaption | null,
 ): Lang[] {
   const langs = langsForLayout(state.layout);
   board.dataset.count = String(langs.length);
   board.dataset.layout = state.layout;
-  board.innerHTML = langs.map((lang) => renderWindow(lang, state.lines)).join("");
+  board.innerHTML = langs.map((lang) => renderWindow(lang, state.lines, live)).join("");
 
   const topic = state.topic;
   if (hasTopicBody(topic) && topic) {

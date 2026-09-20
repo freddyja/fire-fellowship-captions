@@ -1,4 +1,5 @@
 import { brandBlock } from "../brand";
+import { applyFinalLine, finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
@@ -13,7 +14,6 @@ import {
   LANG_SHORT,
   LANGS,
   LAYOUTS,
-  MAX_LINES,
   speechLocale,
   type CaptionLine,
   type ConnStatus,
@@ -23,8 +23,6 @@ import {
   type RoomState,
   type TopicContent,
 } from "../types";
-
-const INTERIM_ID = "interim";
 const micIcon = `
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
   <rect x="9" y="3" width="6" height="11" rx="3"/>
@@ -41,12 +39,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let connStatus: ConnStatus = "connecting";
   let error = "";
   let conn: RoomConnection | null = null;
-  let interimTimer = 0;
-  let seq = 0;
+  let publishEpoch = 0;
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
   let smartViewMode = false;
+  let liveInterim = "";
 
   const push = () => conn?.push(state);
 
@@ -224,9 +222,15 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     els.mic.setAttribute("aria-pressed", String(state.listening));
     els.micLabel.textContent = state.listening ? "Stop" : "Start";
     els.error.textContent = error;
-    const last = state.lines.at(-1);
-    els.preview.textContent = last?.text[state.sourceLang] || "Captions will appear here and on the TV.";
-    els.preview.classList.toggle("interim", Boolean(last && !last.isFinal));
+    const lastFinal = finalizedLines(state.lines).at(-1);
+    if (liveInterim) {
+      els.preview.textContent = liveInterim;
+    } else if (state.listening) {
+      els.preview.textContent = lastFinal?.text[state.sourceLang] || "Listening…";
+    } else {
+      els.preview.textContent = lastFinal?.text[state.sourceLang] || "Captions will appear here and on the TV.";
+    }
+    els.preview.classList.toggle("interim", Boolean(liveInterim) || (state.listening && !lastFinal));
 
     screen.classList.toggle("is-smart-view", smartViewMode);
     smartLayer.hidden = !smartViewMode;
@@ -238,7 +242,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const svNote = state.listening ? "Listening · Smart View mode" : "Smart View mode";
     els.svStatus.textContent = svNote;
     els.svDot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
-    if (smartViewMode) paintCaptionBoard(svBoard, svTopic, state);
+    if (smartViewMode) {
+      paintCaptionBoard(
+        svBoard,
+        svTopic,
+        { ...state, lines: finalizedLines(state.lines) },
+        liveInterim ? { text: liveInterim, sourceLang: state.sourceLang } : null,
+      );
+    }
 
     for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       btn.classList.toggle("active", btn.dataset.lang === state.sourceLang);
@@ -252,20 +263,28 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
   }
 
-  async function publish(text: string, isFinal: boolean) {
-    const token = ++seq;
-    const translated = await translateAll(translator, text, state.sourceLang);
-    if (token !== seq && !isFinal) return;
+  function setLiveInterim(text: string) {
+    const next = text.trim();
+    if (next === liveInterim) return;
+    liveInterim = next;
+    renderDynamic();
+  }
+
+  async function publishFinal(text: string) {
+    const spoken = text.trim();
+    if (!spoken) return;
+    liveInterim = "";
+    renderDynamic();
+    const epoch = publishEpoch;
+    const translated = await translateAll(translator, spoken, state.sourceLang);
+    if (epoch !== publishEpoch) return;
     const line: CaptionLine = {
-      id: isFinal ? crypto.randomUUID() : INTERIM_ID,
-      isFinal,
+      id: crypto.randomUUID(),
+      isFinal: true,
       text: translated,
       at: Date.now(),
     };
-    const lines = state.lines.filter((item) => item.id !== INTERIM_ID);
-    if (isFinal) lines.push(line);
-    else lines.push(line);
-    setState({ ...state, lines: lines.slice(-MAX_LINES) });
+    setState({ ...state, lines: applyFinalLine(state.lines, line, state.sourceLang) });
   }
 
   const releaseWake = () => {
@@ -286,6 +305,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     if (state.listening) {
       speech.stop();
       releaseWake();
+      liveInterim = "";
       setState({ ...state, listening: false });
       return;
     }
@@ -301,14 +321,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   speech.onResult = (result) => {
     error = "";
-    window.clearTimeout(interimTimer);
     if (result.isFinal) {
-      void publish(result.text, true);
+      void publishFinal(result.text);
       return;
     }
-    interimTimer = window.setTimeout(() => {
-      void publish(result.text, false);
-    }, 160);
+    setLiveInterim(result.text);
   };
   speech.onError = (message) => {
     error = message;
@@ -316,6 +333,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       speech.stop();
       releaseWake();
       typeForm.hidden = false;
+      liveInterim = "";
       setState({ ...state, listening: false });
       return;
     }
@@ -416,7 +434,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       renderDynamic();
     }
   };
-  const onClear = () => setState({ ...state, lines: [] });
+  const onClear = () => {
+    liveInterim = "";
+    publishEpoch += 1;
+    setState({ ...state, lines: [] });
+  };
   const onHome = () => {
     speech.stop();
     releaseWake();
@@ -428,7 +450,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const text = input.value.trim();
     if (!text) return;
     input.value = "";
-    void publish(text, true);
+    void publishFinal(text);
   };
 
   els.mic.addEventListener("click", onMic);
@@ -457,7 +479,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     onState(next) {
       if (hydrated) return;
       hydrated = true;
-      state = { ...next, room, listening: false, topic: next.topic ?? null };
+      state = {
+        ...next,
+        room,
+        listening: false,
+        topic: next.topic ?? null,
+        lines: finalizedLines(next.lines ?? []),
+      };
       speech.setLang(speechLocale(state.sourceLang));
       renderDynamic();
       push();
@@ -478,7 +506,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     speech.stop();
     releaseWake();
     conn?.close();
-    window.clearTimeout(interimTimer);
     window.clearTimeout(copyLabelTimer);
     document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);

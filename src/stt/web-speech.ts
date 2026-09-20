@@ -75,17 +75,25 @@ export function createWebSpeechProvider(): SpeechProvider {
       rec.continuous = true;
       rec.interimResults = true;
       rec.maxAlternatives = 1;
+      const emittedFinals = new Set<number>();
       rec.onresult = (event) => {
         let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        // Walk the whole list: Chrome on Android often reports resultIndex 0
+        // on every event and would re-emit earlier finals as new history lines.
+        for (let i = 0; i < event.results.length; i += 1) {
           const chunk = event.results[i];
           const text = chunk[0].transcript.trim();
           if (!text) continue;
-          if (chunk.isFinal) provider.onResult?.({ text, isFinal: true });
-          else interim += `${text} `;
+          if (chunk.isFinal) {
+            if (!emittedFinals.has(i)) {
+              emittedFinals.add(i);
+              provider.onResult?.({ text, isFinal: true });
+            }
+          } else {
+            interim += `${text} `;
+          }
         }
-        const live = interim.trim();
-        if (live) provider.onResult?.({ text: live, isFinal: false });
+        provider.onResult?.({ text: interim.trim(), isFinal: false });
       };
       rec.onerror = (event) => {
         if (event.error === "no-speech" || event.error === "aborted" || event.error === "network") return;
@@ -97,6 +105,7 @@ export function createWebSpeechProvider(): SpeechProvider {
         provider.onError?.(event.error);
       };
       rec.onend = () => {
+        emittedFinals.clear();
         if (wantListening) {
           window.setTimeout(() => {
             if (!wantListening) return;
