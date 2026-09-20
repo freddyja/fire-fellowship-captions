@@ -579,6 +579,52 @@ textarea {
   padding: 0.65rem 1.15rem;
 }
 
+.smart-view-box {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.smart-view-lede {
+  margin: 0;
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.smart-view-note {
+  margin: 0;
+  color: var(--gold);
+  min-height: 1.3em;
+}
+
+.tv-qr {
+  margin: 0;
+  padding: 0.85rem 1rem 1rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+}
+
+.tv-qr-code {
+  width: min(100%, 16.5rem);
+}
+
+.tv-qr-code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.tv-qr figcaption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .ghost {
   background: transparent;
   color: var(--gold);
@@ -706,7 +752,31 @@ textarea {
 /* Folded cover (~6.5" Galaxy Z Fold): keep the mic in the thumb zone. */
 @media (max-width: 599px) {
   .phone-screen {
-    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
+
+  .smart-view-box {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .smart-view-box .tv-qr {
+    order: 1;
+    width: min(100%, 13.5rem);
+    justify-self: center;
+    margin-inline: auto;
+  }
+
+  .smart-view-box .row-actions {
+    order: 2;
+  }
+
+  .smart-view-box .smart-view-note {
+    order: 3;
+  }
+
+  .tv-qr-code {
+    width: min(100%, 13.5rem);
   }
 
   .phone-screen .topic-controls .chips {

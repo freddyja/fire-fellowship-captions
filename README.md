@@ -22,23 +22,42 @@ Keep Chrome (or the installed PWA, which is Chrome) in the **foreground** while 
 
 ## Open on the TV (meeting night)
 
-The TV is a display. Prefer **Smart View** from the Fold so you do not type a room code on the TV. Any TV browser (or a laptop HDMI’d to the TV) still works.
+The TV is a display. Open the TV caption page on the meeting TV (browser, QR, or a Cast-capable display). Any TV browser (or a laptop HDMI’d to the TV) works.
 
-### Smart View / Cast to My TV
+### Smart View vs Chrome Cast (Galaxy Z Fold)
 
-Works best in **Chrome on Android** (Galaxy Z Fold). Samsung Internet, Firefox, and iPhone browsers usually cannot open the Android / Samsung cast picker.
+Samsung **Smart View / My TV** and Chrome’s **Cast** list are different systems:
 
-1. On the Fold, open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
-2. Tap **Smart View** (the primary button next to **Open TV view** / **Copy TV link**).
-3. In the picker, choose **My TV** (the Samsung TV on the same Wi-Fi).
-4. The TV should open the **TV caption page** — big EN/ES/PT windows plus the topic. It does **not** mirror the phone controls.
-5. If the picker does not appear, stay in Chrome. Use **Copy TV link** or **Open TV view**, or type the room code on the TV browser.
+- **Samsung Smart View** (Quick Settings → Smart View, or Settings → Connected devices) lists **My TV** over Smart View / Miracast. That is the Fold’s usual way to pick a home Samsung TV.
+- **Chrome Presentation API** (`PresentationRequest.start()`, or older `navigator.presentation.requestSession`) only lists **Google Cast / Chromecast** receivers. A Samsung TV appears there only if it advertises built-in Cast — not because it is “My TV”.
 
-Chrome’s Presentation API (`PresentationRequest.start()`, or older `navigator.presentation.requestSession`) is what shows that picker. It is a Chrome-on-Android feature, not a guarantee in every browser.
+The in-app **Smart View** button does **not** build a Samsung My TV list from the Presentation API alone.
+
+**After you tap Smart View on Android (Chrome or the installed PWA):**
+
+1. The app tries to open the **system** Cast / Smart View UI via Android intents (needs the tap; Chrome only launches activities marked `BROWSABLE`):
+   - Galaxy first: `com.samsung.android.smartmirroring` (Smart View app)
+   - Then `android.settings.CAST_SETTINGS` (Android Cast / wireless display settings)
+   - Then `android.settings.WIFI_DISPLAY_SETTINGS` (older wireless display)
+   - Chrome follows `S.browser_fallback_url` if the previous intent cannot launch. SmartThings is not used — it does not open the Smart View picker in one tap.
+2. It still starts the Presentation API so a **Cast / Chromecast** TV can be chosen if Chrome sees one.
+3. If Presentation returns no screens or fails, the phone says plainly that Chrome’s Cast list is not Samsung My TV, and keeps **Copy TV link**, **Open TV view**, and a **QR code** of the TV caption URL.
+
+If Chrome cannot launch those intents, swipe down the shade → **Smart View** and pick the TV there.
+
+System Smart View usually **mirrors the Fold**. For the big EN/ES/PT caption windows without mirroring, open the TV caption link on the TV browser (copy, QR, or room code). If a Cast-capable TV *does* appear in Chrome’s picker, choosing it presents the caption page on that display.
+
+### Fold meeting-night steps
+
+1. Open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
+2. Tap **Smart View**. If system Cast / Smart View settings open, pick **My TV**. If Chrome then shows a Cast picker, that list is Chromecast only — dismiss it if My TV is not there.
+3. If My TV still does not appear: swipe down → **Smart View** → choose the TV.
+4. Or scan the on-phone QR / tap **Copy TV link** and open that link on the TV browser.
+5. Pick **Topic of the day**, then use the mic (or type a caption).
 
 ### TV browser (fallback)
 
-1. On the Fold app, note the 4-letter room code (or tap **Copy TV link**).
+1. On the Fold app, note the 4-letter room code, tap **Copy TV link**, or scan the QR.
 2. On the TV browser, open the **same public URL**.
 3. Enter the room code and tap **Open TV windows**, or paste the copied TV link (`/?view=tv&room=ABCD`).
 4. On the Fold, pick **Topic of the day** (try **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse and handout above the caption windows.
@@ -158,7 +177,8 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 
 ## Galaxy Z Fold 7 + Chrome
 
-- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech, offer a solid install, or show the **Smart View** / Cast picker.
+- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech, offer a solid install, or launch Android Cast / Smart View intents.
+- In-app **Smart View** opens system Cast / Smart View settings when Chrome allows it, then still tries Chrome Cast. It will not list Samsung **My TV** from the Presentation API alone. Fall back to Quick Settings → Smart View, the QR, or **Copy TV link**.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.
@@ -269,6 +289,7 @@ npm start            # production server: static PWA + relay (use after build)
 npm run preview      # Vite preview + same relay (local production bundle)
 npm run verify:prod       # PWA + relay checks (optional public URL argument)
 npm run verify:translate  # DeepL/MyMemory selection + EN/ES/PT live pairs
+npm run verify:smart-view # Android intents, Cast vs My TV copy, QR SVG
 ```
 
 Local LAN Fold testing still works with `npm run dev` (Chrome will warn about the self-signed certificate — **Advanced → Proceed**). Meeting night should use the public HTTPS URL so there is no laptop in the loop.
