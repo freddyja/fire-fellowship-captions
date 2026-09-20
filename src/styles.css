@@ -944,7 +944,7 @@ textarea {
 /* Folded cover (~6.5" Galaxy Z Fold): keep the mic in the thumb zone. */
 @media (max-width: 599px) {
   .phone-screen {
-    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(12rem + env(safe-area-inset-bottom));
   }
 
   .phone-screen.is-smart-view {
