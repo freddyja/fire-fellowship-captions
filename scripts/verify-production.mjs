@@ -95,6 +95,15 @@ async function main() {
   assert(phone.body.includes('<div id="app">'), "phone route serves shell");
   assert(tv.body.includes('<div id="app">'), "tv route serves shell");
 
+  const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
+  assert(scriptSrc, "built app script");
+  const { body: appJs } = await text(scriptSrc);
+  assert(appJs.includes("Smart View"), "phone Smart View button");
+  assert(
+    appJs.includes("PresentationRequest") || appJs.includes("requestSession"),
+    "Presentation API for Smart View",
+  );
+
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);
   assert(manifest.name === "Fire and Fellowship", "manifest name");
@@ -177,7 +186,7 @@ async function main() {
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, relay, topic of the day, translate=${health.translate}`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, Smart View, relay, topic of the day, translate=${health.translate}`);
 }
 
 main()

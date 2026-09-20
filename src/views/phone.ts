@@ -2,6 +2,7 @@ import { brandBlock } from "../brand";
 import { escapeHtml } from "../dom";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
+import { bindDefaultPresentation, clearDefaultPresentation, smartViewMessage, startSmartView } from "../smart-view";
 import { createWebSpeechProvider } from "../stt/web-speech";
 import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
@@ -101,6 +102,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p data-preview></p>
             </div>
             <div class="row-actions">
+              <button class="primary" data-smart-view type="button" aria-label="Smart View — cast TV captions to My TV">
+                Smart View
+              </button>
               <button class="ghost" data-open-tv type="button">Open TV view</button>
               <button class="ghost" data-copy type="button">Copy TV link</button>
               <button class="ghost" data-clear type="button">Clear windows</button>
@@ -281,6 +285,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     applyTopic(resolveTopic(query));
   };
 
+  const onSmartView = async () => {
+    error = "Pick My TV in the Smart View / Cast list (Chrome on Android).";
+    renderDynamic();
+    error = smartViewMessage(await startSmartView(tvUrl(room)));
+    renderDynamic();
+  };
   const onOpenTv = () => window.open(tvUrl(room), "ff-tv", "noopener");
   const onCopy = async () => {
     try {
@@ -314,6 +324,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   topicBox.addEventListener("click", onTopicChip);
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
+  bindDefaultPresentation(tvUrl(room));
+  root.querySelector("[data-smart-view]")?.addEventListener("click", () => {
+    void onSmartView();
+  });
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
   root.querySelector("[data-copy]")?.addEventListener("click", onCopy);
   root.querySelector("[data-clear]")?.addEventListener("click", onClear);
@@ -346,6 +360,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   return () => {
     speech.stop();
     releaseWake();
+    clearDefaultPresentation();
     conn?.close();
     window.clearTimeout(interimTimer);
     document.removeEventListener("visibilitychange", onVisibility);

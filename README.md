@@ -22,7 +22,21 @@ Keep Chrome (or the installed PWA, which is Chrome) in the **foreground** while 
 
 ## Open on the TV (meeting night)
 
-The TV is a display. Any browser on the TV (or a laptop HDMI’d to the TV) is fine.
+The TV is a display. Prefer **Smart View** from the Fold so you do not type a room code on the TV. Any TV browser (or a laptop HDMI’d to the TV) still works.
+
+### Smart View / Cast to My TV
+
+Works best in **Chrome on Android** (Galaxy Z Fold). Samsung Internet, Firefox, and iPhone browsers usually cannot open the Android / Samsung cast picker.
+
+1. On the Fold, open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
+2. Tap **Smart View** (the primary button next to **Open TV view** / **Copy TV link**).
+3. In the picker, choose **My TV** (the Samsung TV on the same Wi-Fi).
+4. The TV should open the **TV caption page** — big EN/ES/PT windows plus the topic. It does **not** mirror the phone controls.
+5. If the picker does not appear, stay in Chrome. Use **Copy TV link** or **Open TV view**, or type the room code on the TV browser.
+
+Chrome’s Presentation API (`PresentationRequest.start()`, or older `navigator.presentation.requestSession`) is what shows that picker. It is a Chrome-on-Android feature, not a guarantee in every browser.
+
+### TV browser (fallback)
 
 1. On the Fold app, note the 4-letter room code (or tap **Copy TV link**).
 2. On the TV browser, open the **same public URL**.
@@ -144,7 +158,7 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 
 ## Galaxy Z Fold 7 + Chrome
 
-- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
+- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech, offer a solid install, or show the **Smart View** / Cast picker.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.
