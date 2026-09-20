@@ -6,6 +6,17 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 
 **Meeting night shape:** install **Fire and Fellowship** on the Galaxy Z Fold 7 from a public HTTPS URL (Chrome → Install app). Open the same URL on the TV. No git, no `npm run dev`.
 
+## How it works
+
+![Fire and Fellowship Captions — How it works](docs/architecture.png)
+
+- **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold.
+- **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
+- **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
+- **Render host** (`fire-fellowship-captions.onrender.com`): one Node process serves the PWA, the WebSocket room relay, `POST /api/translate`, and the topic / handout API.
+- **Translators (server order):** DeepL Free first when `DEEPL_AUTH_KEY` is set on the host → MyMemory (free, daily limit) → MinT (Wikimedia, no key) → built-in mock dictionary (limited phrases). Keys stay on the server.
+- **Offline / Local meeting:** skips the cloud translators and uses the mock dictionary on the phone / laptop so a meeting can run without public internet.
+
 ## Install on the Fold (Chrome on Android)
 
 Freddy’s phone: **Samsung Galaxy Z Fold 7**, **Chrome** (not Samsung Internet). Web Speech and Add to Home Screen are reliable in Chrome.
