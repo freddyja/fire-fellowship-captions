@@ -234,7 +234,9 @@ export function smartViewMessage(result: SmartViewResult): string {
   if (result.ok && result.method === "android-settings") {
     return result.emptyCastList ? `${CAST_NOT_MY_TV} ${ANDROID_SETTINGS_HINT}` : ANDROID_SETTINGS_HINT;
   }
-  if (!result.ok && result.reason === "no-screens") return CAST_NOT_MY_TV;
+  if (!result.ok && (result.reason === "no-screens" || result.reason === "cancelled")) {
+    return CAST_NOT_MY_TV;
+  }
   if (result.ok && result.method === "copy") return `${CAST_NOT_MY_TV} TV link copied.`;
   if (!result.ok && result.reason === "unavailable") return `${UNAVAILABLE} ${result.url}`;
   return "";

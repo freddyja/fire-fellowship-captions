@@ -91,6 +91,15 @@ const cancelled = await startSmartView(tvUrl, {
 });
 assert(cancelled.ok && cancelled.method === "android-settings", "dismissed Cast picker still counts settings");
 
+const cancelledDesktop = await startSmartView(tvUrl, {
+  isAndroid: false,
+  userAgent: desktopUa,
+  present: async () => "cancelled",
+  copy: async () => false,
+});
+assert(!cancelledDesktop.ok && cancelledDesktop.reason === "cancelled", "desktop Cast cancel");
+assert(smartViewMessage(cancelledDesktop) === CAST_NOT_MY_TV, "desktop cancel still explains Cast vs My TV");
+
 const copyOnly = await startSmartView(tvUrl, {
   isAndroid: false,
   canPresent: false,
