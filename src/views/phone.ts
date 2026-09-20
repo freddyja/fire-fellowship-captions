@@ -1,4 +1,4 @@
-import { brandBlock } from "../brand";
+import { brandBlock, creditFooter } from "../brand";
 import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { tvQrSvg } from "../qr";
@@ -131,6 +131,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         </div>
       </div>
 
+      ${creditFooter()}
+
       <dialog class="send-tv-dialog" id="send-tv-dialog" data-send-tv-dialog aria-labelledby="send-tv-title">
         <div class="send-tv-sheet">
           <header class="send-tv-head">
@@ -173,6 +175,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               </button>
               <button class="secondary" data-exit-smart-view type="button">Exit Smart View mode</button>
             </div>
+            ${creditFooter()}
           </div>
         </section>
       </div>

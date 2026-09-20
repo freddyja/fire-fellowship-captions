@@ -17,3 +17,7 @@ export function brandBlock(compact = false): string {
     </div>
   `;
 }
+
+export function creditFooter(): string {
+  return `<footer class="credit-footer">Design by Freddy Jara-Almonte</footer>`;
+}

@@ -1,4 +1,4 @@
-import { brandBlock } from "../brand";
+import { brandBlock, creditFooter } from "../brand";
 import {
   canPromptInstall,
   isStandaloneDisplay,
@@ -33,6 +33,7 @@ export function mountHome(root: HTMLElement): () => void {
         <button class="primary" data-install-btn type="button" hidden>Install app</button>
         <ol class="install-steps" data-install-steps></ol>
       </aside>
+      ${creditFooter()}
     </section>
   `;
 

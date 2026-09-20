@@ -111,6 +111,37 @@ textarea {
   font-weight: 500;
 }
 
+.credit-footer {
+  margin-top: auto;
+  flex: none;
+  width: 100%;
+  padding: 0.65rem 0 0.15rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  opacity: 0.62;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tv-screen > .credit-footer {
+  padding: 0.2rem 0 0;
+  font-size: 0.65rem;
+}
+
+.smart-view-dock .credit-footer {
+  margin-top: 0;
+  padding: 0.15rem 0 0;
+  opacity: 0.55;
+}
+
+.phone-screen.is-smart-view > .credit-footer {
+  display: none;
+}
+
 .lede {
   margin: 1.5rem 0 1.75rem;
   max-width: 36rem;
