@@ -46,7 +46,7 @@ Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mir
 
 1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
 2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
-3. A small always-visible bar keeps **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session.
+3. A small always-visible bar keeps **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session. Rotate the Fold: landscape keeps **EN | ES | PT** in a row; portrait keeps all three panes on screen as stacked rows. A 1-language or 2-language TV layout still follows the picker.
 4. The tip on screen: “Now open system Smart View → My TV. TV will mirror these captions.” Use the Fold **quick panel Smart View tile** — do not expect the app to launch it.
 5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
 
@@ -152,7 +152,7 @@ The script checks:
 2. TV: open the TV link. Confirm verse / handout above the windows.
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
-5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). The mic should keep its current Start/Stop state. Tap **Captions only** to show the topic band, then **Exit Smart View mode** to get the controls back.
+5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **Captions only** to show the topic band, then **Exit Smart View mode** to get the controls back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
