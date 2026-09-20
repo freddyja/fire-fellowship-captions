@@ -41,12 +41,17 @@ export function paintOfflineToggle(btn: HTMLButtonElement): void {
 
 export function bindOfflineModeToggle(
   btn: HTMLButtonElement,
-  extras?: { banner?: HTMLElement | null; onChange?: (on: boolean) => void },
+  extras?: {
+    banner?: HTMLElement | null;
+    /** Extra show condition so the limited-phrase banner appears only on mock. */
+    bannerWhen?: () => boolean;
+    onChange?: (on: boolean) => void;
+  },
 ): () => void {
   const paint = () => {
     const on = isOfflineMeeting();
     paintOfflineToggle(btn);
-    if (extras?.banner) extras.banner.hidden = !on;
+    if (extras?.banner) extras.banner.hidden = !(on || extras.bannerWhen?.());
     extras?.onChange?.(on);
   };
   const onClick = () => {

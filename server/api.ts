@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { configuredTopicProvider, generateTopicHandout } from "./topic-handout.ts";
-import { isLang, resolveTranslateProvider, translateCaption } from "./translate.ts";
+import { isLang, reportedTranslateProvider, translateCaption } from "./translate.ts";
 
 const MAX_BODY = 8 * 1024;
 
@@ -39,7 +39,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
 async function handleTranslate(req: IncomingMessage, res: ServerResponse): Promise<true> {
 
   if (req.method === "GET" || req.method === "HEAD") {
-    const body = { provider: resolveTranslateProvider() };
+    const body = { provider: reportedTranslateProvider() };
     if (req.method === "HEAD") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end();

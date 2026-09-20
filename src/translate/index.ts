@@ -1,5 +1,6 @@
 import { isOfflineMeeting } from "../offline-mode";
 import { detectLang } from "./detect";
+import { createMinTTranslator } from "./mint";
 import { mockTranslator } from "./mock";
 import { createLibreTranslator } from "./libretranslate";
 import { createMyMemoryTranslator } from "./mymemory";
@@ -23,6 +24,7 @@ function translatorForProvider(provider: string): Translator {
     const email = String(import.meta.env.VITE_MYMEMORY_EMAIL || "").trim() || undefined;
     return withFallback(createMyMemoryTranslator({ email }));
   }
+  if (provider === "mint") return withFallback(createMinTTranslator());
   if (provider === "libretranslate") return withFallback(createLibreTranslator());
   if (provider === "mock") return mockTranslator;
   return withFallback(createServerTranslator());
@@ -44,22 +46,51 @@ function withOfflineMode(primary: Translator): Translator {
 }
 
 function withFallback(primary: Translator): Translator {
+  const allowMintFallback = primary.id !== "mint";
+  let lastId = primary.id;
   return {
-    id: primary.id,
+    get id() {
+      return lastId;
+    },
     async translate(text, from, to) {
       try {
-        return await primary.translate(text, from, to);
+        const translated = await primary.translate(text, from, to);
+        lastId = primary.id;
+        return translated;
       } catch (err) {
+        if (allowMintFallback) {
+          try {
+            const minted = await createMinTTranslator().translate(text, from, to);
+            lastId = "mint";
+            return minted;
+          } catch {
+            /* mock */
+          }
+        }
         console.warn(`[translate] ${primary.id} failed, using mock`, err);
+        lastId = "mock";
         return mockTranslator.translate(text, from, to);
       }
     },
     async translateAll(text, from) {
       try {
-        if (primary.translateAll) return await primary.translateAll(text, from);
+        const mapped = await runTranslateAll(primary, text, from);
+        lastId = primary.id;
+        return mapped;
       } catch (err) {
-        console.warn(`[translate] ${primary.id} failed, using mock`, err);
+        console.warn(`[translate] ${primary.id} failed, trying MinT then mock`, err);
       }
+      if (allowMintFallback) {
+        try {
+          const mint = createMinTTranslator();
+          const mapped = await runTranslateAll(mint, text, from);
+          lastId = "mint";
+          return mapped;
+        } catch {
+          /* mock */
+        }
+      }
+      lastId = "mock";
       return {
         en: from === "en" ? text : await safeMock(text, from, "en"),
         es: from === "es" ? text : await safeMock(text, from, "es"),

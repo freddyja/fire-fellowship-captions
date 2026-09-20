@@ -7,7 +7,7 @@ import { handleApi } from "./api.ts";
 import { loadLocalEnv } from "./env.ts";
 import { attachCaptionRelay } from "./relay.ts";
 import { configuredTopicProvider } from "./topic-handout.ts";
-import { resolveTranslateProvider, warnIfGoogleRequestedWithoutKey } from "./translate.ts";
+import { reportedTranslateProvider, resolveTranslateProvider, warnIfGoogleRequestedWithoutKey } from "./translate.ts";
 
 loadLocalEnv();
 
@@ -79,7 +79,7 @@ export function createCaptionServer() {
         JSON.stringify({
           ok: true,
           rooms: relay.roomCount(),
-          translate: resolveTranslateProvider(),
+          translate: reportedTranslateProvider(),
           topic: configuredTopicProvider(),
         }),
         "application/json; charset=utf-8",

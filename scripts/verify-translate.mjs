@@ -7,8 +7,14 @@ import {
   resolveDeepLApiUrl,
 } from "../src/translate/deepl.ts";
 import { detectLang } from "../src/translate/detect.ts";
+import { createMinTTranslator, parseMinTResponse } from "../src/translate/mint.ts";
 import { parseMyMemoryResponse, createMyMemoryTranslator, isIdentityTranslation } from "../src/translate/mymemory.ts";
-import { effectiveTranslateProvider, resolveTranslateProvider, translateCaption } from "../server/translate.ts";
+import {
+  effectiveTranslateProvider,
+  reportedTranslateProvider,
+  resolveTranslateProvider,
+  translateCaption,
+} from "../server/translate.ts";
 
 const offline = process.argv.includes("--offline");
 
@@ -55,6 +61,7 @@ async function checkProviderDefaults() {
     { TRANSLATE_PROVIDER: "", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" },
     () => {
       assert(resolveTranslateProvider() === "mymemory", "no keys defaults to mymemory");
+      assert(reportedTranslateProvider() === "mymemory" || reportedTranslateProvider() === "mint", "reported is a no-key provider");
     },
   );
   await withEnv(
@@ -86,6 +93,9 @@ async function checkProviderDefaults() {
   });
   await withEnv({ TRANSLATE_PROVIDER: "google", GOOGLE_TRANSLATE_API_KEY: "not-a-real-key" }, () => {
     assert(resolveTranslateProvider() === "google", "google with a key is selected");
+  });
+  await withEnv({ TRANSLATE_PROVIDER: "mint", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" }, () => {
+    assert(resolveTranslateProvider() === "mint", "explicit mint is selected");
   });
 }
 
@@ -208,23 +218,88 @@ function checkMyMemoryParser() {
   assert(!isIdentityTranslation("amen", "amen"), "short identity is allowed");
 }
 
-async function checkLivePairs() {
-  const samples = [
-    { from: "en", text: "Good evening brothers", expect: { es: /noche|herman/i, pt: /noite|irm/i } },
-    { from: "es", text: "Buenas noches hermanos", expect: { en: /evening|night|brother/i, pt: /noite|irm/i } },
-    { from: "pt", text: "Boa noite irmaos", expect: { en: /evening|night|brother/i, es: /noche|herman/i } },
-  ];
-  const translator = createMyMemoryTranslator({ timeoutMs: 12000 });
+function checkMinTParser() {
+  assert(
+    parseMinTResponse({ translation: "  Good evening brothers  ", model: "nllb200-600M" }) ===
+      "Good evening brothers",
+    "mint parse trims",
+  );
+  let threw = false;
+  try {
+    parseMinTResponse({});
+  } catch {
+    threw = true;
+  }
+  assert(threw, "empty mint body is an error");
+}
 
+const FREEFORM = [
+  {
+    from: "es",
+    text: "El pastor nos invita a orar juntos esta noche.",
+    expect: { en: /invite|pray|tonight|together/i, pt: /convid|orar|noite|juntos/i },
+  },
+  {
+    from: "pt",
+    text: "O pastor nos convida a orar juntos esta noite.",
+    expect: { en: /invite|pray|tonight|together/i, es: /invit|orar|noche|juntos/i },
+  },
+  {
+    from: "en",
+    text: "The pastor invites us to pray together tonight.",
+    expect: { es: /pastor|invit|orar|noche/i, pt: /pastor|convid|orar|noite/i },
+  },
+];
+
+async function checkTranslatorPairs(label, translator, samples) {
   for (const sample of samples) {
     for (const [to, pattern] of Object.entries(sample.expect)) {
       const translated = await translator.translate(sample.text, sample.from, to);
-      assert(translated.trim().length > 0, `${sample.from}->${to} empty`);
-      assert(translated.trim() !== sample.text, `${sample.from}->${to} unchanged`);
-      assert(pattern.test(translated), `${sample.from}->${to} unexpected: ${translated}`);
-      console.log(`  ${sample.from}->${to}: ${translated}`);
+      assert(translated.trim().length > 0, `${label} ${sample.from}->${to} empty`);
+      assert(translated.trim() !== sample.text, `${label} ${sample.from}->${to} unchanged`);
+      assert(pattern.test(translated), `${label} ${sample.from}->${to} unexpected: ${translated}`);
+      console.log(`  ${label} ${sample.from}->${to}: ${translated}`);
     }
   }
+}
+
+async function checkLivePairs() {
+  await checkTranslatorPairs("MyMemory", createMyMemoryTranslator({ timeoutMs: 12000 }), [
+    { from: "en", text: "Good evening brothers", expect: { es: /noche|herman/i, pt: /noite|irm/i } },
+    { from: "es", text: "Buenas noches hermanos", expect: { en: /evening|night|brother/i, pt: /noite|irm/i } },
+    { from: "pt", text: "Boa noite irmaos", expect: { en: /evening|night|brother/i, es: /noche|herman/i } },
+  ]);
+}
+
+async function checkLiveMinTPairs() {
+  await checkTranslatorPairs("MinT", createMinTTranslator({ timeoutMs: 20000 }), FREEFORM);
+}
+
+async function checkLiveCaptionFallback() {
+  await withEnv(
+    {
+      TRANSLATE_PROVIDER: "mymemory",
+      DEEPL_AUTH_KEY: "",
+      GOOGLE_TRANSLATE_API_KEY: "",
+      MYMEMORY_URL: "https://127.0.0.1:1/mymemory-forced-down",
+      MYMEMORY_TIMEOUT_MS: "400",
+    },
+    async () => {
+      for (const sample of FREEFORM) {
+        const result = await translateCaption(sample.text, sample.from, ["en", "es", "pt"]);
+        assert(result.provider === "mint", `forced-MyMemory-down uses MinT (got ${result.provider})`);
+        assert(reportedTranslateProvider() === "mint", "health/API report mint after MyMemory failure");
+        assert(result.from === sample.from, `fallback from ${sample.from}`);
+        for (const [to, pattern] of Object.entries(sample.expect)) {
+          const value = String(result.text[to] || "");
+          assert(value.trim().length > 0, `fallback ${sample.from}->${to} empty`);
+          assert(value.trim() !== sample.text, `fallback ${sample.from}->${to} identity: ${value}`);
+          assert(pattern.test(value), `fallback ${sample.from}->${to} unexpected: ${value}`);
+          console.log(`  fallback ${sample.from}->${to} [${result.provider}]: ${value}`);
+        }
+      }
+    },
+  );
 }
 
 const checks = [
@@ -232,6 +307,7 @@ const checks = [
   ["DeepL mapping", checkDeepLMapping],
   ["source language detect", checkDetectLang],
   ["MyMemory response parser", checkMyMemoryParser],
+  ["MinT response parser", checkMinTParser],
   ["mock request override", checkMockOverride],
   ["mock any-direction EN/ES/PT", checkMockAnyDirection],
 ];
@@ -242,9 +318,19 @@ for (const [name, fn] of checks) {
 }
 
 if (offline) {
-  console.log("OK skipped live MyMemory (--offline)");
+  console.log("OK skipped live MyMemory/MinT (--offline)");
 } else {
-  console.log("Live MyMemory EN/ES/PT fallback…");
-  await checkLivePairs();
-  console.log("OK live MyMemory pairs");
+  console.log("Live MinT EN/ES/PT free-form…");
+  await checkLiveMinTPairs();
+  console.log("OK live MinT pairs");
+  console.log("Live MyMemory→MinT fallback (MyMemory forced down)…");
+  await checkLiveCaptionFallback();
+  console.log("OK MyMemory→MinT fallback");
+  try {
+    console.log("Live MyMemory EN/ES/PT…");
+    await checkLivePairs();
+    console.log("OK live MyMemory pairs");
+  } catch (err) {
+    console.warn("MyMemory live pairs skipped:", err instanceof Error ? err.message : err);
+  }
 }

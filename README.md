@@ -135,7 +135,7 @@ Freddy sometimes has **no public internet**. Use **Offline / Local meeting** in 
 
 **On:** captions use the built-in mock dictionary (limited EN/ES/PT phrases). No MyMemory, no DeepL, no keys. A banner says: *Offline translate (limited phrases). For full local setup see laptop steps.*
 
-**Off:** current hosted default — MyMemory on Render (or DeepL if a server key is set).
+**Off:** current hosted default — MyMemory on Render, then MinT if that quota is gone (or DeepL if a server key is set). The limited-phrase banner stays hidden while MinT or MyMemory is actually translating.
 
 ### Laptop LAN / hotspot (Fold + TV)
 
@@ -206,7 +206,7 @@ Examples that resolve to seed data:
 - `brotherhood`
 - `Proverbs 27:17`
 
-Generated sheets use catalog Scripture in EN / ES / PT (KJV, Reina-Valera, Almeida — not invented, not machine-translated). Teaching, hook, and questions are written in English and then filled into ES / PT through the same translate pipeline as captions (DeepL / MyMemory / mock). If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from the curated catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
+Generated sheets use catalog Scripture in EN / ES / PT (KJV, Reina-Valera, Almeida — not invented, not machine-translated). Teaching, hook, and questions are written in English and then filled into ES / PT through the same translate pipeline as captions (DeepL / MyMemory / MinT / mock). If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from the curated catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
 
 Seeded talk sheets (head of the household and the rest of the built-in list) include full EN / ES / PT for verse, hook, teaching, and discussion questions. Empty translations still fall back to English. Caption windows follow the TV layout chips; the topic sheet does not — it stays **EN | ES | PT**. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys). To add verses the generator can pick, change `server/scripture-catalog.ts`.
 
@@ -237,9 +237,9 @@ Demo line (works on DeepL, MyMemory, and the built-in mock dictionary):
 
 The phone translates **before** it sends captions to the TV. The Fold calls `POST /api/translate` on the same host. Source language → the other TV windows (**EN / ES / PT**, any direction). Keys stay on the server. Do **not** put `DEEPL_AUTH_KEY` or a Google key in any `VITE_*` variable.
 
-**Recommended meeting-night path: [DeepL API Free](https://www.deepl.com/pro-api).** Create a Free plan account, copy the auth key, set it on the host, restart. No Google Cloud billing admin. Portuguese **targets** use DeepL `PT-BR` (Brazilian Portuguese, matching the topic seeds). English targets use `EN-US`. Free keys end with `:fx` and use `https://api-free.deepl.com`. If DeepL errors or the monthly Free quota is hit, that request falls back to MyMemory, then mock.
+**Recommended meeting-night path: [DeepL API Free](https://www.deepl.com/pro-api).** Create a Free plan account, copy the auth key, set it on the host, restart. No Google Cloud billing admin. Portuguese **targets** use DeepL `PT-BR` (Brazilian Portuguese, matching the topic seeds). English targets use `EN-US`. Free keys end with `:fx` and use `https://api-free.deepl.com`. If DeepL errors or the monthly Free quota is hit, that request falls back to MyMemory, then MinT, then mock.
 
-**If the DeepL key is missing:** [MyMemory](https://mymemory.translated.net/doc/spec.php) (free, no key, about 5,000 characters/day per host IP), then the mock dictionary. Hosted demos still translate without secrets.
+**If the DeepL key is missing:** [MyMemory](https://mymemory.translated.net/doc/spec.php) (free, no key, about 5,000 characters/day per host IP). If MyMemory returns quota/error/identity, the server tries [MinT](https://www.mediawiki.org/wiki/MinT) (Wikimedia, no key) before the mock dictionary. Hosted demos still translate free-form ES/PT/EN without secrets.
 
 **Mock** (`TRANSLATE_PROVIDER=mock`, or the in-app **Offline / Local meeting** toggle) is the offline built-in EN/ES/PT dictionary. The phone uses that dictionary locally so captions do not call MyMemory. `POST /api/translate` also accepts `provider: "mock"` (the only client override) so a laptop server can force mock without env or keys.
 
@@ -250,13 +250,14 @@ The phone translates **before** it sends captions to the TV. The Fold calls `POS
 | Server env | Behavior |
 | --- | --- |
 | `TRANSLATE_PROVIDER=deepl` + `DEEPL_AUTH_KEY` | DeepL (recommended). Default host `https://api-free.deepl.com`. Optional `DEEPL_API_URL=https://api.deepl.com` for Pro. |
-| *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory. No key. Demo / fallback path. |
+| *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory first. No key. Failures fall through to MinT, then mock. |
+| `TRANSLATE_PROVIDER=mint` | Skip MyMemory; use MinT (no key), then mock. |
 | `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. Same path as in-app **Offline / Local meeting**. |
-| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then mock. |
+| `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then MinT, then mock. |
 | *(unset)* `OPENAI_API_KEY` | Offline “Ask for topic” generator. Curated KJV + templates. |
 | `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) | Better teaching text. Verse wording still comes from the KJV catalog. Falls back offline if the call fails. |
 
-`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"`, and `"topic": "openai"` or `"offline"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
+`GET /health` and `GET /api/translate` report the provider actually serving captions (`deepl`, `mymemory`, `mint`, `google`, or `mock`) — not a stale default after MyMemory quota is gone. `"topic"` is `"openai"` or `"offline"`. Neither endpoint returns a key. After setting a DeepL key and restarting, confirm `"translate":"deepl"`. The phone **Offline translate** banner appears only when captions are actually on the mock dictionary (the Offline / Local meeting toggle, or a total MT failure).
 
 ```bash
 # Meeting night — DeepL Free (set your real key; do not invent one)
@@ -270,7 +271,7 @@ TRANSLATE_PROVIDER=mymemory
 TRANSLATE_PROVIDER=mock
 ```
 
-Optional: `MYMEMORY_EMAIL=you@example.com` (a contact email, **not** an API key) raises MyMemory's daily cap. `npm run verify:translate` checks provider selection, DeepL language mapping, and live MyMemory EN↔ES↔PT (`--offline` skips live calls).
+Optional: `MYMEMORY_EMAIL=you@example.com` (a contact email, **not** an API key) raises MyMemory's daily cap. `npm run verify:translate` checks provider selection, DeepL language mapping, MinT parsing, and live MinT EN↔ES↔PT (`--offline` skips live calls).
 
 ### DeepL API Free auth key
 
@@ -327,7 +328,7 @@ npm run build        # typecheck + production bundle
 npm start            # production server: static PWA + relay (use after build)
 npm run preview      # Vite preview + same relay (local production bundle)
 npm run verify:prod       # PWA + relay checks (optional public URL argument)
-npm run verify:translate  # DeepL/MyMemory selection + EN/ES/PT live pairs
+npm run verify:translate  # DeepL/MyMemory/MinT selection + EN/ES/PT live pairs
 ```
 
 Local LAN Fold testing still works with `npm run dev` (Chrome will warn about the self-signed certificate — **Advanced → Proceed**). Meeting night should use the public HTTPS URL so there is no laptop in the loop.
