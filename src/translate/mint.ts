@@ -1,5 +1,4 @@
-import type { Lang } from "../types";
-import { isIdentityTranslation } from "./mymemory";
+import { isIdentityTranslation } from "./mymemory.ts";
 import type { Translator } from "./types";
 
 /** Wikimedia-hosted MinT. No API key. */
