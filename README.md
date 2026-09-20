@@ -22,9 +22,11 @@ Keep Chrome (or the installed PWA, which is Chrome) in the **foreground** while 
 
 ## Open on the TV (meeting night)
 
-The TV is a display. It uses its **own browser** for the big EN/ES/PT caption page. The Fold stays on topic + mic control. Do **not** use Samsung Smart View, Cast, or Presentation API mirroring — that mirrors the Fold, steals the mic page, and never shows the proper TV layout.
+There are **two** ways to get captions on the TV. They are not the same thing.
 
-### Send to TV (QR + link)
+### Send to TV (QR + link) — TV’s own browser
+
+The TV opens the caption page in **its own browser**. The Fold stays on topic + mic control. Phone and TV stay in sync over the room.
 
 1. On the Fold, open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
 2. Tap **Send to TV**. That stays on the mic page and shows:
@@ -35,6 +37,20 @@ The TV is a display. It uses its **own browser** for the big EN/ES/PT caption pa
 4. **Open TV view** on the phone is only for testing on this device. It is not the meeting-night path.
 
 Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the **same public host**.
+
+### Smart View mode — mirror the caption layout
+
+Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mirror the Fold screen**. If the Fold is showing the control / mic UI, the TV shows that. The app cannot open a separate caption page through system Smart View, and it does **not** auto-launch Smart View or Cast intents.
+
+**Smart View mode** switches the Fold itself to the same big EN / ES / PT + topic layout as the TV page, while speech recognition **keeps running**. Then you open system Smart View from the Fold quick panel so the TV mirrors those captions.
+
+1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
+2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
+3. A small always-visible bar keeps **Start / Stop** (mic) and **Exit Smart View mode**.
+4. The tip on screen: “Now open system Smart View → My TV. TV will mirror these captions.” Use the Fold **quick panel Smart View tile** — do not expect the app to launch it.
+5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
+
+Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when you will mirror from the Fold because that is all Samsung Smart View can do.
 
 ### Same room, two browsers
 
@@ -136,6 +152,7 @@ The script checks:
 2. TV: open the TV link. Confirm verse / handout above the windows.
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
+5. On the Fold, tap **Smart View mode**. The phone should switch to the same EN/ES/PT + topic layout; the mic should keep its current Start/Stop state. Tap **Exit Smart View mode** to get the controls back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
@@ -158,7 +175,9 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 
 ## Galaxy Z Fold 7 + Chrome
 
-- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install. Use **Send to TV** (QR / copy link) — do not launch system Smart View or Cast.
+- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
+- **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls.
+- **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.

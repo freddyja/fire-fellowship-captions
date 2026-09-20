@@ -103,10 +103,15 @@ async function main() {
   assert(appJs.includes("Copy TV link"), "copy TV link");
   assert(appJs.includes("Keep the Fold on the mic page"), "send-to-TV steps");
   assert(appJs.includes("QR code for the TV caption page"), "TV QR code");
-  assert(!appJs.includes("Smart View"), "no Smart View label");
+  assert(appJs.includes("Smart View mode"), "Smart View mode button");
+  assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
+  assert(
+    appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
+    "Smart View mode tip",
+  );
   assert(!appJs.includes("PresentationRequest"), "no Presentation API");
   assert(!/\.requestSession\b/.test(appJs), "no presentation requestSession");
-  assert(!appJs.includes("startSmartView"), "no Smart View helper");
+  assert(!appJs.includes("startSmartView"), "no Smart View launch helper");
   assert(!appJs.includes("android.settings.CAST_SETTINGS"), "no Android Cast intent");
   assert(!appJs.includes("com.samsung.android.smartmirroring"), "no Samsung Smart View intent");
 
@@ -192,7 +197,7 @@ async function main() {
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV, relay, topic of the day, translate=${health.translate}`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, translate=${health.translate}`);
 }
 
 main()

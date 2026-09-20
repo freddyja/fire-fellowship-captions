@@ -1,19 +1,8 @@
 import { brandBlock } from "../brand";
-import { escapeHtml } from "../dom";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
-import { hasTopicBody, localized } from "../topics";
-import {
-  emptyState,
-  LANG_LABEL,
-  LANG_SHORT,
-  langsForLayout,
-  type CaptionLine,
-  type ConnStatus,
-  type Lang,
-  type PeerCounts,
-  type TopicContent,
-} from "../types";
+import { emptyState, type ConnStatus, type PeerCounts } from "../types";
+import { paintCaptionBoard } from "./caption-board";
 
 export function mountTv(root: HTMLElement, room: string): () => void {
   let state = emptyState(room);
@@ -45,76 +34,12 @@ export function mountTv(root: HTMLElement, room: string): () => void {
   const onHome = () => goto("home");
   home?.addEventListener("click", onHome);
 
-  function lineClass(line: CaptionLine, index: number, total: number): string {
-    if (!line.isFinal) return "line interim";
-    if (index === total - 1 || (index === total - 2 && !state.lines[total - 1]?.isFinal)) return "line";
-    return "line faded";
-  }
-
-  function renderWindow(lang: Lang): string {
-    const visible = state.lines.filter((line) => line.text[lang]?.trim());
-    const body =
-      visible.length === 0
-        ? `<p class="empty-caption">Waiting for live speech…</p>`
-        : visible
-            .map(
-              (line, index) =>
-                `<p class="${lineClass(line, index, visible.length)}">${escapeHtml(line.text[lang])}</p>`,
-            )
-            .join("");
-    return `
-      <section class="window" data-lang="${lang}" lang="${lang}">
-        <h2 class="window-label">${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</h2>
-        <div class="lines">${body}</div>
-      </section>
-    `;
-  }
-
-  function renderTopic(topic: TopicContent, langs: Lang[]): string {
-    const title = localized(topic.title, langs[0] ?? "en");
-    return `
-      <div class="tv-topic-kicker">Topic of the day</div>
-      <div class="tv-topic-head">
-        <h2 class="tv-topic-title">${escapeHtml(title)}</h2>
-        ${topic.reference ? `<p class="tv-topic-ref">${escapeHtml(topic.reference)}</p>` : ""}
-      </div>
-      <div class="tv-topic-grid" data-count="${langs.length}">
-        ${langs.map((lang) => renderTopicCard(topic, lang)).join("")}
-      </div>
-    `;
-  }
-
-  function renderTopicCard(topic: TopicContent, lang: Lang): string {
-    const verse = localized(topic.verse, lang);
-    const prompt = localized(topic.prompt, lang);
-    return `
-      <article class="tv-handout" lang="${lang}">
-        <h3>${LANG_SHORT[lang]}</h3>
-        ${verse ? `<p class="tv-verse">${escapeHtml(verse)}</p>` : `<p class="tv-verse muted">Verse can be added for this topic.</p>`}
-        <p class="tv-prompt">${escapeHtml(prompt)}</p>
-      </article>
-    `;
-  }
-
   function render() {
-    const langs = langsForLayout(state.layout);
     roomEl.textContent = state.room;
     const phoneNote = peers.phones > 0 ? "Phone connected" : "Waiting for phone";
     statusEl.textContent = state.listening ? `Live · ${phoneNote}` : phoneNote;
     dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
-    board.dataset.count = String(langs.length);
-    board.dataset.layout = state.layout;
-    board.innerHTML = langs.map(renderWindow).join("");
-
-    const topic = state.topic;
-    if (hasTopicBody(topic) && topic) {
-      topicEl.hidden = false;
-      topicEl.dataset.count = String(langs.length);
-      topicEl.innerHTML = renderTopic(topic, langs);
-    } else {
-      topicEl.hidden = true;
-      topicEl.innerHTML = "";
-    }
+    paintCaptionBoard(board, topicEl, state);
   }
 
   const conn = connectRoom({
