@@ -1069,7 +1069,8 @@ textarea {
   }
 
   .phone-screen.is-smart-view .tv-topic {
-    max-height: min(28vh, 10rem);
+    max-height: none;
+    overflow: visible;
   }
 
   /* Smart View portrait: equal-height rows so all panes stay visible. */
@@ -1135,7 +1136,8 @@ textarea {
   }
 
   .phone-screen.is-smart-view .tv-topic {
-    max-height: min(30vh, 7.5rem);
+    max-height: none;
+    overflow: visible;
     padding: 0.45rem 0.7rem 0.55rem;
   }
 
@@ -1143,6 +1145,34 @@ textarea {
     padding-top: 0.3rem;
     padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
   }
+}
+
+/* Topic sheet visible: grow to content and scroll instead of clipping
+   EN/ES/PT cards to labels. Captions-only stays viewport-locked so
+   rotate still keeps three caption panes on screen. */
+.phone-screen.is-smart-view:has(.smart-view-captions:not(.is-captions-only)) .smart-view-layer {
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
+}
+
+.phone-screen.is-smart-view .smart-view-captions:not(.is-captions-only) {
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
+}
+
+.phone-screen.is-smart-view .smart-view-captions:not(.is-captions-only) .tv-topic,
+.phone-screen.is-smart-view .smart-view-captions:not(.is-captions-only) .tv-handout {
+  max-height: none;
+  overflow: visible;
+}
+
+.phone-screen.is-smart-view .smart-view-captions:not(.is-captions-only) .tv-board {
+  flex: 1 1 auto;
+  min-height: 10rem;
 }
 
 @media (orientation: landscape) and (max-height: 420px) {

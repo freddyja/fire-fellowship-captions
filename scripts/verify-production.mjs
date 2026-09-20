@@ -117,6 +117,7 @@ async function main() {
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
   assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
+  assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit footer");
   assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
     "Smart View mode tip",
@@ -137,6 +138,8 @@ async function main() {
     "Smart View landscape keeps language panes",
   );
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
+  assert(!appCss.includes("min(28vh, 10rem)"), "Smart View topic not clipped to 10rem");
+  assert(!appCss.includes("min(30vh, 7.5rem)"), "Smart View topic not clipped to 7.5rem");
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);
