@@ -237,7 +237,7 @@ textarea {
   border-radius: 22px;
   padding: 0.75rem 1.1rem 0.9rem;
   box-shadow: var(--shadow);
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   max-height: min(52vh, 36rem);
   overflow: auto;
   display: flex;
@@ -283,6 +283,7 @@ textarea {
 
 .tv-handout {
   min-width: 0;
+  min-height: min-content;
   overflow: auto;
   text-align: left;
 }
@@ -785,6 +786,8 @@ textarea {
   width: 100%;
   max-width: none;
   padding: 0;
+  height: 100dvh;
+  overflow: auto;
 }
 
 .phone-screen.is-smart-view .phone-top,
@@ -806,6 +809,22 @@ textarea {
 
 .smart-view-captions {
   min-height: 100dvh;
+  height: auto;
+}
+
+.smart-view-captions .tv-topic {
+  max-height: none;
+  overflow: visible;
+}
+
+.smart-view-captions .tv-handout {
+  overflow: visible;
+  max-height: none;
+}
+
+.smart-view-captions .tv-board {
+  flex: 1 1 auto;
+  min-height: 10rem;
 }
 
 /* Smart View is mirrored: keep every chosen pane on-screen (no overflow clip). */
@@ -1040,6 +1059,12 @@ textarea {
   }
 
   .tv-topic {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .tv-handout {
+    overflow: visible;
     max-height: none;
   }
 
