@@ -18,6 +18,7 @@ function copy(enText: string, es: string, pt: string): Localized {
 }
 
 const EMPTY: Localized = { en: "", es: "", pt: "" };
+const STOP_WORDS = new Set(["of", "the", "and", "a", "an", "in", "to", "for", "on", "at"]);
 
 const TOPICS: TopicSeed[] = [
   {
@@ -56,6 +57,58 @@ const TOPICS: TopicSeed[] = [
       "Where in your life are you waiting on your circumstances to change before you feel at peace?",
       "¿En qué parte de tu vida estás esperando que las circunstancias cambien antes de sentir paz?",
       "Onde na sua vida você está esperando as circunstâncias mudarem antes de sentir paz?",
+    ),
+  },
+  {
+    id: "head-of-household",
+    keywords: [
+      "head of household",
+      "head of the household",
+      "head of the house",
+      "headship",
+      "spiritual head",
+      "husband",
+      "husbands",
+      "household",
+      "house",
+      "home",
+      "family",
+      "marriage",
+      "ephesians",
+    ],
+    title: { en: "Head of the household", es: "Cabeza del hogar", pt: "Cabeça do lar" },
+    reference: "Ephesians 5:23",
+    verse: copy(
+      "For the husband is the head of the wife, even as Christ is the head of the church: and he is the saviour of the body.",
+      "Porque el marido es cabeza de la mujer, así como Cristo es cabeza de la iglesia, la cual es su cuerpo, y él es su Salvador.",
+      "Porque o marido é a cabeça da mulher, como também Cristo é a cabeça da igreja, sendo ele próprio o salvador do corpo.",
+    ),
+    hook: copy(
+      "Head of the house is not a throne. It is a towel.",
+      "Cabeza del hogar no es un trono. Es una toalla.",
+      "Cabeça do lar não é um trono. É uma toalha.",
+    ),
+    body: copy(
+      "Paul does not hand a man a louder voice. He hands him Christ's pattern: the husband is head *even as Christ is head of the church* — and Christ is the Saviour of the body. Headship looks like a cross before it looks like a title.\n\nBrothers, **head of the household** is weight. The house already knows whether you lead by serving or by being served. Privilege without the cross turns a living room into a courtroom.\n\nLove that looks like Jesus will cost you the last word, the extra hour, and the right to stay bitter. You do not wait until the house is easy to start leading it well.\n\nStart where you are actually walking tonight. The Saviour of the body did not wait for a grateful church.",
+      "Pablo no le entrega al hombre una voz más alta. Le entrega el patrón de Cristo: el marido es cabeza *así como Cristo es cabeza de la iglesia* — y Cristo es el Salvador del cuerpo. El liderazgo se parece a una cruz antes que a un título.\n\nHermanos, **cabeza del hogar** es peso. La casa ya sabe si lideras sirviendo o siendo servido. El privilegio sin la cruz convierte la sala en un tribunal.\n\nEl amor que se parece a Jesús te costará la última palabra, la hora extra y el derecho a quedarte amargado. No esperas a que la casa esté fácil para liderarla bien.\n\nEmpieza donde realmente estás caminando esta noche. El Salvador del cuerpo no esperó a una iglesia agradecida.",
+      "Paulo não entrega ao homem uma voz mais alta. Entrega o padrão de Cristo: o marido é cabeça *como Cristo é cabeça da igreja* — e Cristo é o Salvador do corpo. Liderança parece cruz antes de parecer título.\n\nIrmãos, **cabeça do lar** é peso. A casa já sabe se você lidera servindo ou sendo servido. Privilégio sem cruz transforma a sala num tribunal.\n\nO amor que parece com Jesus vai custar a última palavra, a hora extra e o direito de ficar amargurado. Você não espera a casa ficar fácil para liderá-la bem.\n\nComece onde você realmente está andando esta noite. O Salvador do corpo não esperou uma igreja grata.",
+    ),
+    discussionQuestions: [
+      copy(
+        "Where have you been claiming head of the household as rank instead of as a charge to love?",
+        "¿Dónde has reclamado ser cabeza del hogar como rango en vez de como un encargo de amar?",
+        "Onde você tem reivindicado ser cabeça do lar como patente em vez de como um encargo de amar?",
+      ),
+      copy(
+        "Who in your house would say you looked like Christ this month — and who would hesitate?",
+        "¿Quién en tu casa diría que te pareciste a Cristo este mes, y quién dudaría?",
+        "Quem na sua casa diria que você se pareceu com Cristo neste mês — e quem hesitaria?",
+      ),
+    ],
+    prompt: copy(
+      "Where have you been claiming head of the household as rank instead of as a charge to love?",
+      "¿Dónde has reclamado ser cabeza del hogar como rango en vez de como un encargo de amar?",
+      "Onde você tem reivindicado ser cabeça do lar como patente em vez de como um encargo de amar?",
     ),
   },
   {
@@ -352,6 +405,8 @@ export function resolveTopic(input: string): TopicContent | null {
   const q = foldText(input);
   if (!q) return null;
 
+  const words = q.split(" ").filter((word) => word.length > 2 && !STOP_WORDS.has(word));
+
   const scored = TOPICS.map((topic) => {
     const hay = foldText(
       [topic.id, topic.reference, ...Object.values(topic.title), ...topic.keywords].join(" "),
@@ -359,8 +414,8 @@ export function resolveTopic(input: string): TopicContent | null {
     let score = 0;
     if (foldText(topic.reference) === q) score = 100;
     else if (Object.values(topic.title).some((title) => foldText(title) === q)) score = 90;
-    else if (hay.includes(q)) score = 40 + Math.min(q.length, 20);
-    else if (q.split(" ").every((word) => word.length > 2 && hay.includes(word))) score = 30;
+    else if (hay.includes(q)) score = 50 + Math.min(q.length, 20);
+    else if (words.length && words.every((word) => hay.includes(word))) score = 30 + words.length * 4;
     return { topic, score };
   }).filter((row) => row.score > 0);
 

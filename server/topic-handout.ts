@@ -41,7 +41,7 @@ function scoreScripture(query: string, entry: ScriptureEntry): number {
   const hay = foldText([entry.id, entry.reference, ...entry.keywords].join(" "));
   if (foldText(entry.reference) === q) return 100;
   if (hay.includes(q)) return 55 + Math.min(q.length, 20);
-  const words = q.split(" ").filter((word) => word.length > 2);
+  const words = q.split(" ").filter((word) => word.length > 2 && word !== "the" && word !== "and");
   if (!words.length) return 0;
   const hits = words.filter((word) => hay.includes(word)).length;
   if (!hits) return 0;

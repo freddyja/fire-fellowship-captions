@@ -77,11 +77,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">Topic of the day <button class="ghost topic-clear" data-clear-topic type="button">Clear</button></p>
               <div class="chips" data-topics></div>
               <form class="topic-insert" data-topic-form>
-                <input name="topic" autocomplete="off" enterkeyhint="search" placeholder="Ask for a topic — contentment, head of the household…" />
-                <button class="secondary" type="submit">Set</button>
-                <button class="primary topic-ask" data-ask type="button">Ask for topic</button>
+                <input name="topic" autocomplete="off" enterkeyhint="go" placeholder="head of household, contentment, forgiveness…" />
+                <button class="primary topic-ask" data-ask type="submit">Ask for topic</button>
+                <button class="secondary" data-set-topic type="button">Set</button>
               </form>
-              <p class="hint topic-ask-status" data-ask-status></p>
+              <p class="hint topic-ask-status" data-ask-status>Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.</p>
               <div class="topic-preview" data-topic-preview></div>
             </div>
           </div>
@@ -181,6 +181,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const topicForm = root.querySelector("[data-topic-form]") as HTMLFormElement;
   const topicPreview = root.querySelector("[data-topic-preview]") as HTMLElement;
   const askBtn = root.querySelector("[data-ask]") as HTMLButtonElement;
+  const setBtn = root.querySelector("[data-set-topic]") as HTMLButtonElement;
   const askStatus = root.querySelector("[data-ask-status]") as HTMLElement;
   sourceBox.innerHTML = LANGS.map(
     (lang) => `<button class="chip" type="button" data-lang="${lang}">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
@@ -273,11 +274,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     askBtn.disabled = askBusy;
     askBtn.textContent = askBusy ? "Writing…" : "Ask for topic";
     els.topicInput.disabled = askBusy;
+    setBtn.disabled = askBusy;
     if (askBusy) {
       askStatus.innerHTML = `Writing a handout for “${escapeHtml(askQuery)}”… <button class="ghost topic-ask-cancel" data-cancel-ask type="button">Cancel</button>`;
       topicPreview.innerHTML = `<p class="hint">Hang on — verse, hook, teaching, and discussion questions are coming.</p>`;
     } else {
-      askStatus.textContent = "";
+      askStatus.innerHTML = `Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.`;
       topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
     }
   }
@@ -401,6 +403,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const onTopicForm = (event: Event) => {
     event.preventDefault();
+    onAskTopic();
+  };
+
+  const onSetTopic = () => {
     const query = els.topicInput.value.trim();
     if (!query) {
       applyTopic(null);
@@ -412,9 +418,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onAskTopic = () => {
     const query = els.topicInput.value.trim();
     if (!query) {
-      error = "Type a topic first — contentment, head of the household, forgiveness…";
+      error = "Type a topic first — head of household, contentment, forgiveness…";
       els.topicInput.focus();
       renderDynamic();
+      return;
+    }
+    const seed = resolveTopic(query);
+    if (seed && seed.id !== "custom" && seed.reference) {
+      applyTopic(seed);
       return;
     }
     error = "";
@@ -527,7 +538,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   topicBox.addEventListener("click", onTopicChip);
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
-  askBtn.addEventListener("click", onAskTopic);
+  setBtn.addEventListener("click", onSetTopic);
   askStatus.addEventListener("click", onCancelAsk);
   sendBtn.addEventListener("click", onSendTv);
   smartEnter.addEventListener("click", onEnterSmartView);
@@ -582,7 +593,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     layoutBox.removeEventListener("click", onLayout);
     topicBox.removeEventListener("click", onTopicChip);
     topicForm.removeEventListener("submit", onTopicForm);
-    askBtn.removeEventListener("click", onAskTopic);
+    setBtn.removeEventListener("click", onSetTopic);
     askStatus.removeEventListener("click", onCancelAsk);
     cancelAsk();
     sendDialog.removeEventListener("click", onDialogClick);
@@ -598,7 +609,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
 function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {
   if (!hasTopicBody(topic) || !topic) {
-    return `<p class="hint">Pick a topic, search one, or ask for a handout. Verse and teaching go to the TV.</p>`;
+    return `<p class="hint">Tap a chip, or type a theme and Ask for topic. The verse and teaching go to the TV.</p>`;
   }
   const title = localized(topic.title, lang);
   const verse = localized(topic.verse, lang);

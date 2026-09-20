@@ -160,20 +160,21 @@ If the TV stays on **Waiting for phone**, you are on two different hosts or more
 
 Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only displays it. This is unchanged in production: the phone pushes room state over the relay, including `topic`.
 
-**Pick:** tap a built-in topic (Contentment, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview and the TV handout use the same layout: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching paragraphs, then numbered **Discussion Questions**.
+**Pick:** tap a built-in topic (Contentment, Head of the household, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview, Smart View topic band, and TV handout use the same layout: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching paragraphs, then numbered **Discussion Questions**.
 
-**Insert / search:** type a name or reference and tap **Set**. Examples that resolve to seed data:
+**Ask for topic:** type a theme in the box (`head of household`, `contentment`, `forgiveness`) and tap **Ask for topic** (or press Enter). That is the main action — it finds a seeded sheet when one matches, otherwise the server writes a handout. Loading + Cancel are available. The sheet is set as the room topic and pushed to the TV / Smart View.
 
-- `brotherhood`
-- `iron`
-- `Proverbs 27:17`
-- `Joshua 1:9`
+**Set:** still there for a typed title that should go to the TV as-is if you do not want a generated sheet.
+
+Examples that resolve to seed data:
+
+- `head of household`
+- `headship`
+- `husband`
 - `contentment`
 - `Philippians 4:11-12`
-
-If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic or **Ask for topic**). Tap **Clear** to remove it.
-
-**Ask for topic:** type a theme (`contentment`, `head of the household`, `forgiveness`) and tap **Ask for topic**. The phone shows a loading state (Cancel is available). On success the generated sheet — **bold reference**, *italic KJV*, **hook**, teaching, numbered **Discussion Questions** — is set as the room topic and pushed to the TV.
+- `brotherhood`
+- `Proverbs 27:17`
 
 Generated sheets are English-first. If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from a curated public-domain KJV catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
 

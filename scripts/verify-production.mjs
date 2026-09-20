@@ -187,27 +187,32 @@ async function main() {
   const askedRes = await fetch(`${base}/api/topic-handout`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query: "head of the household" }),
+    body: JSON.stringify({ query: "head of household" }),
   });
   assert(askedRes.ok, "POST /api/topic-handout household");
   const asked = await askedRes.json();
-  assert(asked.provider === "offline" || asked.provider === "openai", "generated provider");
-  assert(String(asked.topic?.id || "").startsWith("asked-"), "generated id");
-  assert(Boolean(asked.topic?.reference), "generated reference");
-  const generatedVerse = String(asked.topic?.verse?.en || "");
-  assert(generatedVerse.length > 30, "generated verse present");
-  if (asked.provider === "offline") {
-    assert(
-      generatedVerse.includes("Husbands, love your wives") ||
-        generatedVerse.includes("husband is the head of the wife") ||
-        generatedVerse.includes("me and my house, we will serve"),
-      "offline household verse is catalog KJV",
-    );
-  }
-  assert(Boolean(asked.topic?.hook?.en), "generated hook");
-  assert(Boolean(asked.topic?.body?.en), "generated body");
-  assert((asked.topic?.discussionQuestions || []).length >= 2, "generated questions");
-  const askedLeak = JSON.stringify(asked).includes("OPENAI_API_KEY") || JSON.stringify(asked).includes("sk-");
+  assert(asked.provider === "seed", "head of household uses seed");
+  assert(asked.topic?.id === "head-of-household", "head of household seed id");
+  assert(String(asked.topic?.reference).includes("Ephesians 5:23"), "headship reference");
+  assert(String(asked.topic?.verse?.en || "").includes("husband is the head of the wife"), "headship KJV");
+  assert(Boolean(asked.topic?.hook?.en), "headship hook");
+  assert((asked.topic?.discussionQuestions || []).length >= 2, "headship questions");
+
+  const generatedRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "anxiety and peace" }),
+  });
+  assert(generatedRes.ok, "POST /api/topic-handout anxiety");
+  const generated = await generatedRes.json();
+  assert(generated.provider === "offline" || generated.provider === "openai", "generated provider");
+  assert(String(generated.topic?.id || "").startsWith("asked-"), "generated id");
+  assert(Boolean(generated.topic?.reference), "generated reference");
+  assert(String(generated.topic?.verse?.en || "").length > 30, "generated verse present");
+  assert(Boolean(generated.topic?.hook?.en), "generated hook");
+  assert(Boolean(generated.topic?.body?.en), "generated body");
+  assert((generated.topic?.discussionQuestions || []).length >= 2, "generated questions");
+  const askedLeak = JSON.stringify(generated).includes("OPENAI_API_KEY") || JSON.stringify(generated).includes("sk-");
   assert(!askedLeak, "topic handout must not include a key");
 
   for (const icon of ["/icon-192.png", "/icon-512.png", "/icon-192-maskable.png", "/icon-512-maskable.png"]) {
