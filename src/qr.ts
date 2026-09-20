@@ -1,12 +1,17 @@
 import { renderSVG } from "uqr";
 
-/** Large QR of the TV caption URL so the meeting TV can open it without typing. */
+/** Large, high-contrast QR of the current room’s TV caption URL. */
 export function tvQrSvg(url: string): string {
   return renderSVG(url, {
+    border: 4,
     ecc: "M",
-    border: 2,
-    pixelSize: 8,
-    whiteColor: "#f4ead8",
+    pixelSize: 1,
+    whiteColor: "#ffffff",
     blackColor: "#120c09",
-  });
+  }).replace(
+    "<svg ",
+    '<svg role="img" aria-label="QR code for the TV caption page" shape-rendering="crispEdges" ',
+  );
 }
+
+export const qrSvg = tvQrSvg;

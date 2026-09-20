@@ -98,15 +98,17 @@ async function main() {
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
   const { body: appJs } = await text(scriptSrc);
-  assert(appJs.includes("Smart View"), "phone Smart View button");
-  assert(appJs.includes("android.settings.CAST_SETTINGS"), "Android CAST_SETTINGS intent");
-  assert(appJs.includes("com.samsung.android.smartmirroring"), "Samsung Smart View intent");
-  assert(
-    appJs.includes("PresentationRequest") || appJs.includes("requestSession"),
-    "Presentation API still tried",
-  );
-  assert(appJs.includes("not Samsung Smart View / My TV"), "honest Cast vs My TV copy");
-  assert(appJs.includes("<svg") || appJs.includes("viewBox"), "TV link QR");
+  assert(appJs.includes("Send to TV"), "phone Send to TV button");
+  assert(appJs.includes("Open TV view"), "optional Open TV view");
+  assert(appJs.includes("Copy TV link"), "copy TV link");
+  assert(appJs.includes("Keep the Fold on the mic page"), "send-to-TV steps");
+  assert(appJs.includes("QR code for the TV caption page"), "TV QR code");
+  assert(!appJs.includes("Smart View"), "no Smart View label");
+  assert(!appJs.includes("PresentationRequest"), "no Presentation API");
+  assert(!/\.requestSession\b/.test(appJs), "no presentation requestSession");
+  assert(!appJs.includes("startSmartView"), "no Smart View helper");
+  assert(!appJs.includes("android.settings.CAST_SETTINGS"), "no Android Cast intent");
+  assert(!appJs.includes("com.samsung.android.smartmirroring"), "no Samsung Smart View intent");
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);
@@ -190,7 +192,7 @@ async function main() {
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, Smart View, relay, topic of the day, translate=${health.translate}`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV, relay, topic of the day, translate=${health.translate}`);
 }
 
 main()
