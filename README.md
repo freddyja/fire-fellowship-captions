@@ -42,7 +42,7 @@ Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the
 
 Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mirror the Fold screen**. If the Fold is showing the control / mic UI, the TV shows that. The app cannot open a separate caption page through system Smart View, and it does **not** auto-launch Smart View or Cast intents.
 
-**Smart View mode** switches the Fold itself to the same big EN / ES / PT layout as the TV page, while speech recognition **keeps running**. Then you open system Smart View from the Fold quick panel so the TV mirrors those captions.
+**Smart View mode** switches the Fold itself to the same big caption windows as the TV page, plus the **EN | ES | PT topic sheet** when **Captions only** is off, while speech recognition **keeps running**. Then you open system Smart View from the Fold quick panel so the TV mirrors that view.
 
 1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
 2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
@@ -57,7 +57,7 @@ Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when y
 1. On the Fold app, note the 4-letter room code, or tap **Send to TV** → **Copy TV link**.
 2. On the TV browser, open the **same public URL**.
 3. Enter the room code and tap **Open TV windows**, or paste the copied TV link.
-4. On the Fold, pick **Topic of the day** (try **Contentment** or **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse, hook, teaching, and discussion questions above the caption windows.
+4. On the Fold, pick **Topic of the day** (try **Contentment** or **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the talk sheet in three columns (**EN | ES | PT**) — verse, hook, teaching, and discussion questions — above the caption windows.
 5. Tap the mic on the Fold and speak (or type a caption). Captions should appear on the TV in the layout you chose:
    - One language, full-screen
    - Dual columns (`EN | ES`, `EN | PT`, or `ES | PT`)
@@ -149,10 +149,10 @@ The script checks:
 **Meeting-night dry run on the real URL**
 
 1. Fold (installed app or Chrome): create a room, set topic **Brotherhood**.
-2. TV: open the TV link. Confirm verse / handout above the windows.
+2. TV: open the TV link. Confirm the **EN | ES | PT** talk sheet above the caption windows.
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
-5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **Captions only** to show the topic band, then **Exit Smart View mode** to get the controls back.
+5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **Captions only** off to show the EN | ES | PT topic sheet, then **Exit Smart View mode** to get the controls back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
@@ -160,7 +160,7 @@ If the TV stays on **Waiting for phone**, you are on two different hosts or more
 
 Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only displays it. This is unchanged in production: the phone pushes room state over the relay, including `topic`.
 
-**Pick:** tap a built-in topic (Contentment, Head of the household, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview, Smart View topic band, and TV handout use the same layout: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching paragraphs, then numbered **Discussion Questions**.
+**Pick:** tap a built-in topic (Contentment, Head of the household, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview stays in the spoken / UI language. The **TV page** and **Smart View** (when **Captions only** is off) show the same sheet in **three columns: EN | ES | PT**. Each column has the same structure: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching, then numbered **Discussion Questions**. When Captions only is on, Smart View stays captions-only (three caption windows).
 
 **Ask for topic:** type a theme in the box (`head of household`, `contentment`, `forgiveness`) and tap **Ask for topic** (or press Enter). That is the main action — it finds a seeded sheet when one matches, otherwise the server writes a handout. Loading + Cancel are available. The sheet is set as the room topic and pushed to the TV / Smart View.
 
@@ -176,9 +176,9 @@ Examples that resolve to seed data:
 - `brotherhood`
 - `Proverbs 27:17`
 
-Generated sheets are English-first. If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from a curated public-domain KJV catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
+Generated sheets use catalog Scripture in EN / ES / PT (KJV, Reina-Valera, Almeida — not invented, not machine-translated). Teaching, hook, and questions are written in English and then filled into ES / PT through the same translate pipeline as captions (DeepL / MyMemory / mock). If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from the curated catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
 
-Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`, `body`, `discussionQuestions`) keep English first and fall back to English when a translation is empty. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys). To add verses the generator can pick, change `server/scripture-catalog.ts`.
+Seeded talk sheets (head of the household and the rest of the built-in list) include full EN / ES / PT for verse, hook, teaching, and discussion questions. Empty translations still fall back to English. Caption windows follow the TV layout chips; the topic sheet does not — it stays **EN | ES | PT**. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys). To add verses the generator can pick, change `server/scripture-catalog.ts`.
 
 ## Galaxy Z Fold 7 + Chrome
 
@@ -286,7 +286,7 @@ Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`).
 
 ## Layouts (phone control → TV)
 
-The Fold owns the layout. The TV only displays it. The topic band follows the same language layout as the caption windows.
+The Fold owns the caption layout. The TV only displays it. Caption windows follow those chips (one, two, or three languages). The topic / talk sheet is always three columns — **EN | ES | PT** — on the TV page and in Smart View when the topic is visible.
 
 ## Scripts
 

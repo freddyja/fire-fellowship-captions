@@ -238,7 +238,7 @@ textarea {
   padding: 0.75rem 1.1rem 0.9rem;
   box-shadow: var(--shadow);
   flex: 0 0 auto;
-  max-height: min(46vh, 32rem);
+  max-height: min(48vh, 34rem);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -277,6 +277,11 @@ textarea {
 
 .tv-topic-grid[data-count="3"] {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+.tv-topic-grid[data-count="3"] .tv-handout + .tv-handout {
+  border-left: 1px solid var(--line);
+  padding-left: 0.85rem;
 }
 
 .tv-handout {
@@ -1029,8 +1034,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .tv-board[data-count="2"],
-  .tv-topic-grid[data-count="2"] {
+  .tv-board[data-count="2"] {
     grid-template-columns: 1fr;
   }
 
@@ -1135,6 +1139,20 @@ textarea {
   .phone-screen.is-smart-view .smart-view-controls .secondary {
     min-height: 40px;
     padding: 0.3rem 0.75rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .tv-topic-grid[data-count="3"],
+  .tv-topic-grid[data-count="2"] {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-topic-grid[data-count="3"] .tv-handout + .tv-handout {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: 0.75rem;
   }
 }
 
