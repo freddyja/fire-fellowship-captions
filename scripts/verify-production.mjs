@@ -119,6 +119,17 @@ async function main() {
   assert(!appJs.includes("startSmartView"), "no Smart View launch helper");
   assert(!appJs.includes("android.settings.CAST_SETTINGS"), "no Android Cast intent");
   assert(!appJs.includes("com.samsung.android.smartmirroring"), "no Samsung Smart View intent");
+  assert(appJs.includes('dataset.orientation'), "Smart View orientation flag");
+
+  const cssSrc = home.body.match(/href="(\/assets\/[^"]+\.css)"/)?.[1];
+  assert(cssSrc, "built app css");
+  const { body: appCss } = await text(cssSrc);
+  assert(
+    appCss.includes("[data-orientation=\"landscape\"]") ||
+      appCss.includes('[data-orientation=landscape]'),
+    "Smart View landscape keeps language panes",
+  );
+  assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);

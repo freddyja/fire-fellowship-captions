@@ -765,11 +765,53 @@ textarea {
 }
 
 .phone-screen.is-smart-view .smart-view-layer {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .smart-view-captions {
   min-height: 100dvh;
+}
+
+/* Smart View is mirrored: keep every chosen pane on-screen (no overflow clip). */
+.phone-screen.is-smart-view .smart-view-captions {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.phone-screen.is-smart-view .tv-board {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.phone-screen.is-smart-view .tv-board .window {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.phone-screen.is-smart-view .tv-board[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phone-screen.is-smart-view .tv-board[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.phone-screen.is-smart-view .tv-topic-grid[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phone-screen.is-smart-view .tv-topic-grid[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .smart-view-dock {
@@ -948,7 +990,9 @@ textarea {
   }
 }
 
-@media (max-width: 900px) {
+/* Portrait phone / cover: stack TV panes. Landscape must keep the row
+   (Fold cover landscape is ~788×308 — under 900px but wide enough for EN | ES | PT). */
+@media (max-width: 900px) and (orientation: portrait) {
   .tv-board[data-count="3"],
   .tv-topic-grid[data-count="3"] {
     grid-template-columns: 1fr;
@@ -966,6 +1010,100 @@ textarea {
 
   .tv-topic {
     max-height: none;
+  }
+
+  .phone-screen.is-smart-view .tv-topic {
+    max-height: min(28vh, 10rem);
+  }
+
+  /* Smart View portrait: equal-height rows so all panes stay visible. */
+  .phone-screen.is-smart-view .tv-board[data-count="2"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .phone-screen.is-smart-view .tv-board[data-count="3"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .phone-screen.is-smart-view .tv-topic-grid[data-count="2"],
+  .phone-screen.is-smart-view .tv-topic-grid[data-count="3"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* JS orientation flag (Fold / Samsung can lag `orientation` media queries). */
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-board[data-count="2"],
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-topic-grid[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-board[data-count="3"],
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-topic-grid[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] {
+  padding: 0.45rem 0.65rem 0;
+  gap: 0.4rem;
+}
+
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-board[data-count="2"] .line,
+.phone-screen.is-smart-view .smart-view-captions[data-orientation="landscape"] .tv-board[data-count="3"] .line {
+  font-size: clamp(0.95rem, 2.6vw, 1.85rem);
+}
+
+@media (orientation: landscape) {
+  .phone-screen.is-smart-view .smart-view-captions {
+    padding: 0.45rem 0.65rem 0;
+    gap: 0.4rem;
+  }
+
+  .phone-screen.is-smart-view .tv-top {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .phone-screen.is-smart-view .window {
+    padding: 0.5rem 0.65rem 0.55rem;
+    border-radius: 14px;
+  }
+
+  .phone-screen.is-smart-view .window-label {
+    margin-bottom: 0.28rem;
+    font-size: 0.68rem;
+  }
+
+  .phone-screen.is-smart-view .tv-board[data-count="2"] .line,
+  .phone-screen.is-smart-view .tv-board[data-count="3"] .line {
+    font-size: clamp(0.95rem, 2.6vw, 1.85rem);
+  }
+
+  .phone-screen.is-smart-view .tv-topic {
+    max-height: min(30vh, 7.5rem);
+    padding: 0.45rem 0.7rem 0.55rem;
+  }
+
+  .phone-screen.is-smart-view .smart-view-dock {
+    padding-top: 0.3rem;
+    padding-bottom: calc(0.25rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (orientation: landscape) and (max-height: 420px) {
+  .phone-screen.is-smart-view .smart-view-tip {
+    display: none;
+  }
+
+  .phone-screen.is-smart-view .smart-view-controls {
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .phone-screen.is-smart-view .smart-view-captions-only,
+  .phone-screen.is-smart-view .smart-view-mic,
+  .phone-screen.is-smart-view .smart-view-controls .secondary {
+    min-height: 40px;
+    padding: 0.3rem 0.75rem;
   }
 }
 

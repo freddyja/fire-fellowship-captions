@@ -213,6 +213,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const smartCaptions = root.querySelector(".smart-view-captions") as HTMLElement;
   const svBoard = root.querySelector("[data-sv-board]") as HTMLElement;
   const svTopic = root.querySelector("[data-sv-topic]") as HTMLElement;
+  const landscapeMq = window.matchMedia("(orientation: landscape)");
+
+  const syncSmartViewOrientation = () => {
+    const landscape = landscapeMq.matches || window.innerWidth > window.innerHeight;
+    smartCaptions.dataset.orientation = landscape ? "landscape" : "portrait";
+  };
 
   const els = {
     room: root.querySelector("[data-room]") as HTMLElement,
@@ -251,6 +257,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
     screen.classList.toggle("is-smart-view", smartViewMode);
     smartLayer.hidden = !smartViewMode;
+    if (smartViewMode) syncSmartViewOrientation();
     smartEnter.setAttribute("aria-pressed", String(smartViewMode));
     smartCaptions.classList.toggle("is-captions-only", captionsOnly);
     captionsOnlyBtn.classList.toggle("active", captionsOnly);
@@ -550,6 +557,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     void publishFinal(text, false);
   };
 
+  const onOrientationChange = () => syncSmartViewOrientation();
+  landscapeMq.addEventListener("change", onOrientationChange);
+  window.addEventListener("resize", onOrientationChange);
+  window.addEventListener("orientationchange", onOrientationChange);
+  syncSmartViewOrientation();
+
   els.mic.addEventListener("click", onMic);
   document.addEventListener("visibilitychange", onVisibility);
   sourceBox.addEventListener("click", onSource);
@@ -607,6 +620,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     releaseWake();
     conn?.close();
     window.clearTimeout(copyLabelTimer);
+    landscapeMq.removeEventListener("change", onOrientationChange);
+    window.removeEventListener("resize", onOrientationChange);
+    window.removeEventListener("orientationchange", onOrientationChange);
     document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
