@@ -54,8 +54,8 @@ export function mountHome(root: HTMLElement): () => void {
         "This is the installed Fire and Fellowship app. Create a room here, then open the TV link on the meeting TV.";
       installSteps.innerHTML = `
         <li>Tap <strong>Create room on this phone</strong>.</li>
-        <li>Tap <strong>Smart View</strong> to open system Cast / Samsung Smart View settings when Chrome allows it, then pick <strong>My TV</strong>. Chrome’s Cast list is Chromecast only — not Samsung My TV.</li>
-        <li>Or scan the QR / tap <strong>Copy TV link</strong> and open that link on the TV browser (same public URL, same room code).</li>
+        <li>Pick the topic of the day, then tap <strong>Send to TV</strong>.</li>
+        <li>On the TV browser, scan the QR or open the copied TV link. Keep the Fold on the mic page.</li>
       `;
       return;
     }

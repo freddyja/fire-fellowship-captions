@@ -22,44 +22,25 @@ Keep Chrome (or the installed PWA, which is Chrome) in the **foreground** while 
 
 ## Open on the TV (meeting night)
 
-The TV is a display. Open the TV caption page on the meeting TV (browser, QR, or a Cast-capable display). Any TV browser (or a laptop HDMI’d to the TV) works.
+The TV is a display. It uses its **own browser** for the big EN/ES/PT caption page. The Fold stays on topic + mic control. Do **not** use Samsung Smart View, Cast, or Presentation API mirroring — that mirrors the Fold, steals the mic page, and never shows the proper TV layout.
 
-### Smart View vs Chrome Cast (Galaxy Z Fold)
+### Send to TV (QR + link)
 
-Samsung **Smart View / My TV** and Chrome’s **Cast** list are different systems:
+1. On the Fold, open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
+2. Tap **Send to TV**. That stays on the mic page and shows:
+   - A large QR code of this room’s TV caption URL
+   - **Copy TV link**
+   - Short steps: on the TV browser, open this link or scan the QR; keep the Fold on the mic page
+3. On the TV browser, scan the QR or paste the copied link (`/?view=tv&room=ABCD`).
+4. **Open TV view** on the phone is only for testing on this device. It is not the meeting-night path.
 
-- **Samsung Smart View** (Quick Settings → Smart View, or Settings → Connected devices) lists **My TV** over Smart View / Miracast. That is the Fold’s usual way to pick a home Samsung TV.
-- **Chrome Presentation API** (`PresentationRequest.start()`, or older `navigator.presentation.requestSession`) only lists **Google Cast / Chromecast** receivers. A Samsung TV appears there only if it advertises built-in Cast — not because it is “My TV”.
+Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the **same public host**.
 
-The in-app **Smart View** button does **not** build a Samsung My TV list from the Presentation API alone.
+### Same room, two browsers
 
-**After you tap Smart View on Android (Chrome or the installed PWA):**
-
-1. The app tries to open the **system** Cast / Smart View UI via Android intents (needs the tap; Chrome only launches activities marked `BROWSABLE`):
-   - Galaxy first: `com.samsung.android.smartmirroring` (Smart View app)
-   - Then `android.settings.CAST_SETTINGS` (Android Cast / wireless display settings)
-   - Then `android.settings.WIFI_DISPLAY_SETTINGS` (older wireless display)
-   - Chrome follows `S.browser_fallback_url` if the previous intent cannot launch. SmartThings is not used — it does not open the Smart View picker in one tap.
-2. It still starts the Presentation API so a **Cast / Chromecast** TV can be chosen if Chrome sees one.
-3. If Presentation returns no screens or fails, the phone says plainly that Chrome’s Cast list is not Samsung My TV, and keeps **Copy TV link**, **Open TV view**, and a **QR code** of the TV caption URL.
-
-If Chrome cannot launch those intents, swipe down the shade → **Smart View** and pick the TV there.
-
-System Smart View usually **mirrors the Fold**. For the big EN/ES/PT caption windows without mirroring, open the TV caption link on the TV browser (copy, QR, or room code). If a Cast-capable TV *does* appear in Chrome’s picker, choosing it presents the caption page on that display.
-
-### Fold meeting-night steps
-
-1. Open Fire and Fellowship in **Chrome** (or the Chrome-installed app) and create a room.
-2. Tap **Smart View**. If system Cast / Smart View settings open, pick **My TV**. If Chrome then shows a Cast picker, that list is Chromecast only — dismiss it if My TV is not there.
-3. If My TV still does not appear: swipe down → **Smart View** → choose the TV.
-4. Or scan the on-phone QR / tap **Copy TV link** and open that link on the TV browser.
-5. Pick **Topic of the day**, then use the mic (or type a caption).
-
-### TV browser (fallback)
-
-1. On the Fold app, note the 4-letter room code, tap **Copy TV link**, or scan the QR.
+1. On the Fold app, note the 4-letter room code, or tap **Send to TV** → **Copy TV link**.
 2. On the TV browser, open the **same public URL**.
-3. Enter the room code and tap **Open TV windows**, or paste the copied TV link (`/?view=tv&room=ABCD`).
+3. Enter the room code and tap **Open TV windows**, or paste the copied TV link.
 4. On the Fold, pick **Topic of the day** (try **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse and handout above the caption windows.
 5. Tap the mic on the Fold and speak (or type a caption). Captions should appear on the TV in the layout you chose:
    - One language, full-screen
@@ -177,8 +158,7 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 
 ## Galaxy Z Fold 7 + Chrome
 
-- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech, offer a solid install, or launch Android Cast / Smart View intents.
-- In-app **Smart View** opens system Cast / Smart View settings when Chrome allows it, then still tries Chrome Cast. It will not list Samsung **My TV** from the Presentation API alone. Fall back to Quick Settings → Smart View, the QR, or **Copy TV link**.
+- Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install. Use **Send to TV** (QR / copy link) — do not launch system Smart View or Cast.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.
@@ -289,7 +269,6 @@ npm start            # production server: static PWA + relay (use after build)
 npm run preview      # Vite preview + same relay (local production bundle)
 npm run verify:prod       # PWA + relay checks (optional public URL argument)
 npm run verify:translate  # DeepL/MyMemory selection + EN/ES/PT live pairs
-npm run verify:smart-view # Android intents, Cast vs My TV copy, QR SVG
 ```
 
 Local LAN Fold testing still works with `npm run dev` (Chrome will warn about the self-signed certificate — **Advanced → Proceed**). Meeting night should use the public HTTPS URL so there is no laptop in the loop.

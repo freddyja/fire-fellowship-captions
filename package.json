@@ -11,7 +11,6 @@
     "start": "node --experimental-strip-types server/index.ts",
     "verify:prod": "node scripts/verify-production.mjs",
     "verify:translate": "node --experimental-strip-types scripts/verify-translate.mjs",
-    "verify:smart-view": "node --experimental-strip-types scripts/verify-smart-view.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },
   "engines": {

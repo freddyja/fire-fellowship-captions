@@ -1,15 +1,8 @@
 import { brandBlock } from "../brand";
 import { escapeHtml } from "../dom";
+import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
-import { tvQrSvg } from "../qr";
-import {
-  bindDefaultPresentation,
-  clearDefaultPresentation,
-  smartViewMessage,
-  smartViewWorkingLabel,
-  startSmartView,
-} from "../smart-view";
 import { createWebSpeechProvider } from "../stt/web-speech";
 import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
@@ -51,7 +44,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let seq = 0;
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
-  let smartNote = "";
+  let copyLabelTimer = 0;
 
   const push = () => conn?.push(state);
 
@@ -109,25 +102,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">On this phone</p>
               <p data-preview></p>
             </div>
-            <div class="smart-view-box">
-              <p class="hint smart-view-lede">
-                <strong>Smart View</strong> tries Android Cast / Samsung Smart View settings — not Chrome’s Cast list.
-                That Cast list is Chromecast only; it is not Samsung <strong>My TV</strong>.
-              </p>
-              <div class="row-actions">
-                <button class="primary" data-smart-view type="button" aria-label="Open system Smart View or Cast settings">
-                  Smart View
-                </button>
-                <button class="ghost" data-open-tv type="button">Open TV view</button>
-                <button class="ghost" data-copy type="button">Copy TV link</button>
-                <button class="ghost" data-clear type="button">Clear windows</button>
-                <button class="ghost" data-home type="button">Leave</button>
-              </div>
-              <p class="hint smart-view-note" data-smart-view-note></p>
-              <figure class="tv-qr">
-                <div class="tv-qr-code" data-tv-qr role="img" aria-label="QR code for the TV caption page"></div>
-                <figcaption>Scan to open the TV caption page</figcaption>
-              </figure>
+            <div class="row-actions">
+              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" aria-label="Send to TV — show QR and TV caption link">
+                Send to TV
+              </button>
+              <button class="ghost" data-clear type="button">Clear windows</button>
+              <button class="ghost" data-home type="button">Leave</button>
             </div>
             <form class="typed-caption" data-type>
               <input name="caption" autocomplete="off" enterkeyhint="send" placeholder="Or type a caption" />
@@ -136,6 +116,25 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           </div>
         </div>
       </div>
+
+      <dialog class="send-tv-dialog" id="send-tv-dialog" data-send-tv-dialog aria-labelledby="send-tv-title">
+        <div class="send-tv-sheet">
+          <header class="send-tv-head">
+            <h2 id="send-tv-title">Send to TV</h2>
+            <button class="ghost send-tv-close" data-send-tv-close type="button">Close</button>
+          </header>
+          <div class="send-tv-qr" data-send-tv-qr></div>
+          <p class="send-tv-url" data-send-tv-url></p>
+          <button class="primary send-tv-copy" data-copy type="button">Copy TV link</button>
+          <ol class="send-tv-steps">
+            <li>On the TV browser, open this link or scan the QR.</li>
+            <li>Keep the Fold on the mic page.</li>
+          </ol>
+          <button class="ghost send-tv-open" data-open-tv type="button" aria-label="Open TV view on this device for testing">
+            Open TV view
+          </button>
+        </div>
+      </dialog>
     </section>
   `;
 
@@ -156,7 +155,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   ).join("");
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
-
+  const sendBtn = root.querySelector("[data-send-tv]") as HTMLButtonElement;
+  const sendDialog = root.querySelector("[data-send-tv-dialog]") as HTMLDialogElement;
+  const qrBox = root.querySelector("[data-send-tv-qr]") as HTMLElement;
+  const urlEl = root.querySelector("[data-send-tv-url]") as HTMLElement;
+  const copyBtn = root.querySelector("[data-copy]") as HTMLButtonElement;
 
   const els = {
     room: root.querySelector("[data-room]") as HTMLElement,
@@ -167,7 +170,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     error: root.querySelector("[data-error]") as HTMLElement,
     preview: root.querySelector("[data-preview]") as HTMLElement,
     topicInput: topicForm.elements.namedItem("topic") as HTMLInputElement,
-    smartNote: root.querySelector("[data-smart-view-note]") as HTMLElement,
   };
 
   function renderDynamic() {
@@ -180,7 +182,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     els.mic.setAttribute("aria-pressed", String(state.listening));
     els.micLabel.textContent = state.listening ? "Stop" : "Start";
     els.error.textContent = error;
-    els.smartNote.textContent = smartNote;
     const last = state.lines.at(-1);
     els.preview.textContent = last?.text[state.sourceLang] || "Captions will appear here and on the TV.";
     els.preview.classList.toggle("interim", Boolean(last && !last.isFinal));
@@ -306,20 +307,49 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     applyTopic(resolveTopic(query));
   };
 
-  const onSmartView = async () => {
-    smartNote = smartViewWorkingLabel();
-    renderDynamic();
-    smartNote = smartViewMessage(await startSmartView(tvUrl(room)));
-    renderDynamic();
+  const paintSendTv = () => {
+    const url = tvUrl(room);
+    qrBox.innerHTML = tvQrSvg(url);
+    urlEl.textContent = url;
   };
+
+  const onSendTv = () => {
+    paintSendTv();
+    copyBtn.textContent = "Copy TV link";
+    sendBtn.setAttribute("aria-expanded", "true");
+    if (typeof sendDialog.showModal === "function") sendDialog.showModal();
+    else sendDialog.setAttribute("open", "");
+  };
+
+  const onCloseSendTv = () => {
+    sendBtn.setAttribute("aria-expanded", "false");
+    if (typeof sendDialog.close === "function" && sendDialog.open) sendDialog.close();
+    else sendDialog.removeAttribute("open");
+  };
+
+  const onDialogClose = () => {
+    sendBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const onDialogClick = (event: Event) => {
+    if (event.target === sendDialog) onCloseSendTv();
+  };
+
   const onOpenTv = () => window.open(tvUrl(room), "ff-tv", "noopener");
   const onCopy = async () => {
+    const url = tvUrl(room);
     try {
-      await navigator.clipboard.writeText(tvUrl(room));
+      await navigator.clipboard.writeText(url);
       error = "TV link copied.";
+      copyBtn.textContent = "Copied";
+      window.clearTimeout(copyLabelTimer);
+      copyLabelTimer = window.setTimeout(() => {
+        copyBtn.textContent = "Copy TV link";
+      }, 1600);
       renderDynamic();
     } catch {
-      error = tvUrl(room);
+      error = url;
+      copyBtn.textContent = "Copy TV link";
       renderDynamic();
     }
   };
@@ -345,14 +375,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   topicBox.addEventListener("click", onTopicChip);
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
-  bindDefaultPresentation(tvUrl(room));
-  const qr = root.querySelector("[data-tv-qr]") as HTMLElement;
-  qr.innerHTML = tvQrSvg(tvUrl(room));
-  root.querySelector("[data-smart-view]")?.addEventListener("click", () => {
-    void onSmartView();
-  });
+  sendBtn.addEventListener("click", onSendTv);
+  root.querySelector("[data-send-tv-close]")?.addEventListener("click", onCloseSendTv);
+  sendDialog.addEventListener("click", onDialogClick);
+  sendDialog.addEventListener("close", onDialogClose);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
-  root.querySelector("[data-copy]")?.addEventListener("click", onCopy);
+  copyBtn.addEventListener("click", onCopy);
   root.querySelector("[data-clear]")?.addEventListener("click", onClear);
   root.querySelector("[data-home]")?.addEventListener("click", onHome);
   typeForm.addEventListener("submit", onType);
@@ -383,16 +411,20 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   return () => {
     speech.stop();
     releaseWake();
-    clearDefaultPresentation();
     conn?.close();
     window.clearTimeout(interimTimer);
+    window.clearTimeout(copyLabelTimer);
     document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
     layoutBox.removeEventListener("click", onLayout);
     topicBox.removeEventListener("click", onTopicChip);
     topicForm.removeEventListener("submit", onTopicForm);
+    sendDialog.removeEventListener("click", onDialogClick);
+    sendDialog.removeEventListener("close", onDialogClose);
+    sendBtn.removeEventListener("click", onSendTv);
     typeForm.removeEventListener("submit", onType);
+    onCloseSendTv();
   };
 }
 
