@@ -5,7 +5,9 @@ import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
 import { createWebSpeechProvider } from "../stt/web-speech";
-import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
+import { requestTopicHandout } from "../topic-ask";
+import { renderTopicHandout } from "../topic-layout";
+import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
@@ -23,6 +25,7 @@ import {
   type RoomState,
   type TopicContent,
 } from "../types";
+
 const micIcon = `
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
   <rect x="9" y="3" width="6" height="11" rx="3"/>
@@ -45,6 +48,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let copyLabelTimer = 0;
   let smartViewMode = false;
   let liveInterim = "";
+  let askBusy = false;
+  let askQuery = "";
+  let askAbort: AbortController | null = null;
 
   const push = () => conn?.push(state);
 
@@ -71,9 +77,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">Topic of the day <button class="ghost topic-clear" data-clear-topic type="button">Clear</button></p>
               <div class="chips" data-topics></div>
               <form class="topic-insert" data-topic-form>
-                <input name="topic" autocomplete="off" enterkeyhint="search" placeholder="Insert or search a topic or verse" />
-                <button class="secondary" type="submit">Set</button>
+                <input name="topic" autocomplete="off" enterkeyhint="go" placeholder="head of household, contentment, forgiveness…" />
+                <button class="primary topic-ask" data-ask type="submit">Ask for topic</button>
+                <button class="secondary" data-set-topic type="button">Set</button>
               </form>
+              <p class="hint topic-ask-status" data-ask-status>Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.</p>
               <div class="topic-preview" data-topic-preview></div>
             </div>
           </div>
@@ -172,6 +180,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const topicBox = root.querySelector("[data-topics]") as HTMLElement;
   const topicForm = root.querySelector("[data-topic-form]") as HTMLFormElement;
   const topicPreview = root.querySelector("[data-topic-preview]") as HTMLElement;
+  const askBtn = root.querySelector("[data-ask]") as HTMLButtonElement;
+  const setBtn = root.querySelector("[data-set-topic]") as HTMLButtonElement;
+  const askStatus = root.querySelector("[data-ask-status]") as HTMLElement;
   sourceBox.innerHTML = LANGS.map(
     (lang) => `<button class="chip" type="button" data-lang="${lang}">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
   ).join("");
@@ -260,7 +271,17 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     for (const btn of topicBox.querySelectorAll<HTMLButtonElement>("[data-topic]")) {
       btn.classList.toggle("active", state.topic?.id === btn.dataset.topic);
     }
-    topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
+    askBtn.disabled = askBusy;
+    askBtn.textContent = askBusy ? "Writing…" : "Ask for topic";
+    els.topicInput.disabled = askBusy;
+    setBtn.disabled = askBusy;
+    if (askBusy) {
+      askStatus.innerHTML = `Writing a handout for “${escapeHtml(askQuery)}”… <button class="ghost topic-ask-cancel" data-cancel-ask type="button">Cancel</button>`;
+      topicPreview.innerHTML = `<p class="hint">Hang on — verse, hook, teaching, and discussion questions are coming.</p>`;
+    } else {
+      askStatus.innerHTML = `Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.`;
+      topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
+    }
   }
 
   function setLiveInterim(text: string) {
@@ -357,9 +378,17 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     setState({ ...state, layout: btn.dataset.layout as Layout });
   };
 
+  const cancelAsk = () => {
+    askAbort?.abort();
+    askAbort = null;
+    askBusy = false;
+    askQuery = "";
+  };
+
   const applyTopic = (topic: TopicContent | null) => {
     error = "";
-    els.topicInput.value = topic && topic.id === "custom" ? topic.title.en : "";
+    cancelAsk();
+    els.topicInput.value = topic && (topic.id === "custom" || topic.id.startsWith("asked-")) ? topic.title.en : "";
     setState({ ...state, topic });
   };
 
@@ -374,12 +403,58 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const onTopicForm = (event: Event) => {
     event.preventDefault();
+    onAskTopic();
+  };
+
+  const onSetTopic = () => {
     const query = els.topicInput.value.trim();
     if (!query) {
       applyTopic(null);
       return;
     }
     applyTopic(resolveTopic(query));
+  };
+
+  const onAskTopic = () => {
+    const query = els.topicInput.value.trim();
+    if (!query) {
+      error = "Type a topic first — head of household, contentment, forgiveness…";
+      els.topicInput.focus();
+      renderDynamic();
+      return;
+    }
+    const seed = resolveTopic(query);
+    if (seed && seed.id !== "custom" && seed.reference) {
+      applyTopic(seed);
+      return;
+    }
+    error = "";
+    askAbort?.abort();
+    askAbort = new AbortController();
+    askBusy = true;
+    askQuery = query;
+    renderDynamic();
+    const signal = askAbort.signal;
+    void requestTopicHandout(query, signal)
+      .then((topic) => {
+        if (signal.aborted) return;
+        applyTopic(topic);
+      })
+      .catch((err: unknown) => {
+        if (signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
+        askBusy = false;
+        askQuery = "";
+        error = err instanceof Error ? err.message : "Could not write that handout.";
+        renderDynamic();
+      });
+  };
+
+  const onCancelAsk = (event: Event) => {
+    const btn = (event.target as HTMLElement).closest("[data-cancel-ask]");
+    if (!btn) return;
+    cancelAsk();
+    error = "";
+    renderDynamic();
   };
 
   const paintSendTv = () => {
@@ -463,6 +538,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   topicBox.addEventListener("click", onTopicChip);
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
+  setBtn.addEventListener("click", onSetTopic);
+  askStatus.addEventListener("click", onCancelAsk);
   sendBtn.addEventListener("click", onSendTv);
   smartEnter.addEventListener("click", onEnterSmartView);
   smartExit.addEventListener("click", onExitSmartView);
@@ -486,7 +563,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         ...next,
         room,
         listening: false,
-        topic: next.topic ?? null,
+        topic: normalizeTopic(next.topic),
         lines: finalizedLines(next.lines ?? []),
       };
       speech.setLang(speechLocale(state.sourceLang));
@@ -516,6 +593,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     layoutBox.removeEventListener("click", onLayout);
     topicBox.removeEventListener("click", onTopicChip);
     topicForm.removeEventListener("submit", onTopicForm);
+    setBtn.removeEventListener("click", onSetTopic);
+    askStatus.removeEventListener("click", onCancelAsk);
+    cancelAsk();
     sendDialog.removeEventListener("click", onDialogClick);
     sendDialog.removeEventListener("close", onDialogClose);
     sendBtn.removeEventListener("click", onSendTv);
@@ -529,14 +609,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
 function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {
   if (!hasTopicBody(topic) || !topic) {
-    return `<p class="hint">Pick a topic or insert one. Verse and handout go to the TV.</p>`;
+    return `<p class="hint">Tap a chip, or type a theme and Ask for topic. The verse and teaching go to the TV.</p>`;
   }
+  const title = localized(topic.title, lang);
   const verse = localized(topic.verse, lang);
-  const prompt = localized(topic.prompt, lang);
   return `
-    <p class="topic-preview-title">${escapeHtml(localized(topic.title, lang))}</p>
-    ${topic.reference ? `<p class="topic-preview-ref">${escapeHtml(topic.reference)}</p>` : ""}
-    ${verse ? `<p class="topic-preview-verse">${escapeHtml(verse)}</p>` : "<p class=\"hint\">No built-in verse for this custom topic.</p>"}
-    <p class="topic-preview-prompt">${escapeHtml(prompt)}</p>
+    ${title ? `<p class="topic-preview-kicker">${escapeHtml(title)}</p>` : ""}
+    ${renderTopicHandout(topic, lang)}
+    ${!verse && topic.id === "custom" ? `<p class="hint">No built-in verse for this custom topic.</p>` : ""}
   `;
 }

@@ -1,5 +1,6 @@
 import { finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
+import { renderTopicHandout } from "../topic-layout";
 import { hasTopicBody, localized } from "../topics";
 import {
   LANG_LABEL,
@@ -48,14 +49,13 @@ function renderWindow(lang: Lang, lines: CaptionLine[], live?: LiveCaption | nul
   `;
 }
 
-function renderTopicCard(topic: TopicContent, lang: Lang): string {
+function renderTopicCard(topic: TopicContent, lang: Lang, showLang: boolean): string {
   const verse = localized(topic.verse, lang);
-  const prompt = localized(topic.prompt, lang);
   return `
     <article class="tv-handout" lang="${lang}">
-      <h3>${LANG_SHORT[lang]}</h3>
-      ${verse ? `<p class="tv-verse">${escapeHtml(verse)}</p>` : `<p class="tv-verse muted">Verse can be added for this topic.</p>`}
-      <p class="tv-prompt">${escapeHtml(prompt)}</p>
+      ${showLang ? `<h3>${LANG_SHORT[lang]}</h3>` : ""}
+      ${renderTopicHandout(topic, lang)}
+      ${!verse ? `<p class="tv-verse muted">Verse can be added for this topic.</p>` : ""}
     </article>
   `;
 }
@@ -63,13 +63,9 @@ function renderTopicCard(topic: TopicContent, lang: Lang): string {
 function renderTopic(topic: TopicContent, langs: Lang[]): string {
   const title = localized(topic.title, langs[0] ?? "en");
   return `
-    <div class="tv-topic-kicker">Topic of the day</div>
-    <div class="tv-topic-head">
-      <h2 class="tv-topic-title">${escapeHtml(title)}</h2>
-      ${topic.reference ? `<p class="tv-topic-ref">${escapeHtml(topic.reference)}</p>` : ""}
-    </div>
+    <div class="tv-topic-kicker">Topic of the day${title ? ` · ${escapeHtml(title)}` : ""}</div>
     <div class="tv-topic-grid" data-count="${langs.length}">
-      ${langs.map((lang) => renderTopicCard(topic, lang)).join("")}
+      ${langs.map((lang) => renderTopicCard(topic, lang, langs.length > 1)).join("")}
     </div>
   `;
 }

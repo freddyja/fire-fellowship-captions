@@ -9,6 +9,10 @@ export type TopicContent = {
   title: Localized;
   reference: string;
   verse: Localized;
+  hook: Localized;
+  body: Localized;
+  discussionQuestions: Localized[];
+  /** Short prompt kept so older room state and custom topics still render. */
   prompt: Localized;
 };
 

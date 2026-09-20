@@ -48,9 +48,9 @@ async function connect(role, room) {
   return { ws, inbox };
 }
 
-async function waitFor(inbox, type) {
+async function waitFor(inbox, type, match) {
   for (let i = 0; i < 40; i += 1) {
-    const hit = inbox.find((msg) => msg.type === type);
+    const hit = inbox.find((msg) => msg.type === type && (!match || match(msg)));
     if (hit) return hit;
     await delay(50);
   }
@@ -85,6 +85,7 @@ async function main() {
       health.translate === "google",
     "health.translate",
   );
+  assert(health.topic === "openai" || health.topic === "offline", "health.topic");
 
   const home = await text("/");
   assert(home.body.includes("Fire and Fellowship"), "home shell");
@@ -98,6 +99,9 @@ async function main() {
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
   const { body: appJs } = await text(scriptSrc);
+  assert(appJs.includes("Ask for topic"), "phone Ask for topic button");
+  assert(appJs.includes("Discussion Questions:"), "topic discussion heading");
+  assert(appJs.includes("Paul didn't wake up content"), "contentment hook in seeds");
   assert(appJs.includes("Send to TV"), "phone Send to TV button");
   assert(appJs.includes("Open TV view"), "optional Open TV view");
   assert(appJs.includes("Copy TV link"), "copy TV link");
@@ -135,6 +139,7 @@ async function main() {
   assert(sw.includes('addEventListener("fetch"'), "service worker fetch handler");
   assert(sw.includes("/caption-ws"), "service worker skips relay");
   assert(sw.includes("/api/translate"), "service worker skips translate API");
+  assert(sw.includes("/api/topic-handout"), "service worker skips topic handout API");
 
   const translateStatus = await json("/api/translate");
   assert(translateStatus.provider === health.translate, "GET /api/translate provider");
@@ -165,19 +170,64 @@ async function main() {
     JSON.stringify(translated).includes("AIza");
   assert(!leaked, "translate response must not include a key");
 
+  const topicStatus = await json("/api/topic-handout");
+  assert(topicStatus.provider === health.topic, "GET /api/topic-handout provider");
+
+  const seedHandoutRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "contentment" }),
+  });
+  assert(seedHandoutRes.ok, "POST /api/topic-handout contentment");
+  const seedHandout = await seedHandoutRes.json();
+  assert(seedHandout.provider === "seed", "contentment uses seed");
+  assert(seedHandout.topic?.id === "contentment", "contentment seed id");
+  assert(String(seedHandout.topic?.reference).includes("Philippians 4:11"), "contentment reference");
+
+  const askedRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "head of household" }),
+  });
+  assert(askedRes.ok, "POST /api/topic-handout household");
+  const asked = await askedRes.json();
+  assert(asked.provider === "seed", "head of household uses seed");
+  assert(asked.topic?.id === "head-of-household", "head of household seed id");
+  assert(String(asked.topic?.reference).includes("Ephesians 5:23"), "headship reference");
+  assert(String(asked.topic?.verse?.en || "").includes("husband is the head of the wife"), "headship KJV");
+  assert(Boolean(asked.topic?.hook?.en), "headship hook");
+  assert((asked.topic?.discussionQuestions || []).length >= 2, "headship questions");
+
+  const generatedRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "anxiety and peace" }),
+  });
+  assert(generatedRes.ok, "POST /api/topic-handout anxiety");
+  const generated = await generatedRes.json();
+  assert(generated.provider === "offline" || generated.provider === "openai", "generated provider");
+  assert(String(generated.topic?.id || "").startsWith("asked-"), "generated id");
+  assert(Boolean(generated.topic?.reference), "generated reference");
+  assert(String(generated.topic?.verse?.en || "").length > 30, "generated verse present");
+  assert(Boolean(generated.topic?.hook?.en), "generated hook");
+  assert(Boolean(generated.topic?.body?.en), "generated body");
+  assert((generated.topic?.discussionQuestions || []).length >= 2, "generated questions");
+  const askedLeak = JSON.stringify(generated).includes("OPENAI_API_KEY") || JSON.stringify(generated).includes("sk-");
+  assert(!askedLeak, "topic handout must not include a key");
+
   for (const icon of ["/icon-192.png", "/icon-512.png", "/icon-192-maskable.png", "/icon-512-maskable.png"]) {
     const res = await fetch(`${base}${icon}`);
     assert(res.ok, icon);
     assert(res.headers.get("content-type")?.includes("png"), `${icon} content-type`);
   }
 
-  const phoneWs = await connect("phone", "ABCD");
-  const tvWs = await connect("tv", "ABCD");
+  const phoneWs = await connect("phone", "GN7K");
+  const tvWs = await connect("tv", "GN7K");
   await waitFor(phoneWs.inbox, "joined");
   await waitFor(tvWs.inbox, "joined");
 
   const topicState = {
-    room: "ABCD",
+    room: "GN7K",
     sourceLang: "en",
     layout: "en-es-pt",
     listening: false,
@@ -187,17 +237,24 @@ async function main() {
       title: { en: "Brotherhood", es: "Fraternidad", pt: "Irmandade" },
       reference: "Proverbs 27:17",
       verse: { en: "Iron sharpens iron.", es: "Hierro con hierro se aguza.", pt: "O ferro com o ferro se afia." },
+      hook: { en: "A dull man is usually a lonely man.", es: "", pt: "" },
+      body: { en: "Iron does not sharpen iron from across the room.", es: "", pt: "" },
+      discussionQuestions: [{ en: "Who is sharpening you?", es: "", pt: "" }],
       prompt: { en: "Talk.", es: "Hablen.", pt: "Falemos." },
     },
   };
   phoneWs.ws.send(JSON.stringify({ type: "push", state: topicState }));
-  const delivered = await waitFor(tvWs.inbox, "state");
+  const delivered = await waitFor(
+    tvWs.inbox,
+    "state",
+    (msg) => msg.state?.topic?.id === "brotherhood",
+  );
   assert(delivered.state?.topic?.id === "brotherhood", "topic of the day reached TV");
   assert(delivered.state?.topic?.reference === "Proverbs 27:17", "verse reference reached TV");
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, translate=${health.translate}`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()

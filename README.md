@@ -57,7 +57,7 @@ Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when y
 1. On the Fold app, note the 4-letter room code, or tap **Send to TV** → **Copy TV link**.
 2. On the TV browser, open the **same public URL**.
 3. Enter the room code and tap **Open TV windows**, or paste the copied TV link.
-4. On the Fold, pick **Topic of the day** (try **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse and handout above the caption windows.
+4. On the Fold, pick **Topic of the day** (try **Contentment** or **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse, hook, teaching, and discussion questions above the caption windows.
 5. Tap the mic on the Fold and speak (or type a caption). Captions should appear on the TV in the layout you chose:
    - One language, full-screen
    - Dual columns (`EN | ES`, `EN | PT`, or `ES | PT`)
@@ -160,18 +160,25 @@ If the TV stays on **Waiting for phone**, you are on two different hosts or more
 
 Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only displays it. This is unchanged in production: the phone pushes room state over the relay, including `topic`.
 
-**Pick:** tap a built-in topic (Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials).
+**Pick:** tap a built-in topic (Contentment, Head of the household, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview, Smart View topic band, and TV handout use the same layout: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching paragraphs, then numbered **Discussion Questions**.
 
-**Insert / search:** type a name or reference and tap **Set**. Examples that resolve to seed data:
+**Ask for topic:** type a theme in the box (`head of household`, `contentment`, `forgiveness`) and tap **Ask for topic** (or press Enter). That is the main action — it finds a seeded sheet when one matches, otherwise the server writes a handout. Loading + Cancel are available. The sheet is set as the room topic and pushed to the TV / Smart View.
 
+**Set:** still there for a typed title that should go to the TV as-is if you do not want a generated sheet.
+
+Examples that resolve to seed data:
+
+- `head of household`
+- `headship`
+- `husband`
+- `contentment`
+- `Philippians 4:11-12`
 - `brotherhood`
-- `iron`
 - `Proverbs 27:17`
-- `Joshua 1:9`
 
-If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **Clear** to remove it.
+Generated sheets are English-first. If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from a curated public-domain KJV catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
 
-Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys).
+Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`, `body`, `discussionQuestions`) keep English first and fall back to English when a translation is empty. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys). To add verses the generator can pick, change `server/scripture-catalog.ts`.
 
 ## Galaxy Z Fold 7 + Chrome
 
@@ -216,8 +223,10 @@ The phone translates **before** it sends captions to the TV. The Fold calls `POS
 | *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory. No key. Demo / fallback path. |
 | `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
 | `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then mock. |
+| *(unset)* `OPENAI_API_KEY` | Offline “Ask for topic” generator. Curated KJV + templates. |
+| `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) | Better teaching text. Verse wording still comes from the KJV catalog. Falls back offline if the call fails. |
 
-`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
+`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"`, and `"topic": "openai"` or `"offline"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
 
 ```bash
 # Meeting night — DeepL Free (set your real key; do not invent one)
