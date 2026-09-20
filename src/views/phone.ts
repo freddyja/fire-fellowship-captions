@@ -47,6 +47,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
   let smartViewMode = false;
+  let captionsOnly = readCaptionsOnlyPref();
   let liveInterim = "";
   let askBusy = false;
   let askQuery = "";
@@ -163,6 +164,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <div class="smart-view-dock">
             <p class="smart-view-tip">Now open system Smart View → My TV. TV will mirror these captions.</p>
             <div class="smart-view-controls">
+              <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="true" aria-label="Captions only — hide the topic handout on this mirrored view">
+                Captions only
+              </button>
               <button class="smart-view-mic" data-smart-mic type="button" aria-pressed="false">
                 ${micIcon}
                 <small data-smart-mic-label>Start</small>
@@ -205,6 +209,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const smartEnter = root.querySelector("[data-smart-view-mode]") as HTMLButtonElement;
   const smartExit = root.querySelector("[data-exit-smart-view]") as HTMLButtonElement;
   const smartMic = root.querySelector("[data-smart-mic]") as HTMLButtonElement;
+  const captionsOnlyBtn = root.querySelector("[data-captions-only]") as HTMLButtonElement;
+  const smartCaptions = root.querySelector(".smart-view-captions") as HTMLElement;
   const svBoard = root.querySelector("[data-sv-board]") as HTMLElement;
   const svTopic = root.querySelector("[data-sv-topic]") as HTMLElement;
 
@@ -246,6 +252,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     screen.classList.toggle("is-smart-view", smartViewMode);
     smartLayer.hidden = !smartViewMode;
     smartEnter.setAttribute("aria-pressed", String(smartViewMode));
+    smartCaptions.classList.toggle("is-captions-only", captionsOnly);
+    captionsOnlyBtn.classList.toggle("active", captionsOnly);
+    captionsOnlyBtn.setAttribute("aria-pressed", String(captionsOnly));
     smartMic.classList.toggle("hot", state.listening);
     smartMic.setAttribute("aria-pressed", String(state.listening));
     els.smartMicLabel.textContent = state.listening ? "Stop" : "Start";
@@ -260,6 +269,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         { ...state, lines: finalizedLines(state.lines) },
         liveInterim ? { text: liveInterim, sourceLang: state.sourceLang } : null,
       );
+      if (captionsOnly) {
+        svTopic.hidden = true;
+        svTopic.innerHTML = "";
+      }
     }
 
     for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
@@ -472,6 +485,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onEnterSmartView = () => setSmartViewMode(true);
   const onExitSmartView = () => setSmartViewMode(false);
 
+  const onCaptionsOnly = () => {
+    captionsOnly = !captionsOnly;
+    writeCaptionsOnlyPref(captionsOnly);
+    renderDynamic();
+  };
+
   const onSendTv = () => {
     paintSendTv();
     copyBtn.textContent = "Copy TV link";
@@ -543,6 +562,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   sendBtn.addEventListener("click", onSendTv);
   smartEnter.addEventListener("click", onEnterSmartView);
   smartExit.addEventListener("click", onExitSmartView);
+  captionsOnlyBtn.addEventListener("click", onCaptionsOnly);
   smartMic.addEventListener("click", onMic);
   root.querySelector("[data-send-tv-close]")?.addEventListener("click", onCloseSendTv);
   sendDialog.addEventListener("click", onDialogClick);
@@ -601,10 +621,32 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     sendBtn.removeEventListener("click", onSendTv);
     smartEnter.removeEventListener("click", onEnterSmartView);
     smartExit.removeEventListener("click", onExitSmartView);
+    captionsOnlyBtn.removeEventListener("click", onCaptionsOnly);
     smartMic.removeEventListener("click", onMic);
     typeForm.removeEventListener("submit", onType);
     onCloseSendTv();
   };
+}
+
+const CAPTIONS_ONLY_KEY = "ff-smart-view-captions-only";
+
+function readCaptionsOnlyPref(): boolean {
+  try {
+    const stored = sessionStorage.getItem(CAPTIONS_ONLY_KEY);
+    if (stored === "0") return false;
+    if (stored === "1") return true;
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return true;
+}
+
+function writeCaptionsOnlyPref(value: boolean) {
+  try {
+    sessionStorage.setItem(CAPTIONS_ONLY_KEY, value ? "1" : "0");
+  } catch {
+    /* private mode / blocked storage */
+  }
 }
 
 function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {

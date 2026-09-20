@@ -109,6 +109,7 @@ async function main() {
   assert(appJs.includes("QR code for the TV caption page"), "TV QR code");
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
+  assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
   assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
     "Smart View mode tip",
