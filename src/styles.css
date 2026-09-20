@@ -237,12 +237,11 @@ textarea {
   border-radius: 22px;
   padding: 0.75rem 1.1rem 0.9rem;
   box-shadow: var(--shadow);
-  flex: 0 0 auto;
-  max-height: min(48vh, 34rem);
-  overflow: hidden;
+  flex: 0 1 auto;
+  max-height: min(52vh, 36rem);
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .tv-topic[hidden],
@@ -263,8 +262,6 @@ textarea {
 .tv-topic-grid {
   display: grid;
   gap: 0.85rem;
-  flex: 1;
-  min-height: 0;
 }
 
 .tv-topic-grid[data-count="1"] {
@@ -286,7 +283,6 @@ textarea {
 
 .tv-handout {
   min-width: 0;
-  min-height: 0;
   overflow: auto;
   text-align: left;
 }

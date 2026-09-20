@@ -509,6 +509,20 @@ export function localized(value: Partial<Localized> | undefined, lang: Lang): st
   return value[lang]?.trim() || value.en?.trim() || "";
 }
 
+/** Never leave ES/PT blank when English exists — columns must not render empty. */
+export function completeLocalized(value: Partial<Localized> | string | undefined): Localized {
+  if (typeof value === "string") {
+    const text = value.trim();
+    return { en: text, es: text, pt: text };
+  }
+  const en = value?.en?.trim() || "";
+  return {
+    en,
+    es: value?.es?.trim() || en,
+    pt: value?.pt?.trim() || en,
+  };
+}
+
 export function customTopic(title: string): TopicContent {
   const trimmed = title.trim();
   return {
@@ -554,18 +568,19 @@ export function hasTopicBody(topic: TopicContent | null | undefined): boolean {
 
 export function normalizeTopic(topic: TopicContent | null | undefined): TopicContent | null {
   if (!topic || !hasTopicBody(topic)) return topic ?? null;
+  const questions = topic.discussionQuestions?.length
+    ? topic.discussionQuestions
+    : topic.prompt
+      ? [topic.prompt]
+      : [CUSTOM_PROMPT];
   return {
     id: topic.id,
-    title: topic.title,
+    title: completeLocalized(topic.title),
     reference: topic.reference ?? "",
-    verse: topic.verse ?? EMPTY,
-    hook: topic.hook ?? EMPTY,
-    body: topic.body ?? EMPTY,
-    discussionQuestions: topic.discussionQuestions?.length
-      ? topic.discussionQuestions
-      : topic.prompt
-        ? [topic.prompt]
-        : [CUSTOM_PROMPT],
-    prompt: topic.prompt ?? CUSTOM_PROMPT,
+    verse: completeLocalized(topic.verse),
+    hook: completeLocalized(topic.hook),
+    body: completeLocalized(topic.body),
+    discussionQuestions: questions.map((item) => completeLocalized(item)),
+    prompt: completeLocalized(topic.prompt ?? questions[0] ?? CUSTOM_PROMPT),
   };
 }

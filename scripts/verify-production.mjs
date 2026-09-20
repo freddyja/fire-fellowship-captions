@@ -106,6 +106,8 @@ async function main() {
   assert(appJs.includes("Cabeza del hogar no es un trono"), "head of household hook es");
   assert(appJs.includes("Cabeça do lar não é um trono"), "head of household hook pt");
   assert(appJs.includes("El caminar más seguro"), "integrity hook es");
+  assert(appJs.includes("O caminho mais seguro"), "integrity hook pt");
+  assert(appJs.includes("The safest walk is the one that does not need a cover story"), "integrity hook en");
   assert(appJs.includes("Coragem não é a ausência de medo"), "courage hook pt");
   assert(appJs.includes("Send to TV"), "phone Send to TV button");
   assert(appJs.includes("Open TV view"), "optional Open TV view");

@@ -58,11 +58,18 @@ const MISSING_VERSE: Record<Lang, string> = {
 
 function renderTopicCard(topic: TopicContent, lang: Lang): string {
   const verse = localized(topic.verse, lang);
+  const handout = renderTopicHandout(topic, lang);
+  const empty =
+    !verse &&
+    !localized(topic.hook, lang) &&
+    !localized(topic.body, lang) &&
+    !localized(topic.title, lang) &&
+    !topic.reference?.trim();
   return `
     <article class="tv-handout" lang="${lang}">
       <h3>${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</h3>
-      ${renderTopicHandout(topic, lang)}
-      ${!verse ? `<p class="tv-verse muted">${escapeHtml(MISSING_VERSE[lang])}</p>` : ""}
+      ${empty ? renderTopicHandout(topic, "en") : handout}
+      ${!verse && !localized(topic.verse, "en") ? `<p class="tv-verse muted">${escapeHtml(MISSING_VERSE[lang])}</p>` : ""}
     </article>
   `;
 }
