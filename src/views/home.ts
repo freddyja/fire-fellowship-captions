@@ -6,6 +6,8 @@ import {
   subscribeInstall,
   wasJustInstalled,
 } from "../install";
+import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
+import { bindOfflineModeToggle } from "../offline-mode";
 import { generateRoomCode, isRoomCode, normalizeRoomCode } from "../room";
 import { goto } from "../router";
 
@@ -26,7 +28,21 @@ export function mountHome(root: HTMLElement): () => void {
           <button class="secondary" type="submit">Open TV windows</button>
         </form>
         <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> puts the caption layout on the Fold so system Smart View can mirror it.</p>
+        <div class="meeting-mode">
+          <p class="control-label">Meeting mode</p>
+          <button class="chip" data-offline-mode type="button" aria-pressed="false" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
+            Offline / Local meeting
+          </button>
+          <p class="offline-banner" data-offline-banner hidden>
+            Offline translate (limited phrases). For full local setup see
+            <a href="#local-setup">laptop steps</a>.
+          </p>
+          <p class="hint">On: built-in dictionary (no MyMemory). Off: hosted default (MyMemory on Render).</p>
+        </div>
       </div>
+      <aside class="install-card" id="local-setup" data-local-setup>
+        ${localSetupInnerHtml()}
+      </aside>
       <aside class="install-card" data-install>
         <h2>Install on this phone</h2>
         <p class="install-copy" data-install-copy></p>
@@ -44,6 +60,9 @@ export function mountHome(root: HTMLElement): () => void {
   const installCopy = root.querySelector("[data-install-copy]") as HTMLElement;
   const installBtn = root.querySelector("[data-install-btn]") as HTMLButtonElement;
   const installSteps = root.querySelector("[data-install-steps]") as HTMLOListElement;
+  const offlineBtn = root.querySelector("[data-offline-mode]") as HTMLButtonElement;
+  const offlineBanner = root.querySelector("[data-offline-banner]") as HTMLElement;
+  const localSetup = root.querySelector("[data-local-setup]") as HTMLElement;
 
   const paintInstall = () => {
     const standalone = isStandaloneDisplay();
@@ -108,6 +127,8 @@ export function mountHome(root: HTMLElement): () => void {
   form?.addEventListener("submit", onJoin);
   installBtn.addEventListener("click", onInstall);
   const unsubscribe = subscribeInstall(paintInstall);
+  const unbindOffline = bindOfflineModeToggle(offlineBtn, { banner: offlineBanner });
+  const unbindSetup = bindLocalSetup(localSetup);
   paintInstall();
 
   return () => {
@@ -116,5 +137,7 @@ export function mountHome(root: HTMLElement): () => void {
     form?.removeEventListener("submit", onJoin);
     installBtn.removeEventListener("click", onInstall);
     unsubscribe();
+    unbindOffline();
+    unbindSetup();
   };
 }

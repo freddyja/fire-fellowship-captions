@@ -1,6 +1,8 @@
 import { brandBlock, creditFooter } from "../brand";
 import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
+import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
+import { bindOfflineModeToggle } from "../offline-mode";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
@@ -99,6 +101,16 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           </div>
 
           <div class="controls">
+            <div class="meeting-mode">
+              <p class="control-label">Meeting mode</p>
+              <button class="chip" data-offline-mode type="button" aria-pressed="false" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
+                Offline / Local meeting
+              </button>
+              <p class="offline-banner" data-offline-banner hidden>
+                Offline translate (limited phrases). For full local setup see
+                <button class="ghost setup-link" data-local-setup-open type="button" aria-haspopup="dialog" aria-controls="local-setup-dialog">laptop steps</button>.
+              </p>
+            </div>
             <div>
               <p class="control-label">Spoken language</p>
               <div class="chips" data-source></div>
@@ -149,6 +161,18 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <button class="ghost send-tv-open" data-open-tv type="button" aria-label="Open TV view on this device for testing">
             Open TV view
           </button>
+        </div>
+      </dialog>
+
+      <dialog class="setup-dialog" id="local-setup-dialog" data-local-setup-dialog aria-labelledby="local-setup-title">
+        <div class="send-tv-sheet">
+          <header class="send-tv-head">
+            <h2 id="local-setup-title">Laptop LAN / hotspot</h2>
+            <button class="ghost send-tv-close" data-local-setup-close type="button">Close</button>
+          </header>
+          <div data-local-setup>
+            ${localSetupInnerHtml({ heading: false })}
+          </div>
         </div>
       </dialog>
 
@@ -217,6 +241,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const svBoard = root.querySelector("[data-sv-board]") as HTMLElement;
   const svTopic = root.querySelector("[data-sv-topic]") as HTMLElement;
   const landscapeMq = window.matchMedia("(orientation: landscape)");
+  const offlineBtn = root.querySelector("[data-offline-mode]") as HTMLButtonElement;
+  const offlineBanner = root.querySelector("[data-offline-banner]") as HTMLElement;
+  const setupDialog = root.querySelector("[data-local-setup-dialog]") as HTMLDialogElement;
+  const setupOpen = root.querySelector("[data-local-setup-open]") as HTMLButtonElement;
+  const setupClose = root.querySelector("[data-local-setup-close]") as HTMLButtonElement;
+  const localSetup = root.querySelector("[data-local-setup]") as HTMLElement;
 
   const syncSmartViewOrientation = () => {
     const landscape = landscapeMq.matches || window.innerWidth > window.innerHeight;
@@ -501,6 +531,20 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     renderDynamic();
   };
 
+  const onOpenLocalSetup = () => {
+    if (typeof setupDialog.showModal === "function") setupDialog.showModal();
+    else setupDialog.setAttribute("open", "");
+  };
+
+  const onCloseLocalSetup = () => {
+    if (typeof setupDialog.close === "function" && setupDialog.open) setupDialog.close();
+    else setupDialog.removeAttribute("open");
+  };
+
+  const onSetupDialogClick = (event: Event) => {
+    if (event.target === setupDialog) onCloseLocalSetup();
+  };
+
   const onSendTv = () => {
     paintSendTv();
     copyBtn.textContent = "Copy TV link";
@@ -580,6 +624,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   smartExit.addEventListener("click", onExitSmartView);
   captionsOnlyBtn.addEventListener("click", onCaptionsOnly);
   smartMic.addEventListener("click", onMic);
+  const unbindOffline = bindOfflineModeToggle(offlineBtn, { banner: offlineBanner });
+  const unbindSetup = bindLocalSetup(localSetup);
+  setupOpen.addEventListener("click", onOpenLocalSetup);
+  setupClose.addEventListener("click", onCloseLocalSetup);
+  setupDialog.addEventListener("click", onSetupDialogClick);
   root.querySelector("[data-send-tv-close]")?.addEventListener("click", onCloseSendTv);
   sendDialog.addEventListener("click", onDialogClick);
   sendDialog.addEventListener("close", onDialogClose);
@@ -642,6 +691,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     smartExit.removeEventListener("click", onExitSmartView);
     captionsOnlyBtn.removeEventListener("click", onCaptionsOnly);
     smartMic.removeEventListener("click", onMic);
+    unbindOffline();
+    unbindSetup();
+    setupOpen.removeEventListener("click", onOpenLocalSetup);
+    setupClose.removeEventListener("click", onCloseLocalSetup);
+    setupDialog.removeEventListener("click", onSetupDialogClick);
+    onCloseLocalSetup();
     typeForm.removeEventListener("submit", onType);
     onCloseSendTv();
   };

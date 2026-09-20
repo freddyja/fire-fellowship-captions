@@ -7,7 +7,7 @@ import {
   resolveDeepLApiUrl,
 } from "../src/translate/deepl.ts";
 import { parseMyMemoryResponse, createMyMemoryTranslator } from "../src/translate/mymemory.ts";
-import { resolveTranslateProvider } from "../server/translate.ts";
+import { effectiveTranslateProvider, resolveTranslateProvider, translateCaption } from "../server/translate.ts";
 
 const offline = process.argv.includes("--offline");
 
@@ -15,7 +15,7 @@ function assert(cond, message) {
   if (!cond) throw new Error(message);
 }
 
-function withEnv(overrides, fn) {
+async function withEnv(overrides, fn) {
   const previous = {};
   for (const [key, value] of Object.entries(overrides)) {
     previous[key] = process.env[key];
@@ -23,7 +23,7 @@ function withEnv(overrides, fn) {
     else process.env[key] = value;
   }
   try {
-    return fn();
+    return await fn();
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
@@ -32,41 +32,58 @@ function withEnv(overrides, fn) {
   }
 }
 
-function checkProviderDefaults() {
-  withEnv(
+async function checkMockOverride() {
+  await withEnv({ TRANSLATE_PROVIDER: "mymemory", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" }, async () => {
+    assert(resolveTranslateProvider() === "mymemory", "env still mymemory");
+    assert(effectiveTranslateProvider("mock") === "mock", "request mock wins");
+    assert(effectiveTranslateProvider("deepl") === "mymemory", "client cannot force deepl");
+    const result = await translateCaption(
+      "Welcome brothers. Thank you for coming tonight. Let us begin.",
+      "en",
+      ["es", "pt"],
+      { provider: "mock" },
+    );
+    assert(result.provider === "mock", "translateCaption honors mock override");
+    assert(String(result.text.es).toLowerCase().includes("bienvenidos"), "forced mock es");
+    assert(String(result.text.pt).toLowerCase().includes("irm"), "forced mock pt");
+  });
+}
+
+async function checkProviderDefaults() {
+  await withEnv(
     { TRANSLATE_PROVIDER: "", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" },
     () => {
       assert(resolveTranslateProvider() === "mymemory", "no keys defaults to mymemory");
     },
   );
-  withEnv(
+  await withEnv(
     { TRANSLATE_PROVIDER: "deepl", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" },
     () => {
       assert(resolveTranslateProvider() === "mymemory", "deepl without key uses mymemory");
     },
   );
-  withEnv(
+  await withEnv(
     { TRANSLATE_PROVIDER: "deepl", DEEPL_AUTH_KEY: "not-a-real-key:fx", GOOGLE_TRANSLATE_API_KEY: "" },
     () => {
       assert(resolveTranslateProvider() === "deepl", "deepl with a key is selected");
     },
   );
-  withEnv(
+  await withEnv(
     { TRANSLATE_PROVIDER: "", DEEPL_AUTH_KEY: "not-a-real-key:fx", GOOGLE_TRANSLATE_API_KEY: "" },
     () => {
       assert(resolveTranslateProvider() === "deepl", "unset provider uses deepl when key present");
     },
   );
-  withEnv({ TRANSLATE_PROVIDER: "mymemory", DEEPL_AUTH_KEY: "not-a-real-key:fx" }, () => {
+  await withEnv({ TRANSLATE_PROVIDER: "mymemory", DEEPL_AUTH_KEY: "not-a-real-key:fx" }, () => {
     assert(resolveTranslateProvider() === "mymemory", "explicit mymemory wins");
   });
-  withEnv({ TRANSLATE_PROVIDER: "mock", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" }, () => {
+  await withEnv({ TRANSLATE_PROVIDER: "mock", DEEPL_AUTH_KEY: "", GOOGLE_TRANSLATE_API_KEY: "" }, () => {
     assert(resolveTranslateProvider() === "mock", "explicit mock stays offline");
   });
-  withEnv({ TRANSLATE_PROVIDER: "google", GOOGLE_TRANSLATE_API_KEY: "" }, () => {
+  await withEnv({ TRANSLATE_PROVIDER: "google", GOOGLE_TRANSLATE_API_KEY: "" }, () => {
     assert(resolveTranslateProvider() === "mymemory", "google without key uses mymemory");
   });
-  withEnv({ TRANSLATE_PROVIDER: "google", GOOGLE_TRANSLATE_API_KEY: "not-a-real-key" }, () => {
+  await withEnv({ TRANSLATE_PROVIDER: "google", GOOGLE_TRANSLATE_API_KEY: "not-a-real-key" }, () => {
     assert(resolveTranslateProvider() === "google", "google with a key is selected");
   });
 }
@@ -143,6 +160,7 @@ const checks = [
   ["provider defaults", checkProviderDefaults],
   ["DeepL mapping", checkDeepLMapping],
   ["MyMemory response parser", checkMyMemoryParser],
+  ["mock request override", checkMockOverride],
 ];
 
 for (const [name, fn] of checks) {

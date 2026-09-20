@@ -1,16 +1,21 @@
+import { isOfflineMeeting } from "../offline-mode";
 import { mockTranslator } from "./mock";
 import { createLibreTranslator } from "./libretranslate";
 import { createMyMemoryTranslator } from "./mymemory";
 import { passthroughTranslator } from "./passthrough";
 import { createServerTranslator } from "./server";
-import type { Translator } from "./types";
+import { translateAll as runTranslateAll, type Translator } from "./types";
 
 export type { Translator } from "./types";
 export { translateAll } from "./types";
 
 export function createTranslator(): Translator {
   const provider = String(import.meta.env.VITE_TRANSLATE_PROVIDER || "").toLowerCase();
+  const primary = translatorForProvider(provider);
+  return withOfflineMode(primary);
+}
 
+function translatorForProvider(provider: string): Translator {
   if (provider === "passthrough") return passthroughTranslator;
   if (provider === "mymemory") {
     const email = String(import.meta.env.VITE_MYMEMORY_EMAIL || "").trim() || undefined;
@@ -19,6 +24,21 @@ export function createTranslator(): Translator {
   if (provider === "libretranslate") return withFallback(createLibreTranslator());
   if (provider === "mock") return mockTranslator;
   return withFallback(createServerTranslator());
+}
+
+function withOfflineMode(primary: Translator): Translator {
+  const active = () => (isOfflineMeeting() ? mockTranslator : primary);
+  return {
+    get id() {
+      return active().id;
+    },
+    translate(text, from, to) {
+      return active().translate(text, from, to);
+    },
+    translateAll(text, from) {
+      return runTranslateAll(active(), text, from);
+    },
+  };
 }
 
 function withFallback(primary: Translator): Translator {
