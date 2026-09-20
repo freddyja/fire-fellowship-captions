@@ -99,10 +99,14 @@ async function main() {
   assert(scriptSrc, "built app script");
   const { body: appJs } = await text(scriptSrc);
   assert(appJs.includes("Smart View"), "phone Smart View button");
+  assert(appJs.includes("android.settings.CAST_SETTINGS"), "Android CAST_SETTINGS intent");
+  assert(appJs.includes("com.samsung.android.smartmirroring"), "Samsung Smart View intent");
   assert(
     appJs.includes("PresentationRequest") || appJs.includes("requestSession"),
-    "Presentation API for Smart View",
+    "Presentation API still tried",
   );
+  assert(appJs.includes("not Samsung Smart View / My TV"), "honest Cast vs My TV copy");
+  assert(appJs.includes("<svg") || appJs.includes("viewBox"), "TV link QR");
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);

@@ -11,12 +11,14 @@
     "start": "node --experimental-strip-types server/index.ts",
     "verify:prod": "node scripts/verify-production.mjs",
     "verify:translate": "node --experimental-strip-types scripts/verify-translate.mjs",
+    "verify:smart-view": "node --experimental-strip-types scripts/verify-smart-view.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },
   "engines": {
     "node": ">=22.6"
   },
   "dependencies": {
+    "uqr": "^0.1.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {

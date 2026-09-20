@@ -2,7 +2,14 @@ import { brandBlock } from "../brand";
 import { escapeHtml } from "../dom";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
-import { bindDefaultPresentation, clearDefaultPresentation, smartViewMessage, startSmartView } from "../smart-view";
+import { tvQrSvg } from "../qr";
+import {
+  bindDefaultPresentation,
+  clearDefaultPresentation,
+  smartViewMessage,
+  smartViewWorkingLabel,
+  startSmartView,
+} from "../smart-view";
 import { createWebSpeechProvider } from "../stt/web-speech";
 import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
@@ -44,6 +51,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let seq = 0;
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
+  let smartNote = "";
 
   const push = () => conn?.push(state);
 
@@ -101,14 +109,25 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">On this phone</p>
               <p data-preview></p>
             </div>
-            <div class="row-actions">
-              <button class="primary" data-smart-view type="button" aria-label="Smart View — cast TV captions to My TV">
-                Smart View
-              </button>
-              <button class="ghost" data-open-tv type="button">Open TV view</button>
-              <button class="ghost" data-copy type="button">Copy TV link</button>
-              <button class="ghost" data-clear type="button">Clear windows</button>
-              <button class="ghost" data-home type="button">Leave</button>
+            <div class="smart-view-box">
+              <p class="hint smart-view-lede">
+                <strong>Smart View</strong> tries Android Cast / Samsung Smart View settings — not Chrome’s Cast list.
+                That Cast list is Chromecast only; it is not Samsung <strong>My TV</strong>.
+              </p>
+              <div class="row-actions">
+                <button class="primary" data-smart-view type="button" aria-label="Open system Smart View or Cast settings">
+                  Smart View
+                </button>
+                <button class="ghost" data-open-tv type="button">Open TV view</button>
+                <button class="ghost" data-copy type="button">Copy TV link</button>
+                <button class="ghost" data-clear type="button">Clear windows</button>
+                <button class="ghost" data-home type="button">Leave</button>
+              </div>
+              <p class="hint smart-view-note" data-smart-view-note></p>
+              <figure class="tv-qr">
+                <div class="tv-qr-code" data-tv-qr role="img" aria-label="QR code for the TV caption page"></div>
+                <figcaption>Scan to open the TV caption page</figcaption>
+              </figure>
             </div>
             <form class="typed-caption" data-type>
               <input name="caption" autocomplete="off" enterkeyhint="send" placeholder="Or type a caption" />
@@ -148,6 +167,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     error: root.querySelector("[data-error]") as HTMLElement,
     preview: root.querySelector("[data-preview]") as HTMLElement,
     topicInput: topicForm.elements.namedItem("topic") as HTMLInputElement,
+    smartNote: root.querySelector("[data-smart-view-note]") as HTMLElement,
   };
 
   function renderDynamic() {
@@ -160,6 +180,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     els.mic.setAttribute("aria-pressed", String(state.listening));
     els.micLabel.textContent = state.listening ? "Stop" : "Start";
     els.error.textContent = error;
+    els.smartNote.textContent = smartNote;
     const last = state.lines.at(-1);
     els.preview.textContent = last?.text[state.sourceLang] || "Captions will appear here and on the TV.";
     els.preview.classList.toggle("interim", Boolean(last && !last.isFinal));
@@ -286,9 +307,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   };
 
   const onSmartView = async () => {
-    error = "Pick My TV in the Smart View / Cast list (Chrome on Android).";
+    smartNote = smartViewWorkingLabel();
     renderDynamic();
-    error = smartViewMessage(await startSmartView(tvUrl(room)));
+    smartNote = smartViewMessage(await startSmartView(tvUrl(room)));
     renderDynamic();
   };
   const onOpenTv = () => window.open(tvUrl(room), "ff-tv", "noopener");
@@ -325,6 +346,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
   bindDefaultPresentation(tvUrl(room));
+  const qr = root.querySelector("[data-tv-qr]") as HTMLElement;
+  qr.innerHTML = tvQrSvg(tvUrl(room));
   root.querySelector("[data-smart-view]")?.addEventListener("click", () => {
     void onSmartView();
   });
