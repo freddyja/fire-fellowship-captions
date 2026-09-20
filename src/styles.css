@@ -130,7 +130,8 @@ textarea {
 .secondary,
 .ghost,
 .chip,
-.mic {
+.mic,
+.smart-view-mic {
   border: 0;
   cursor: pointer;
   touch-action: manipulation;
@@ -575,10 +576,17 @@ textarea {
 }
 
 .row-actions .primary,
-.send-tv-btn {
+.send-tv-btn,
+.smart-view-btn {
   min-height: 52px;
   padding: 0.75rem 1.15rem;
   width: 100%;
+}
+
+.tv-path-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
 }
 
 .send-tv-dialog {
@@ -665,6 +673,88 @@ textarea {
 
 .send-tv-open {
   justify-self: center;
+}
+
+.phone-screen.is-smart-view {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.phone-screen.is-smart-view .phone-top,
+.phone-screen.is-smart-view .phone-body {
+  display: none;
+}
+
+.smart-view-layer {
+  display: none;
+}
+
+.phone-screen.is-smart-view .smart-view-layer {
+  display: block;
+}
+
+.smart-view-captions {
+  min-height: 100dvh;
+}
+
+.smart-view-dock {
+  flex: none;
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 -0.15rem;
+  padding: 0.5rem 0.35rem calc(0.4rem + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.smart-view-tip {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.smart-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.smart-view-mic {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--cream);
+  box-shadow: none;
+}
+
+.smart-view-mic svg {
+  width: 18px;
+  height: 18px;
+}
+
+.smart-view-mic small {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.smart-view-mic.hot {
+  background: radial-gradient(circle at 50% 40%, #f07a3d, var(--ember) 72%);
+  border-color: #f3a57a;
+  color: #fff8f2;
 }
 
 .ghost {
@@ -797,6 +887,10 @@ textarea {
     padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
   }
 
+  .phone-screen.is-smart-view {
+    padding-bottom: 0;
+  }
+
   .phone-screen .topic-controls .chips {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -825,6 +919,10 @@ textarea {
 
 /* Unfolded inner (~8" nearly square): two control columns. */
 @media (min-width: 600px) {
+  .tv-path-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .phone-body {
     grid-template-columns: minmax(17rem, 1fr) minmax(19rem, 1.15fr);
     gap: 1.75rem 2rem;

@@ -25,7 +25,7 @@ export function mountHome(root: HTMLElement): () => void {
           </label>
           <button class="secondary" type="submit">Open TV windows</button>
         </form>
-        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). The TV can be any browser.</p>
+        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> puts the caption layout on the Fold so system Smart View can mirror it.</p>
       </div>
       <aside class="install-card" data-install>
         <h2>Install on this phone</h2>
@@ -54,8 +54,8 @@ export function mountHome(root: HTMLElement): () => void {
         "This is the installed Fire and Fellowship app. Create a room here, then open the TV link on the meeting TV.";
       installSteps.innerHTML = `
         <li>Tap <strong>Create room on this phone</strong>.</li>
-        <li>Pick the topic of the day, then tap <strong>Send to TV</strong>.</li>
-        <li>On the TV browser, scan the QR or open the copied TV link. Keep the Fold on the mic page.</li>
+        <li>Pick the topic of the day. Use <strong>Send to TV</strong> (QR / TV browser) or <strong>Smart View mode</strong> (mirror captions from the Fold quick panel).</li>
+        <li>Keep the Fold on this app while you speak. Exit Smart View mode to return to mic controls.</li>
       `;
       return;
     }

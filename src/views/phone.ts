@@ -6,6 +6,7 @@ import { goto, tvUrl } from "../router";
 import { createWebSpeechProvider } from "../stt/web-speech";
 import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
+import { paintCaptionBoard } from "./caption-board";
 import {
   emptyState,
   LANG_LABEL,
@@ -45,6 +46,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
+  let smartViewMode = false;
 
   const push = () => conn?.push(state);
 
@@ -102,10 +104,15 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">On this phone</p>
               <p data-preview></p>
             </div>
-            <div class="row-actions">
+            <div class="row-actions tv-path-actions">
               <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" aria-label="Send to TV — show QR and TV caption link">
                 Send to TV
               </button>
+              <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" aria-label="Smart View mode — show caption layout for system mirroring">
+                Smart View mode
+              </button>
+            </div>
+            <div class="row-actions">
               <button class="ghost" data-clear type="button">Clear windows</button>
               <button class="ghost" data-home type="button">Leave</button>
             </div>
@@ -135,6 +142,30 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           </button>
         </div>
       </dialog>
+
+      <div class="smart-view-layer" data-smart-view-layer hidden>
+        <section class="screen tv-screen smart-view-captions">
+          <div class="tv-top">
+            ${brandBlock(true)}
+            <div class="tv-meta">
+              <div class="room-pill">Room <strong data-sv-room></strong></div>
+              <div class="status-pill"><span class="dot" data-sv-dot></span><span data-sv-status></span></div>
+            </div>
+          </div>
+          <aside class="tv-topic" data-sv-topic hidden></aside>
+          <main class="tv-board" data-sv-board></main>
+          <div class="smart-view-dock">
+            <p class="smart-view-tip">Now open system Smart View → My TV. TV will mirror these captions.</p>
+            <div class="smart-view-controls">
+              <button class="smart-view-mic" data-smart-mic type="button" aria-pressed="false">
+                ${micIcon}
+                <small data-smart-mic-label>Start</small>
+              </button>
+              <button class="secondary" data-exit-smart-view type="button">Exit Smart View mode</button>
+            </div>
+          </div>
+        </section>
+      </div>
     </section>
   `;
 
@@ -160,6 +191,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const qrBox = root.querySelector("[data-send-tv-qr]") as HTMLElement;
   const urlEl = root.querySelector("[data-send-tv-url]") as HTMLElement;
   const copyBtn = root.querySelector("[data-copy]") as HTMLButtonElement;
+  const screen = root.querySelector(".phone-screen") as HTMLElement;
+  const smartLayer = root.querySelector("[data-smart-view-layer]") as HTMLElement;
+  const smartEnter = root.querySelector("[data-smart-view-mode]") as HTMLButtonElement;
+  const smartExit = root.querySelector("[data-exit-smart-view]") as HTMLButtonElement;
+  const smartMic = root.querySelector("[data-smart-mic]") as HTMLButtonElement;
+  const svBoard = root.querySelector("[data-sv-board]") as HTMLElement;
+  const svTopic = root.querySelector("[data-sv-topic]") as HTMLElement;
 
   const els = {
     room: root.querySelector("[data-room]") as HTMLElement,
@@ -170,6 +208,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     error: root.querySelector("[data-error]") as HTMLElement,
     preview: root.querySelector("[data-preview]") as HTMLElement,
     topicInput: topicForm.elements.namedItem("topic") as HTMLInputElement,
+    svRoom: root.querySelector("[data-sv-room]") as HTMLElement,
+    svStatus: root.querySelector("[data-sv-status]") as HTMLElement,
+    svDot: root.querySelector("[data-sv-dot]") as HTMLElement,
+    smartMicLabel: root.querySelector("[data-smart-mic-label]") as HTMLElement,
   };
 
   function renderDynamic() {
@@ -185,6 +227,18 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const last = state.lines.at(-1);
     els.preview.textContent = last?.text[state.sourceLang] || "Captions will appear here and on the TV.";
     els.preview.classList.toggle("interim", Boolean(last && !last.isFinal));
+
+    screen.classList.toggle("is-smart-view", smartViewMode);
+    smartLayer.hidden = !smartViewMode;
+    smartEnter.setAttribute("aria-pressed", String(smartViewMode));
+    smartMic.classList.toggle("hot", state.listening);
+    smartMic.setAttribute("aria-pressed", String(state.listening));
+    els.smartMicLabel.textContent = state.listening ? "Stop" : "Start";
+    els.svRoom.textContent = state.room;
+    const svNote = state.listening ? "Listening · Smart View mode" : "Smart View mode";
+    els.svStatus.textContent = svNote;
+    els.svDot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
+    if (smartViewMode) paintCaptionBoard(svBoard, svTopic, state);
 
     for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       btn.classList.toggle("active", btn.dataset.lang === state.sourceLang);
@@ -313,6 +367,15 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     urlEl.textContent = url;
   };
 
+  const setSmartViewMode = (next: boolean) => {
+    smartViewMode = next;
+    if (next) onCloseSendTv();
+    renderDynamic();
+  };
+
+  const onEnterSmartView = () => setSmartViewMode(true);
+  const onExitSmartView = () => setSmartViewMode(false);
+
   const onSendTv = () => {
     paintSendTv();
     copyBtn.textContent = "Copy TV link";
@@ -376,6 +439,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
   topicForm.addEventListener("submit", onTopicForm);
   sendBtn.addEventListener("click", onSendTv);
+  smartEnter.addEventListener("click", onEnterSmartView);
+  smartExit.addEventListener("click", onExitSmartView);
+  smartMic.addEventListener("click", onMic);
   root.querySelector("[data-send-tv-close]")?.addEventListener("click", onCloseSendTv);
   sendDialog.addEventListener("click", onDialogClick);
   sendDialog.addEventListener("close", onDialogClose);
@@ -423,6 +489,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     sendDialog.removeEventListener("click", onDialogClick);
     sendDialog.removeEventListener("close", onDialogClose);
     sendBtn.removeEventListener("click", onSendTv);
+    smartEnter.removeEventListener("click", onEnterSmartView);
+    smartExit.removeEventListener("click", onExitSmartView);
+    smartMic.removeEventListener("click", onMic);
     typeForm.removeEventListener("submit", onType);
     onCloseSendTv();
   };
