@@ -85,6 +85,7 @@ async function main() {
       health.translate === "google",
     "health.translate",
   );
+  assert(health.topic === "openai" || health.topic === "offline", "health.topic");
 
   const home = await text("/");
   assert(home.body.includes("Fire and Fellowship"), "home shell");
@@ -98,6 +99,7 @@ async function main() {
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
   const { body: appJs } = await text(scriptSrc);
+  assert(appJs.includes("Ask for topic"), "phone Ask for topic button");
   assert(appJs.includes("Discussion Questions:"), "topic discussion heading");
   assert(appJs.includes("Paul didn't wake up content"), "contentment hook in seeds");
   assert(appJs.includes("Send to TV"), "phone Send to TV button");
@@ -137,6 +139,7 @@ async function main() {
   assert(sw.includes('addEventListener("fetch"'), "service worker fetch handler");
   assert(sw.includes("/caption-ws"), "service worker skips relay");
   assert(sw.includes("/api/translate"), "service worker skips translate API");
+  assert(sw.includes("/api/topic-handout"), "service worker skips topic handout API");
 
   const translateStatus = await json("/api/translate");
   assert(translateStatus.provider === health.translate, "GET /api/translate provider");
@@ -166,6 +169,46 @@ async function main() {
     JSON.stringify(translated).includes("DEEPL_AUTH") ||
     JSON.stringify(translated).includes("AIza");
   assert(!leaked, "translate response must not include a key");
+
+  const topicStatus = await json("/api/topic-handout");
+  assert(topicStatus.provider === health.topic, "GET /api/topic-handout provider");
+
+  const seedHandoutRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "contentment" }),
+  });
+  assert(seedHandoutRes.ok, "POST /api/topic-handout contentment");
+  const seedHandout = await seedHandoutRes.json();
+  assert(seedHandout.provider === "seed", "contentment uses seed");
+  assert(seedHandout.topic?.id === "contentment", "contentment seed id");
+  assert(String(seedHandout.topic?.reference).includes("Philippians 4:11"), "contentment reference");
+
+  const askedRes = await fetch(`${base}/api/topic-handout`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: "head of the household" }),
+  });
+  assert(askedRes.ok, "POST /api/topic-handout household");
+  const asked = await askedRes.json();
+  assert(asked.provider === "offline" || asked.provider === "openai", "generated provider");
+  assert(String(asked.topic?.id || "").startsWith("asked-"), "generated id");
+  assert(Boolean(asked.topic?.reference), "generated reference");
+  const generatedVerse = String(asked.topic?.verse?.en || "");
+  assert(generatedVerse.length > 30, "generated verse present");
+  if (asked.provider === "offline") {
+    assert(
+      generatedVerse.includes("Husbands, love your wives") ||
+        generatedVerse.includes("husband is the head of the wife") ||
+        generatedVerse.includes("me and my house, we will serve"),
+      "offline household verse is catalog KJV",
+    );
+  }
+  assert(Boolean(asked.topic?.hook?.en), "generated hook");
+  assert(Boolean(asked.topic?.body?.en), "generated body");
+  assert((asked.topic?.discussionQuestions || []).length >= 2, "generated questions");
+  const askedLeak = JSON.stringify(asked).includes("OPENAI_API_KEY") || JSON.stringify(asked).includes("sk-");
+  assert(!askedLeak, "topic handout must not include a key");
 
   for (const icon of ["/icon-192.png", "/icon-512.png", "/icon-192-maskable.png", "/icon-512-maskable.png"]) {
     const res = await fetch(`${base}${icon}`);
@@ -202,7 +245,7 @@ async function main() {
 
   phoneWs.ws.close();
   tvWs.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, translate=${health.translate}`);
+  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()

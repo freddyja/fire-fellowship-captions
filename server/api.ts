@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { configuredTopicProvider, generateTopicHandout } from "./topic-handout.ts";
 import { isLang, resolveTranslateProvider, translateCaption } from "./translate.ts";
 
 const MAX_BODY = 8 * 1024;
@@ -30,7 +31,12 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
 
 export async function handleApi(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const pathname = (req.url ?? "/").split("?")[0] || "/";
-  if (pathname !== "/api/translate") return false;
+  if (pathname === "/api/translate") return handleTranslate(req, res);
+  if (pathname === "/api/topic-handout") return handleTopicHandout(req, res);
+  return false;
+}
+
+async function handleTranslate(req: IncomingMessage, res: ServerResponse): Promise<true> {
 
   if (req.method === "GET" || req.method === "HEAD") {
     const body = { provider: resolveTranslateProvider() };
@@ -80,6 +86,45 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
   } catch (err) {
     const status = typeof err === "object" && err && "status" in err ? Number(err.status) : 502;
     send(res, status || 502, { error: "Translate failed" });
+  }
+  return true;
+}
+
+async function handleTopicHandout(req: IncomingMessage, res: ServerResponse): Promise<true> {
+  if (req.method === "GET" || req.method === "HEAD") {
+    const body = { provider: configuredTopicProvider() };
+    if (req.method === "HEAD") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end();
+      return true;
+    }
+    send(res, 200, body);
+    return true;
+  }
+
+  if (req.method !== "POST") {
+    send(res, 405, { error: "Method not allowed" });
+    return true;
+  }
+
+  let payload: unknown;
+  try {
+    payload = await readJson(req);
+  } catch (err) {
+    const status = typeof err === "object" && err && "status" in err ? Number(err.status) : 400;
+    send(res, status || 400, { error: "Invalid JSON" });
+    return true;
+  }
+
+  const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const query = typeof body.query === "string" ? body.query : "";
+
+  try {
+    const result = await generateTopicHandout(query);
+    send(res, 200, result);
+  } catch (err) {
+    const status = typeof err === "object" && err && "status" in err ? Number(err.status) : 502;
+    send(res, status || 400, { error: status === 400 ? "Type a topic first." : "Could not write that handout." });
   }
   return true;
 }

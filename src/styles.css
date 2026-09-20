@@ -867,15 +867,35 @@ textarea {
   min-width: 0;
 }
 
+.topic-insert {
+  flex-wrap: wrap;
+}
+
 .topic-insert input,
 .typed-caption input {
   min-width: 0;
 }
 
+.topic-insert input {
+  flex: 1 1 12rem;
+}
+
 .topic-insert .secondary,
+.topic-insert .primary,
 .typed-caption .primary {
   padding-inline: 1.15rem;
   flex: none;
+}
+
+.topic-ask-status {
+  margin: 0.4rem 0 0;
+  min-height: 1.25rem;
+}
+
+.topic-ask-cancel {
+  min-height: 36px;
+  padding: 0.15rem 0.35rem;
+  margin-left: 0.2rem;
 }
 
 .topic-preview {

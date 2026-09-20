@@ -171,9 +171,13 @@ Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only dis
 - `contentment`
 - `Philippians 4:11-12`
 
-If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **Clear** to remove it.
+If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic or **Ask for topic**). Tap **Clear** to remove it.
 
-Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`, `body`, `discussionQuestions`) keep English first and fall back to English when a translation is empty. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys).
+**Ask for topic:** type a theme (`contentment`, `head of the household`, `forgiveness`) and tap **Ask for topic**. The phone shows a loading state (Cancel is available). On success the generated sheet — **bold reference**, *italic KJV*, **hook**, teaching, numbered **Discussion Questions** — is set as the room topic and pushed to the TV.
+
+Generated sheets are English-first. If the request matches a built-in seed, that seed is used. Otherwise the server writes a handout from a curated public-domain KJV catalog. No API key is required. Optional `OPENAI_API_KEY` (and `OPENAI_MODEL`, default `gpt-4o-mini`) upgrades the teaching quality; verse wording still comes from the catalog, never from the model. If the key is missing or the call fails, the offline generator is used.
+
+Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`, `body`, `discussionQuestions`) keep English first and fall back to English when a translation is empty. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys). To add verses the generator can pick, change `server/scripture-catalog.ts`.
 
 ## Galaxy Z Fold 7 + Chrome
 
@@ -218,8 +222,10 @@ The phone translates **before** it sends captions to the TV. The Fold calls `POS
 | *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory. No key. Demo / fallback path. |
 | `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
 | `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then mock. |
+| *(unset)* `OPENAI_API_KEY` | Offline “Ask for topic” generator. Curated KJV + templates. |
+| `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) | Better teaching text. Verse wording still comes from the KJV catalog. Falls back offline if the call fails. |
 
-`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
+`GET /health` includes `"translate": "deepl"`, `"mymemory"`, `"google"`, or `"mock"`, and `"topic": "openai"` or `"offline"` (it never returns a key). After setting a DeepL key and restarting, confirm `"translate":"deepl"`.
 
 ```bash
 # Meeting night — DeepL Free (set your real key; do not invent one)
