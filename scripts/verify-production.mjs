@@ -48,9 +48,9 @@ async function connect(role, room) {
   return { ws, inbox };
 }
 
-async function waitFor(inbox, type) {
+async function waitFor(inbox, type, match) {
   for (let i = 0; i < 40; i += 1) {
-    const hit = inbox.find((msg) => msg.type === type);
+    const hit = inbox.find((msg) => msg.type === type && (!match || match(msg)));
     if (hit) return hit;
     await delay(50);
   }
@@ -216,13 +216,13 @@ async function main() {
     assert(res.headers.get("content-type")?.includes("png"), `${icon} content-type`);
   }
 
-  const phoneWs = await connect("phone", "ABCD");
-  const tvWs = await connect("tv", "ABCD");
+  const phoneWs = await connect("phone", "GN7K");
+  const tvWs = await connect("tv", "GN7K");
   await waitFor(phoneWs.inbox, "joined");
   await waitFor(tvWs.inbox, "joined");
 
   const topicState = {
-    room: "ABCD",
+    room: "GN7K",
     sourceLang: "en",
     layout: "en-es-pt",
     listening: false,
@@ -239,7 +239,11 @@ async function main() {
     },
   };
   phoneWs.ws.send(JSON.stringify({ type: "push", state: topicState }));
-  const delivered = await waitFor(tvWs.inbox, "state");
+  const delivered = await waitFor(
+    tvWs.inbox,
+    "state",
+    (msg) => msg.state?.topic?.id === "brotherhood",
+  );
   assert(delivered.state?.topic?.id === "brotherhood", "topic of the day reached TV");
   assert(delivered.state?.topic?.reference === "Proverbs 27:17", "verse reference reached TV");
 

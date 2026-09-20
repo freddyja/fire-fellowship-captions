@@ -1,5 +1,5 @@
-import { foldText } from "./dom";
-import type { Lang, Localized, TopicContent } from "./types";
+import { foldText } from "./dom.ts";
+import type { Lang, Localized, TopicContent } from "./types.ts";
 
 type TopicSeed = TopicContent & { keywords: string[] };
 
