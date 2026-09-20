@@ -1,13 +1,7 @@
 import type { Lang } from "../types";
 import { PHRASES, WORDS, type Triple } from "./mock-dict.ts";
+import { foldDiacritics } from "./text.ts";
 import type { Translator } from "./types";
-
-function fold(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,11 +15,20 @@ function preserveCase(source: string, translated: string): string {
   return translated;
 }
 
+/** Accent-insensitive word-boundary pattern; run against NFD text. */
+function foldedPhrasePattern(pattern: string): string {
+  const folded = foldDiacritics(pattern);
+  const body = [...folded]
+    .map((ch) => (/\p{L}/u.test(ch) ? `${escapeRegExp(ch)}\\p{M}*` : escapeRegExp(ch)))
+    .join("");
+  return `(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])`;
+}
+
 type PhraseEntry = { pattern: string; to: string; len: number };
 
 function phraseEntries(from: Lang, to: Lang, triples: Triple[]): PhraseEntry[] {
   return triples
-    .map((row) => ({ pattern: row[from], to: row[to], len: row[from].length }))
+    .map((row) => ({ pattern: row[from], to: row[to], len: foldDiacritics(row[from]).length }))
     .filter((row) => row.pattern && row.to)
     .sort((a, b) => b.len - a.len);
 }
@@ -40,7 +43,8 @@ for (const from of ["en", "es", "pt"] as Lang[]) {
     PHRASE_INDEX[key] = phraseEntries(from, to, PHRASES);
     const words = new Map<string, string>();
     for (const row of WORDS) {
-      words.set(fold(row[from]), row[to]);
+      const src = foldDiacritics(row[from]);
+      if (src && !words.has(src)) words.set(src, row[to]);
     }
     WORD_INDEX[key] = words;
   }
@@ -51,18 +55,18 @@ export const mockTranslator: Translator = {
   async translate(text, from, to) {
     if (from === to || !text.trim()) return text;
     const key = `${from}:${to}`;
-    let output = text;
+    let output = text.normalize("NFD");
 
     for (const phrase of PHRASE_INDEX[key] ?? []) {
-      const re = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(phrase.pattern)}(?![\\p{L}\\p{N}])`, "giu");
+      const re = new RegExp(foldedPhrasePattern(phrase.pattern), "giu");
       output = output.replace(re, (match) => preserveCase(match, phrase.to));
     }
 
     output = output.replace(/[\p{L}]+(?:['’][\p{L}]+)?/gu, (word) => {
-      const mapped = WORD_INDEX[key]?.get(fold(word));
+      const mapped = WORD_INDEX[key]?.get(foldDiacritics(word));
       return mapped ? preserveCase(word, mapped) : word;
     });
 
-    return output;
+    return output.normalize("NFC");
   },
 };

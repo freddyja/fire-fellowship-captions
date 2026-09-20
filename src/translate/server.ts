@@ -1,9 +1,10 @@
 import { isOfflineMeeting } from "../offline-mode";
-import type { Lang } from "../types";
+import { isLang, type Lang } from "../types";
 import type { Translator } from "./types";
 
 type TranslateResponse = {
   provider?: string;
+  from?: Lang;
   text?: string | Record<Lang, string>;
 };
 
@@ -25,17 +26,22 @@ export function createServerTranslator(): Translator {
       if (!value || typeof value === "string") {
         throw new Error("Translate API returned no map");
       }
+      const sourceLang = isLang(result.from) ? result.from : from;
       return {
-        en: value.en || (from === "en" ? text : ""),
-        es: value.es || (from === "es" ? text : ""),
-        pt: value.pt || (from === "pt" ? text : ""),
+        en: value.en || (sourceLang === "en" ? text : ""),
+        es: value.es || (sourceLang === "es" ? text : ""),
+        pt: value.pt || (sourceLang === "pt" ? text : ""),
       };
     },
   };
 }
 
 async function postTranslate(text: string, from: Lang, to?: Lang[]): Promise<TranslateResponse> {
-  const payload: Record<string, unknown> = to ? { text, from, to } : { text, from };
+  const payload: Record<string, unknown> = {
+    text,
+    from,
+    to: to ?? (["en", "es", "pt"] as Lang[]),
+  };
   if (isOfflineMeeting()) payload.provider = "mock";
   const res = await fetch("/api/translate", {
     method: "POST",
