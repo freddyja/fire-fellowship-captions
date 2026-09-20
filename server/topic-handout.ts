@@ -1,12 +1,14 @@
 import { foldText } from "../src/dom.ts";
 import { resolveTopic } from "../src/topics.ts";
-import type { TopicContent } from "../src/types.ts";
+import type { Localized, TopicContent } from "../src/types.ts";
 import {
   DEFAULT_SCRIPTURE,
   SCRIPTURE_CATALOG,
+  verseLocalized,
   type ScriptureEntry,
   type ScriptureTheme,
 } from "./scripture-catalog.ts";
+import { translateCaption } from "./translate.ts";
 
 export type TopicProvider = "seed" | "openai" | "offline";
 
@@ -188,13 +190,92 @@ const TEMPLATES: Record<ScriptureTheme, Array<(topic: string, ref: string) => Te
   ],
 };
 
+const MYMEMORY_SAFE_BYTES = 450;
+
+function utf8Bytes(text: string): number {
+  return new TextEncoder().encode(text).length;
+}
+
+function splitForTranslate(text: string): string[] {
+  const paras = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  for (const para of paras) {
+    if (utf8Bytes(para) <= MYMEMORY_SAFE_BYTES) {
+      chunks.push(para);
+      continue;
+    }
+    const sentences = para.split(/(?<=[.!?])\s+/);
+    let buf = "";
+    for (const sentence of sentences) {
+      const next = buf ? `${buf} ${sentence}` : sentence;
+      if (buf && utf8Bytes(next) > MYMEMORY_SAFE_BYTES) {
+        chunks.push(buf);
+        buf = sentence;
+      } else {
+        buf = next;
+      }
+    }
+    if (buf) chunks.push(buf);
+  }
+  return chunks.length ? chunks : [text];
+}
+
+async function localizeParagraph(para: string): Promise<{ es: string; pt: string }> {
+  const chunks = splitForTranslate(para);
+  const rows = await Promise.all(chunks.map((part) => translateCaption(part, "en")));
+  return {
+    es: rows.map((row) => row.text.es.trim()).filter(Boolean).join(" "),
+    pt: rows.map((row) => row.text.pt.trim()).filter(Boolean).join(" "),
+  };
+}
+
+async function localizeField(en: string): Promise<Localized> {
+  const source = en.trim();
+  if (!source) return enOnly("");
+  try {
+    const paras = source
+      .split(/\n\s*\n/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+    const rows = await Promise.all(paras.map((para) => localizeParagraph(para)));
+    return {
+      en: source,
+      es: rows.map((row) => row.es).filter(Boolean).join("\n\n"),
+      pt: rows.map((row) => row.pt).filter(Boolean).join("\n\n"),
+    };
+  } catch {
+    return enOnly(source);
+  }
+}
+
+export async function localizeGeneratedSheet(topic: TopicContent): Promise<TopicContent> {
+  const [title, hook, body, ...questions] = await Promise.all([
+    localizeField(topic.title.en),
+    localizeField(topic.hook.en),
+    localizeField(topic.body.en),
+    ...topic.discussionQuestions.map((item) => localizeField(item.en)),
+  ]);
+  return {
+    ...topic,
+    title,
+    verse: topic.verse,
+    hook,
+    body,
+    discussionQuestions: questions.length ? questions : topic.discussionQuestions,
+    prompt: questions[0] ?? topic.prompt,
+  };
+}
+
 function toTopic(query: string, entry: ScriptureEntry, teaching: Teaching, titleOverride?: string): TopicContent {
   const title = titleOverride?.trim() || displayTitle(query);
   return {
     id: `asked-${slug(query)}`,
     title: enOnly(title),
     reference: entry.reference,
-    verse: enOnly(entry.kjv),
+    verse: verseLocalized(entry),
     hook: enOnly(teaching.hook),
     body: enOnly(teaching.body),
     discussionQuestions: teaching.questions.map((item) => enOnly(item)),
@@ -293,8 +374,8 @@ export async function generateTopicHandout(
 
   if (configuredTopicProvider() === "openai") {
     const topic = await generateWithOpenAI(trimmed);
-    if (topic) return { topic, provider: "openai" };
+    if (topic) return { topic: await localizeGeneratedSheet(topic), provider: "openai" };
   }
 
-  return { topic: generateOffline(trimmed), provider: "offline" };
+  return { topic: await localizeGeneratedSheet(generateOffline(trimmed)), provider: "offline" };
 }

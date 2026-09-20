@@ -6,6 +6,7 @@ import {
   LANG_LABEL,
   LANG_SHORT,
   langsForLayout,
+  TOPIC_SHEET_LANGS,
   type CaptionLine,
   type Lang,
   type RoomState,
@@ -49,23 +50,36 @@ function renderWindow(lang: Lang, lines: CaptionLine[], live?: LiveCaption | nul
   `;
 }
 
-function renderTopicCard(topic: TopicContent, lang: Lang, showLang: boolean): string {
+const MISSING_VERSE: Record<Lang, string> = {
+  en: "Verse can be added for this topic.",
+  es: "Se puede añadir el versículo para este tema.",
+  pt: "O versículo pode ser acrescentado a este tema.",
+};
+
+function renderTopicCard(topic: TopicContent, lang: Lang): string {
   const verse = localized(topic.verse, lang);
+  const handout = renderTopicHandout(topic, lang);
+  const empty =
+    !verse &&
+    !localized(topic.hook, lang) &&
+    !localized(topic.body, lang) &&
+    !localized(topic.title, lang) &&
+    !topic.reference?.trim();
   return `
     <article class="tv-handout" lang="${lang}">
-      ${showLang ? `<h3>${LANG_SHORT[lang]}</h3>` : ""}
-      ${renderTopicHandout(topic, lang)}
-      ${!verse ? `<p class="tv-verse muted">Verse can be added for this topic.</p>` : ""}
+      <h3>${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</h3>
+      ${empty ? renderTopicHandout(topic, "en") : handout}
+      ${!verse && !localized(topic.verse, "en") ? `<p class="tv-verse muted">${escapeHtml(MISSING_VERSE[lang])}</p>` : ""}
     </article>
   `;
 }
 
-function renderTopic(topic: TopicContent, langs: Lang[]): string {
-  const title = localized(topic.title, langs[0] ?? "en");
+function renderTopic(topic: TopicContent): string {
+  const title = localized(topic.title, "en");
   return `
-    <div class="tv-topic-kicker">Topic of the day${title ? ` · ${escapeHtml(title)}` : ""}</div>
-    <div class="tv-topic-grid" data-count="${langs.length}">
-      ${langs.map((lang) => renderTopicCard(topic, lang, langs.length > 1)).join("")}
+    <div class="tv-topic-kicker">Topic of the day${title ? ` · ${escapeHtml(title)}` : ""} · EN | ES | PT</div>
+    <div class="tv-topic-grid" data-count="${TOPIC_SHEET_LANGS.length}">
+      ${TOPIC_SHEET_LANGS.map((lang) => renderTopicCard(topic, lang)).join("")}
     </div>
   `;
 }
@@ -84,8 +98,8 @@ export function paintCaptionBoard(
   const topic = state.topic;
   if (hasTopicBody(topic) && topic) {
     topicEl.hidden = false;
-    topicEl.dataset.count = String(langs.length);
-    topicEl.innerHTML = renderTopic(topic, langs);
+    topicEl.dataset.count = String(TOPIC_SHEET_LANGS.length);
+    topicEl.innerHTML = renderTopic(topic);
   } else {
     topicEl.hidden = true;
     topicEl.innerHTML = "";

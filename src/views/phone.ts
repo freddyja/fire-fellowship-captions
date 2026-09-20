@@ -412,7 +412,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     error = "";
     cancelAsk();
     els.topicInput.value = topic && (topic.id === "custom" || topic.id.startsWith("asked-")) ? topic.title.en : "";
-    setState({ ...state, topic });
+    setState({ ...state, topic: topic ? normalizeTopic(topic) : null });
   };
 
   const onTopicChip = (event: Event) => {

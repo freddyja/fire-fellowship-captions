@@ -9,10 +9,6 @@ const CUSTOM_PROMPT: Localized = {
   pt: "Conversem juntos. O que a Escritura diz, e como vivemos isso nesta semana?",
 };
 
-function en(text: string): Localized {
-  return { en: text, es: "", pt: "" };
-}
-
 function copy(enText: string, es: string, pt: string): Localized {
   return { en: enText, es, pt };
 }
@@ -159,13 +155,27 @@ const TOPICS: TopicSeed[] = [
       es: "El que camina en integridad anda confiado; mas el que pervierte sus caminos será quebrantado.",
       pt: "Quem anda em integridade anda seguro, mas o que perverte os seus caminhos será conhecido.",
     },
-    hook: en("The safest walk is the one that does not need a cover story."),
-    body: en(
+    hook: copy(
+      "The safest walk is the one that does not need a cover story.",
+      "El caminar más seguro es el que no necesita una historia de tapadera.",
+      "O caminho mais seguro é o que não precisa de uma história de cobertura.",
+    ),
+    body: copy(
       "Integrity is not a brand. It is the same man in the hallway, in the truck, and on the phone when nobody from church is listening.\n\nA split life feels clever until it is known. Scripture says it will be. The cover costs more than the confession ever would.\n\nBrothers, the Lord already sees the side road. Walking uprightly is not about looking clean. It is about being one man.",
+      "La integridad no es una marca. Es el mismo hombre en el pasillo, en el camión y al teléfono cuando nadie de la iglesia está oyendo.\n\nUna vida partida se siente lista hasta que se sabe. La Escritura dice que se sabrá. La tapadera cuesta más de lo que costaría la confesión.\n\nHermanos, el Señor ya ve el desvío. Andar en integridad no es parecer limpio. Es ser un solo hombre.",
+      "Integridade não é marca. É o mesmo homem no corredor, no caminhão e no telefone quando ninguém da igreja está ouvindo.\n\nUma vida partida parece esperta até ser conhecida. A Escritura diz que será. A cobertura custa mais do que a confissão jamais custaria.\n\nIrmãos, o Senhor já vê o desvio. Andar com integridade não é parecer limpo. É ser um só homem.",
     ),
     discussionQuestions: [
-      en("Where is it hardest this week to walk the same in private as in public?"),
-      en("What would it cost you — and what would it free — to tell the truth there?"),
+      copy(
+        "Where is it hardest this week to walk the same in private as in public?",
+        "¿Dónde te cuesta más esta semana ser el mismo en privado que en público?",
+        "Onde está mais difícil nesta semana ser o mesmo em privado e em público?",
+      ),
+      copy(
+        "What would it cost you — and what would it free — to tell the truth there?",
+        "¿Qué te costaría, y qué te liberaría, decir la verdad ahí?",
+        "O que isso lhe custaria — e o que libertaria — dizer a verdade ali?",
+      ),
     ],
     prompt: {
       en: "Where is it hardest this week to walk the same in private as in public?",
@@ -183,13 +193,27 @@ const TOPICS: TopicSeed[] = [
       es: "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo en dondequiera que fueres.",
       pt: "Não to mandei eu? Esforça-te, e tem bom ânimo; não pasmes, nem te espantes, porque o Senhor teu Deus é contigo, por onde quer que andares.",
     },
-    hook: en("Courage is not the absence of fear. It is obedience with your knees shaking."),
-    body: en(
+    hook: copy(
+      "Courage is not the absence of fear. It is obedience with your knees shaking.",
+      "El valor no es la ausencia de miedo. Es obediencia con las rodillas temblando.",
+      "Coragem não é a ausência de medo. É obediência com os joelhos tremendo.",
+    ),
+    body: copy(
       "Joshua was not pep-talked into the Jordan. He was commanded. Strength and courage were not a mood; they were an order from the God who was already on the other side.\n\nFear still talks. It always will. The question is whether fear gets the last word, or the Lord who said He would go with you.\n\nBrothers, retreat can look like wisdom when it is just unbelief with a plan. Where is God sending you that you keep postponing?",
+      "A Josué no lo metieron al Jordán con un discurso motivacional. Fue mandado. La fuerza y el valor no eran un ánimo; eran una orden del Dios que ya estaba al otro lado.\n\nEl miedo sigue hablando. Siempre lo hará. La pregunta es si el miedo se queda con la última palabra, o el Señor que dijo que iría contigo.\n\nHermanos, retirarse puede parecer sabiduría cuando solo es incredulidad con un plan. ¿Adónde te está enviando Dios y tú lo sigues posponiendo?",
+      "Josué não foi empurrado ao Jordão com um discurso motivacional. Foi mandado. Força e coragem não eram um humor; eram uma ordem do Deus que já estava do outro lado.\n\nO medo ainda fala. Sempre vai falar. A pergunta é se o medo fica com a última palavra, ou o Senhor que disse que iria com você.\n\nIrmãos, recuar pode parecer sabedoria quando é só incredulidade com um plano. Para onde Deus está enviando você e você continua adiando?",
     ),
     discussionQuestions: [
-      en("What are you facing that needs courage instead of retreat?"),
-      en("Where have you been calling fear a plan?"),
+      copy(
+        "What are you facing that needs courage instead of retreat?",
+        "¿Qué estás enfrentando que pide valor en vez de retirarte?",
+        "O que você está enfrentando que pede coragem em vez de recuar?",
+      ),
+      copy(
+        "Where have you been calling fear a plan?",
+        "¿Dónde has estado llamando plan al miedo?",
+        "Onde você tem chamado o medo de plano?",
+      ),
     ],
     prompt: {
       en: "What are you facing that needs courage instead of retreat?",
@@ -207,13 +231,27 @@ const TOPICS: TopicSeed[] = [
       es: "Y todo lo que hagáis, hacedlo de corazón, como para el Señor y no para los hombres.",
       pt: "E tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor, e não aos homens.",
     },
-    hook: en("Your real boss is not on the org chart."),
-    body: en(
+    hook: copy(
+      "Your real boss is not on the org chart.",
+      "Tu jefe de verdad no está en el organigrama.",
+      "O seu chefe de verdade não está no organograma.",
+    ),
+    body: copy(
       "Paul was writing to men whose work was often unseen, unfair, or owned by someone else. He did not tell them to wait for a better job before they worked like worship.\n\nHeartily does not mean louder. It means the whole man — the email, the wrench, the night shift — offered to the Lord first.\n\nBrothers, a half-hearted job can hide a half-hearted faith. If Jesus signed the timesheet, what would change on Monday?",
+      "Pablo escribía a hombres cuyo trabajo a menudo no se veía, era injusto o pertenecía a otro. No les dijo que esperaran un mejor empleo para trabajar como adoración.\n\nDe corazón no significa más fuerte. Significa el hombre entero — el correo, la llave, el turno de noche — ofrecido primero al Señor.\n\nHermanos, un trabajo a medias puede esconder una fe a medias. Si Jesús firmara la hoja de horas, ¿qué cambiaría el lunes?",
+      "Paulo escrevia a homens cujo trabalho muitas vezes era invisível, injusto ou pertencia a outro. Ele não disse para esperarem um emprego melhor antes de trabalhar como adoração.\n\nDe todo o coração não significa mais alto. Significa o homem inteiro — o e-mail, a chave, o turno da noite — oferecido primeiro ao Senhor.\n\nIrmãos, um trabalho morno pode esconder uma fé morna. Se Jesus assinasse a folha de ponto, o que mudaria na segunda?",
     ),
     discussionQuestions: [
-      en("How would your work change if it were offered to the Lord first?"),
-      en("Where have you been working for applause instead of for Christ?"),
+      copy(
+        "How would your work change if it were offered to the Lord first?",
+        "¿Cómo cambiaría tu trabajo si primero se lo ofrecieras al Señor?",
+        "Como o seu trabalho mudaria se fosse oferecido primeiro ao Senhor?",
+      ),
+      copy(
+        "Where have you been working for applause instead of for Christ?",
+        "¿Dónde has estado trabajando por el aplauso en vez de por Cristo?",
+        "Onde você tem trabalhado pelo aplauso em vez de por Cristo?",
+      ),
     ],
     prompt: {
       en: "How would your work change if it were offered to the Lord first?",
@@ -231,13 +269,27 @@ const TOPICS: TopicSeed[] = [
       es: "Mejor es el que tarda en airarse que el fuerte; y el que se enseñorea de su espíritu, que el que toma una ciudad.",
       pt: "Melhor é o longânimo do que o valente, e o que governa o seu espírito do que o que toma uma cidade.",
     },
-    hook: en("Winning the room is cheap. Ruling your spirit is the real city."),
-    body: en(
+    hook: copy(
+      "Winning the room is cheap. Ruling your spirit is the real city.",
+      "Ganarse el cuarto es barato. Gobernar tu espíritu es la ciudad de verdad.",
+      "Ganhar a sala é barato. Governar o seu espírito é a cidade de verdade.",
+    ),
+    body: copy(
       "A man can take a hill at work and lose the kitchen the same night. Strength that cannot wait is not strength. It is a fuse.\n\nSlow to anger is not soft. It is a man who has a master besides his mood. The Spirit produces that fruit; willpower only delays the blast.\n\nBrothers, the city you need to take this week may be the next ten seconds after you are provoked.",
+      "Un hombre puede tomar una loma en el trabajo y perder la cocina esa misma noche. La fuerza que no puede esperar no es fuerza. Es una mecha.\n\nTardar en airarse no es blandura. Es un hombre que tiene un Señor además de su humor. El Espíritu produce ese fruto; la fuerza de voluntad solo atrasa la explosión.\n\nHermanos, la ciudad que necesitan tomar esta semana puede ser los próximos diez segundos después de que los provoquen.",
+      "Um homem pode tomar um morro no trabalho e perder a cozinha na mesma noite. Força que não sabe esperar não é força. É um pavio.\n\nTardio para a ira não é moleza. É um homem que tem um Senhor além do humor. O Espírito produz esse fruto; força de vontade só atrasa a explosão.\n\nIrmãos, a cidade que vocês precisam tomar nesta semana pode ser os próximos dez segundos depois de serem provocados.",
     ),
     discussionQuestions: [
-      en("Where did your spirit run ahead of you this week?"),
-      en("What would ruling your spirit look like the next time that fuse is lit?"),
+      copy(
+        "Where did your spirit run ahead of you this week?",
+        "¿Dónde se te adelantó el genio esta semana?",
+        "Onde o seu espírito foi na frente nesta semana?",
+      ),
+      copy(
+        "What would ruling your spirit look like the next time that fuse is lit?",
+        "¿Cómo se vería gobernar tu espíritu la próxima vez que se encienda esa mecha?",
+        "Como seria governar o seu espírito da próxima vez que esse pavio acender?",
+      ),
     ],
     prompt: {
       en: "Where did your spirit run ahead of you this week?",
@@ -255,13 +307,27 @@ const TOPICS: TopicSeed[] = [
       es: "Antes sed benignos unos con otros, misericordiosos, perdonándoos unos a otros, como Dios también os perdonó a vosotros en Cristo.",
       pt: "Antes sede uns para com os outros benignos, misericordiosos, perdoando-vos uns aos outros, como também Deus vos perdoou em Cristo.",
     },
-    hook: en("You do not forgive because they earned it. You forgive because you didn't."),
-    body: en(
+    hook: copy(
+      "You do not forgive because they earned it. You forgive because you didn't.",
+      "No perdonas porque ellos lo merecieron. Perdonas porque tú no lo mereciste.",
+      "Você não perdoa porque eles mereceram. Perdoa porque você não mereceu.",
+    ),
+    body: copy(
       "Paul does not start with the size of the wound. He starts with the size of the cross. Kindness and a tender heart are not personality types. They are the overflow of being forgiven in Christ.\n\nBitterness feels like justice we get to keep. It is a prison we carry. Releasing a man does not rewrite what he did. It refuses to let his sin be the lord of your spirit.\n\nBrothers, some of us have been rehearsing a case for years. The Father already closed yours. What would kindness look like if that were finally true in the room you cannot avoid?",
+      "Pablo no empieza por el tamaño de la herida. Empieza por el tamaño de la cruz. La bondad y el corazón tierno no son tipos de personalidad. Son el desborde de haber sido perdonados en Cristo.\n\nLa amargura se siente como una justicia que nos podemos quedar. Es una cárcel que cargamos. Soltar a un hombre no reescribe lo que hizo. Se niega a dejar que su pecado sea el señor de tu espíritu.\n\nHermanos, algunos llevamos años ensayando un caso. El Padre ya cerró el tuyo. ¿Cómo se vería la bondad si eso fuera por fin verdad en el cuarto que no puedes evitar?",
+      "Paulo não começa pelo tamanho da ferida. Começa pelo tamanho da cruz. Bondade e coração terno não são tipos de personalidade. São o transbordo de ter sido perdoado em Cristo.\n\nAmargura parece justiça que podemos guardar. É uma prisão que carregamos. Soltar um homem não reescreve o que ele fez. Recusa deixar que o pecado dele seja o senhor do seu espírito.\n\nIrmãos, alguns de nós ensaiamos um processo há anos. O Pai já fechou o seu. Como seria a bondade se isso fosse enfim verdade na sala que você não pode evitar?",
     ),
     discussionQuestions: [
-      en("Who do you still need to release — and what would kindness look like?"),
-      en("Where has bitterness been posing as wisdom in your house?"),
+      copy(
+        "Who do you still need to release — and what would kindness look like?",
+        "¿A quién todavía necesitas soltar, y cómo se vería la bondad?",
+        "A quem você ainda precisa soltar — e como seria a bondade?",
+      ),
+      copy(
+        "Where has bitterness been posing as wisdom in your house?",
+        "¿Dónde se ha disfrazado la amargura de sabiduría en tu casa?",
+        "Onde a amargura tem se passado por sabedoria na sua casa?",
+      ),
     ],
     prompt: {
       en: "Who do you still need to release — and what would kindness look like?",
@@ -279,13 +345,27 @@ const TOPICS: TopicSeed[] = [
       es: "Nada hagáis por contienda o por vanagloria; antes bien con humildad, estimando cada uno a los demás como superiores a él mismo.",
       pt: "Nada façais por contenda ou por vanglória, mas por humildade; cada um considere os outros superiores a si mesmo.",
     },
-    hook: en("Pride needs a stage. Humility needs a brother."),
-    body: en(
+    hook: copy(
+      "Pride needs a stage. Humility needs a brother.",
+      "El orgullo necesita un escenario. La humildad necesita un hermano.",
+      "O orgulho precisa de um palco. A humildade precisa de um irmão.",
+    ),
+    body: copy(
       "Paul is not asking you to lie about your gifts. He is asking you to stop using them as a scoreboard. Strife and empty glory both need someone to beat.\n\nLowliness of mind is a choice to put another man's name, need, and good ahead of your own highlight. That is how Christ walked into the room.\n\nBrothers, someone in your circle is carrying a load you could take if your name were not so important this week.",
+      "Pablo no te pide que mientas sobre tus dones. Te pide que dejes de usarlos como marcador. La contienda y la vanagloria necesitan a alguien a quien vencer.\n\nLa humildad de mente es elegir poner el nombre, la necesidad y el bien de otro delante de tu propio brillo. Así entró Cristo al cuarto.\n\nHermanos, alguien en su círculo carga un peso que ustedes podrían tomar si su nombre no fuera tan importante esta semana.",
+      "Paulo não pede que você minta sobre os seus dons. Pede que pare de usá-los como placar. Contenda e vanglória precisam de alguém para vencer.\n\nHumildade de mente é escolher colocar o nome, a necessidade e o bem de outro à frente do seu próprio destaque. Foi assim que Cristo entrou na sala.\n\nIrmãos, alguém no seu círculo carrega um peso que vocês poderiam tomar se o seu nome não fosse tão importante nesta semana.",
     ),
     discussionQuestions: [
-      en("Where can you put another man ahead of your own name this week?"),
-      en("What would change if you stopped needing to win the room?"),
+      copy(
+        "Where can you put another man ahead of your own name this week?",
+        "¿Dónde puedes poner a otro delante de tu propio nombre esta semana?",
+        "Onde você pode colocar outro homem à frente do seu próprio nome nesta semana?",
+      ),
+      copy(
+        "What would change if you stopped needing to win the room?",
+        "¿Qué cambiaría si dejaras de necesitar ganarte el cuarto?",
+        "O que mudaria se você parasse de precisar ganhar a sala?",
+      ),
     ],
     prompt: {
       en: "Where can you put another man ahead of your own name this week?",
@@ -303,13 +383,27 @@ const TOPICS: TopicSeed[] = [
       es: "Mejores son dos que uno; porque tienen mejor paga de su trabajo. Porque si cayeren, el uno levantará a su compañero.",
       pt: "Melhor é serem dois do que um, porque têm melhor paga do seu trabalho. Porque se um cair, o outro levanta o seu companheiro.",
     },
-    hook: en("A man who cannot be picked up has already chosen the fall."),
-    body: en(
+    hook: copy(
+      "A man who cannot be picked up has already chosen the fall.",
+      "El hombre que no se deja levantar ya eligió la caída.",
+      "O homem que não pode ser levantado já escolheu a queda.",
+    ),
+    body: copy(
       "Two are better than one is not a slogan for teamwork posters. It is a warning. Isolated men fall in private and stay down because nobody was close enough to grab a wrist.\n\nAccountability is not a report. It is a brother with permission — the truth before the crash, and a hand after it.\n\nBrothers, secrecy is not strength. If no one knows where you are actually walking, you are already alone in the ditch.",
+      "Mejores son dos que uno no es un lema para carteles de equipo. Es una advertencia. Los hombres aislados caen en privado y se quedan abajo porque nadie estuvo lo bastante cerca para agarrar una muñeca.\n\nLa rendición de cuentas no es un informe. Es un hermano con permiso: la verdad antes del choque, y una mano después.\n\nHermanos, el secreto no es fuerza. Si nadie sabe por dónde realmente caminas, ya estás solo en la zanja.",
+      "Melhor é serem dois do que um não é slogan de cartaz de equipe. É um aviso. Homens isolados caem em privado e ficam no chão porque ninguém estava perto o bastante para pegar um pulso.\n\nPrestação de contas não é um relatório. É um irmão com permissão — a verdade antes da queda, e uma mão depois.\n\nIrmãos, segredo não é força. Se ninguém sabe por onde você realmente anda, você já está sozinho no fosso.",
     ),
     discussionQuestions: [
-      en("Who is allowed to pick you up — and have you told him the truth?"),
-      en("What are you still carrying alone that a brother could help you lift?"),
+      copy(
+        "Who is allowed to pick you up — and have you told him the truth?",
+        "¿Quién tiene permiso de levantarte, y le has dicho la verdad?",
+        "Quem tem permissão de te levantar — e você já lhe disse a verdade?",
+      ),
+      copy(
+        "What are you still carrying alone that a brother could help you lift?",
+        "¿Qué sigues cargando solo que un hermano podría ayudarte a levantar?",
+        "O que você ainda carrega sozinho que um irmão poderia ajudar a levantar?",
+      ),
     ],
     prompt: {
       en: "Who is allowed to pick you up — and have you told him the truth?",
@@ -327,13 +421,27 @@ const TOPICS: TopicSeed[] = [
       es: "Porque el Hijo del Hombre no vino para ser servido, sino para servir, y para dar su vida en rescate por muchos.",
       pt: "Porque o Filho do homem também não veio para ser servido, mas para servir e dar a sua vida em resgate de muitos.",
     },
-    hook: en("The greatest Man in the room picked up a towel."),
-    body: en(
+    hook: copy(
+      "The greatest Man in the room picked up a towel.",
+      "El Hombre más grande del cuarto tomó una toalla.",
+      "O maior Homem da sala pegou uma toalha.",
+    ),
+    body: copy(
       "The disciples wanted seats. Jesus talked about a ransom. Leadership in His kingdom is not a platform you climb. It is a life you spend.\n\nIf the Son of Man did not come to be served, we do not get to demand a staff, a title, or a thank-you before we move.\n\nBrothers, someone near you needs ministry, not a meeting. Lead where it costs you and does not photograph well.",
+      "Los discípulos querían asientos. Jesús habló de un rescate. El liderazgo en Su reino no es una plataforma que se escala. Es una vida que se gasta.\n\nSi el Hijo del Hombre no vino para ser servido, no nos toca exigir un equipo, un título o un gracias antes de movernos.\n\nHermanos, alguien cerca de ustedes necesita ministerio, no una reunión. Lideren donde les cueste y no salga bien en la foto.",
+      "Os discípulos queriam assentos. Jesus falou de um resgate. Liderança no reino dEle não é um palco que se sobe. É uma vida que se gasta.\n\nSe o Filho do homem não veio para ser servido, nós não podemos exigir equipe, título ou um obrigado antes de nos mover.\n\nIrmãos, alguém perto de vocês precisa de ministério, não de uma reunião. Liderem onde custa e não fotografa bem.",
     ),
     discussionQuestions: [
-      en("Where can you lead by serving, not by being seen?"),
-      en("Whose burden could you pick up this week without announcing it?"),
+      copy(
+        "Where can you lead by serving, not by being seen?",
+        "¿Dónde puedes liderar sirviendo, no buscando ser visto?",
+        "Onde você pode liderar servindo, e não buscando ser visto?",
+      ),
+      copy(
+        "Whose burden could you pick up this week without announcing it?",
+        "¿De quién podrías tomar la carga esta semana sin anunciarlo?",
+        "De quem você poderia tomar o fardo nesta semana sem anunciar?",
+      ),
     ],
     prompt: {
       en: "Where can you lead by serving, not by being seen?",
@@ -351,13 +459,27 @@ const TOPICS: TopicSeed[] = [
       es: "Hermanos míos, tened por sumo gozo cuando os halléis en diversas pruebas, sabiendo que la prueba de vuestra fe produce paciencia.",
       pt: "Meus irmãos, tende por motivo de grande gozo o passardes por várias provações, sabendo que a prova da vossa fé produz a paciência.",
     },
-    hook: en("Joy is not the trial. Joy is knowing what the trial is making."),
-    body: en(
+    hook: copy(
+      "Joy is not the trial. Joy is knowing what the trial is making.",
+      "El gozo no es la prueba. El gozo es saber lo que la prueba está formando.",
+      "O gozo não é a provação. O gozo é saber o que a provação está formando.",
+    ),
+    body: copy(
       "James does not say the pain is fun. He says count it joy — do the math — because the test is producing something you cannot get on easy street: a faith that can wait.\n\nWe want the lesson without the weight. God often trains the man by the thing he would have scheduled last.\n\nBrothers, the trial in front of you is not proof that God left. It may be the workshop where He is finishing your patience.",
+      "Santiago no dice que el dolor sea divertido. Dice tenedlo por gozo — hagan la cuenta — porque la prueba produce algo que no se consigue en la calle fácil: una fe que sabe esperar.\n\nQueremos la lección sin el peso. Dios a menudo forma al hombre con lo que él habría puesto al final del calendario.\n\nHermanos, la prueba delante de ustedes no es prueba de que Dios se fue. Puede ser el taller donde Él está terminando su paciencia.",
+      "Tiago não diz que a dor é divertida. Diz tende por gozo — façam a conta — porque a prova produz algo que não se compra na rua fácil: uma fé que sabe esperar.\n\nQueremos a lição sem o peso. Deus muitas vezes forma o homem com a coisa que ele teria marcado por último.\n\nIrmãos, a provação à frente de vocês não é prova de que Deus saiu. Pode ser a oficina onde Ele está terminando a vossa paciência.",
     ),
     discussionQuestions: [
-      en("What trial is training your faith right now — and where is the joy in it?"),
-      en("What is this test trying to produce in you that comfort never could?"),
+      copy(
+        "What trial is training your faith right now — and where is the joy in it?",
+        "¿Qué prueba está entrenando tu fe ahora, y dónde está el gozo en ella?",
+        "Que provação está treinando a sua fé agora — e onde está o gozo nisso?",
+      ),
+      copy(
+        "What is this test trying to produce in you that comfort never could?",
+        "¿Qué está tratando de producir esta prueba en ti que la comodidad nunca podría?",
+        "O que este teste está tentando produzir em você que o conforto nunca poderia?",
+      ),
     ],
     prompt: {
       en: "What trial is training your faith right now — and where is the joy in it?",
@@ -385,6 +507,20 @@ export function topicById(id: string): TopicContent | undefined {
 export function localized(value: Partial<Localized> | undefined, lang: Lang): string {
   if (!value) return "";
   return value[lang]?.trim() || value.en?.trim() || "";
+}
+
+/** Never leave ES/PT blank when English exists — columns must not render empty. */
+export function completeLocalized(value: Partial<Localized> | string | undefined): Localized {
+  if (typeof value === "string") {
+    const text = value.trim();
+    return { en: text, es: text, pt: text };
+  }
+  const en = value?.en?.trim() || "";
+  return {
+    en,
+    es: value?.es?.trim() || en,
+    pt: value?.pt?.trim() || en,
+  };
 }
 
 export function customTopic(title: string): TopicContent {
@@ -432,18 +568,19 @@ export function hasTopicBody(topic: TopicContent | null | undefined): boolean {
 
 export function normalizeTopic(topic: TopicContent | null | undefined): TopicContent | null {
   if (!topic || !hasTopicBody(topic)) return topic ?? null;
+  const questions = topic.discussionQuestions?.length
+    ? topic.discussionQuestions
+    : topic.prompt
+      ? [topic.prompt]
+      : [CUSTOM_PROMPT];
   return {
     id: topic.id,
-    title: topic.title,
+    title: completeLocalized(topic.title),
     reference: topic.reference ?? "",
-    verse: topic.verse ?? EMPTY,
-    hook: topic.hook ?? EMPTY,
-    body: topic.body ?? EMPTY,
-    discussionQuestions: topic.discussionQuestions?.length
-      ? topic.discussionQuestions
-      : topic.prompt
-        ? [topic.prompt]
-        : [CUSTOM_PROMPT],
-    prompt: topic.prompt ?? CUSTOM_PROMPT,
+    verse: completeLocalized(topic.verse),
+    hook: completeLocalized(topic.hook),
+    body: completeLocalized(topic.body),
+    discussionQuestions: questions.map((item) => completeLocalized(item)),
+    prompt: completeLocalized(topic.prompt ?? questions[0] ?? CUSTOM_PROMPT),
   };
 }

@@ -102,6 +102,13 @@ async function main() {
   assert(appJs.includes("Ask for topic"), "phone Ask for topic button");
   assert(appJs.includes("Discussion Questions:"), "topic discussion heading");
   assert(appJs.includes("Paul didn't wake up content"), "contentment hook in seeds");
+  assert(appJs.includes(" · EN | ES | PT"), "trilingual topic sheet kicker");
+  assert(appJs.includes("Cabeza del hogar no es un trono"), "head of household hook es");
+  assert(appJs.includes("Cabeça do lar não é um trono"), "head of household hook pt");
+  assert(appJs.includes("El caminar más seguro"), "integrity hook es");
+  assert(appJs.includes("O caminho mais seguro"), "integrity hook pt");
+  assert(appJs.includes("The safest walk is the one that does not need a cover story"), "integrity hook en");
+  assert(appJs.includes("Coragem não é a ausência de medo"), "courage hook pt");
   assert(appJs.includes("Send to TV"), "phone Send to TV button");
   assert(appJs.includes("Open TV view"), "optional Open TV view");
   assert(appJs.includes("Copy TV link"), "copy TV link");
@@ -110,6 +117,7 @@ async function main() {
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
   assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
+  assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit footer");
   assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
     "Smart View mode tip",
@@ -130,6 +138,8 @@ async function main() {
     "Smart View landscape keeps language panes",
   );
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
+  assert(!appCss.includes("min(28vh, 10rem)"), "Smart View topic not clipped to 10rem");
+  assert(!appCss.includes("min(30vh, 7.5rem)"), "Smart View topic not clipped to 7.5rem");
 
   const { body: manifestText } = await text("/manifest.webmanifest");
   const manifest = JSON.parse(manifestText);
@@ -207,8 +217,15 @@ async function main() {
   assert(asked.topic?.id === "head-of-household", "head of household seed id");
   assert(String(asked.topic?.reference).includes("Ephesians 5:23"), "headship reference");
   assert(String(asked.topic?.verse?.en || "").includes("husband is the head of the wife"), "headship KJV");
+  assert(String(asked.topic?.verse?.es || "").includes("marido es cabeza"), "headship verse es");
+  assert(String(asked.topic?.verse?.pt || "").includes("marido é a cabeça"), "headship verse pt");
   assert(Boolean(asked.topic?.hook?.en), "headship hook");
+  assert(String(asked.topic?.hook?.es || "").includes("toalla"), "headship hook es");
+  assert(String(asked.topic?.hook?.pt || "").includes("toalha"), "headship hook pt");
+  assert(Boolean(asked.topic?.body?.es && asked.topic?.body?.pt), "headship teaching es/pt");
   assert((asked.topic?.discussionQuestions || []).length >= 2, "headship questions");
+  assert(Boolean(asked.topic?.discussionQuestions?.[0]?.es), "headship questions es");
+  assert(Boolean(asked.topic?.discussionQuestions?.[0]?.pt), "headship questions pt");
 
   const generatedRes = await fetch(`${base}/api/topic-handout`, {
     method: "POST",
@@ -221,9 +238,15 @@ async function main() {
   assert(String(generated.topic?.id || "").startsWith("asked-"), "generated id");
   assert(Boolean(generated.topic?.reference), "generated reference");
   assert(String(generated.topic?.verse?.en || "").length > 30, "generated verse present");
+  assert(String(generated.topic?.verse?.es || "").length > 20, "generated verse es from catalog");
+  assert(String(generated.topic?.verse?.pt || "").length > 20, "generated verse pt from catalog");
+  assert(generated.topic?.verse?.es !== generated.topic?.verse?.en, "catalog verse es is not invented English");
   assert(Boolean(generated.topic?.hook?.en), "generated hook");
+  assert(Boolean(generated.topic?.hook?.es && generated.topic?.hook?.pt), "generated hook es/pt");
   assert(Boolean(generated.topic?.body?.en), "generated body");
+  assert(Boolean(generated.topic?.body?.es && generated.topic?.body?.pt), "generated body es/pt");
   assert((generated.topic?.discussionQuestions || []).length >= 2, "generated questions");
+  assert(Boolean(generated.topic?.discussionQuestions?.[0]?.es), "generated questions es");
   const askedLeak = JSON.stringify(generated).includes("OPENAI_API_KEY") || JSON.stringify(generated).includes("sk-");
   assert(!askedLeak, "topic handout must not include a key");
 
