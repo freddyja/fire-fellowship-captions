@@ -10,6 +10,8 @@ export type MyMemoryOptions = {
   /** Optional `de` email. Raises the anonymous daily cap; not an API key. */
   email?: string;
   timeoutMs?: number;
+  /** Test hook so verify scripts can force MyMemory to fail. */
+  endpoint?: string;
 };
 
 type MyMemoryPayload = {
@@ -77,6 +79,7 @@ export function createMyMemoryTranslator(options: MyMemoryOptions = {}): Transla
   const cache = new Map<string, string>();
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const email = options.email?.trim();
+  const endpoint = options.endpoint?.trim() || ENDPOINT;
 
   return {
     id: "mymemory",
@@ -87,7 +90,7 @@ export function createMyMemoryTranslator(options: MyMemoryOptions = {}): Transla
       const hit = cache.get(key);
       if (hit !== undefined) return hit;
 
-      const url = new URL(ENDPOINT);
+      const url = new URL(endpoint);
       url.searchParams.set("q", truncateUtf8Bytes(source, MAX_QUERY_BYTES));
       url.searchParams.set("langpair", pair(from, to));
       if (email) url.searchParams.set("de", email);

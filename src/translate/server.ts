@@ -9,11 +9,15 @@ type TranslateResponse = {
 };
 
 export function createServerTranslator(): Translator {
+  let lastProvider = "server";
   return {
-    id: "server",
+    get id() {
+      return lastProvider;
+    },
     async translate(text, from, to) {
       if (from === to || !text.trim()) return text;
       const result = await postTranslate(text, from, [to]);
+      if (result.provider) lastProvider = result.provider;
       const value = result.text;
       if (typeof value === "string") return value;
       if (value && typeof value[to] === "string" && value[to]) return value[to];
@@ -22,6 +26,7 @@ export function createServerTranslator(): Translator {
     async translateAll(text, from) {
       if (!text.trim()) return { en: "", es: "", pt: "" };
       const result = await postTranslate(text, from);
+      if (result.provider) lastProvider = result.provider;
       const value = result.text;
       if (!value || typeof value === "string") {
         throw new Error("Translate API returned no map");

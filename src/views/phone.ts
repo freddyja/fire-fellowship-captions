@@ -2,7 +2,7 @@ import { brandBlock, creditFooter } from "../brand";
 import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
-import { bindOfflineModeToggle } from "../offline-mode";
+import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
@@ -55,6 +55,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let askBusy = false;
   let askQuery = "";
   let askAbort: AbortController | null = null;
+  let lastCaptionWasMock = false;
   let sourceTouched = false;
 
   const push = () => conn?.push(state);
@@ -355,6 +356,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const from = detectLang(spoken, state.sourceLang);
     const translated = await translateAll(translator, spoken, from);
     if (epoch !== publishEpoch) return;
+    lastCaptionWasMock = translator.id === "mock";
+    paintLimitedBanner();
     const line: CaptionLine = {
       id: crypto.randomUUID(),
       isFinal: true,
@@ -629,7 +632,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   smartExit.addEventListener("click", onExitSmartView);
   captionsOnlyBtn.addEventListener("click", onCaptionsOnly);
   smartMic.addEventListener("click", onMic);
-  const unbindOffline = bindOfflineModeToggle(offlineBtn, { banner: offlineBanner });
+  const paintLimitedBanner = () => {
+    offlineBanner.hidden = !(isOfflineMeeting() || lastCaptionWasMock);
+  };
+  const unbindOffline = bindOfflineModeToggle(offlineBtn, {
+    banner: offlineBanner,
+    bannerWhen: () => lastCaptionWasMock,
+    onChange: () => paintLimitedBanner(),
+  });
   const unbindSetup = bindLocalSetup(localSetup);
   setupOpen.addEventListener("click", onOpenLocalSetup);
   setupClose.addEventListener("click", onCloseLocalSetup);

@@ -37,7 +37,7 @@ export function mountHome(root: HTMLElement): () => void {
             Offline translate (limited phrases). For full local setup see
             <a href="#local-setup">laptop steps</a>.
           </p>
-          <p class="hint">On: built-in dictionary (no MyMemory). Off: hosted default (MyMemory on Render).</p>
+          <p class="hint">On: built-in dictionary (no MyMemory). Off: hosted default (MyMemory, then MinT if the daily quota is gone).</p>
         </div>
       </div>
       <aside class="install-card" id="local-setup" data-local-setup>

@@ -81,6 +81,7 @@ async function main() {
   assert(
     health.translate === "deepl" ||
       health.translate === "mymemory" ||
+      health.translate === "mint" ||
       health.translate === "mock" ||
       health.translate === "google",
     "health.translate",
@@ -186,10 +187,61 @@ async function main() {
     assert(String(translated.text.es).toLowerCase().includes("bienvenidos"), "mock es");
     assert(String(translated.text.pt).toLowerCase().includes("irm"), "mock pt");
   }
-  if (translated.provider === "mymemory") {
-    assert(String(translated.text.es).trim() !== translated.text.en, "mymemory es differs from en");
-    assert(String(translated.text.pt).trim() !== translated.text.en, "mymemory pt differs from en");
+  if (translated.provider === "mymemory" || translated.provider === "mint") {
+    assert(String(translated.text.es).trim() !== translated.text.en, `${translated.provider} es differs from en`);
+    assert(String(translated.text.pt).trim() !== translated.text.en, `${translated.provider} pt differs from en`);
   }
+
+  for (const sample of [
+    {
+      from: "es",
+      text: "El pastor nos invita a orar juntos esta noche.",
+      expect: { en: /invite|pray|tonight|together/i, pt: /convid|orar|noite|juntos/i },
+    },
+    {
+      from: "pt",
+      text: "O pastor nos convida a orar juntos esta noite.",
+      expect: { en: /invite|pray|tonight|together/i, es: /invit|orar|noche|juntos/i },
+    },
+    {
+      from: "en",
+      text: "The pastor invites us to pray together tonight.",
+      expect: { es: /pastor|invit|orar|noche/i, pt: /pastor|convid|orar|noite/i },
+    },
+  ]) {
+    const res = await fetch(`${base}/api/translate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: sample.text, from: sample.from }),
+    });
+    assert(res.ok, `POST /api/translate free-form ${sample.from}`);
+    const body = await res.json();
+    assert(
+      body.provider === "mymemory" || body.provider === "mint" || body.provider === "deepl" || body.provider === "google",
+      `free-form ${sample.from} provider ${body.provider} should be live MT, not mock`,
+    );
+    assert(String(body.text[sample.from] || "").includes(sample.text.slice(0, 8)), `${sample.from} pane keeps source`);
+    for (const [to, pattern] of Object.entries(sample.expect)) {
+      const value = String(body.text[to] || "");
+      assert(value.trim() !== sample.text, `free-form ${sample.from}->${to} identity`);
+      assert(pattern.test(value), `free-form ${sample.from}->${to}: ${value}`);
+    }
+  }
+
+  const healthAfter = await json("/health");
+  const translateStatusAfter = await json("/api/translate");
+  assert(
+    healthAfter.translate === translateStatusAfter.provider,
+    "health and GET /api/translate stay aligned after live captions",
+  );
+  assert(
+    healthAfter.translate === "deepl" ||
+      healthAfter.translate === "mymemory" ||
+      healthAfter.translate === "mint" ||
+      healthAfter.translate === "google" ||
+      healthAfter.translate === "mock",
+    "health reports a known live provider after translate",
+  );
 
   for (const sample of [
     { from: "es", text: "Bienvenidos hermanos", expectEn: /welcome|brother/i, other: "pt", otherPat: /irm/i },
