@@ -42,7 +42,8 @@ function myMemoryEmailFromEnv(): string | undefined {
 /**
  * Recommended meeting-night provider is DeepL Free when DEEPL_AUTH_KEY is set.
  * If that key is missing, MyMemory (no key) keeps hosted demos working.
- * Mock is opt-in for offline. Google only when a Cloud key is present.
+ * Mock is opt-in for offline (`TRANSLATE_PROVIDER=mock` or POST provider=mock).
+ * Google only when a Cloud key is present.
  */
 export function resolveTranslateProvider(): TranslateProvider {
   const requested = requestedProvider();
@@ -84,14 +85,21 @@ async function fillTargets(
   );
 }
 
+export function effectiveTranslateProvider(requestProvider?: string): TranslateProvider {
+  if (String(requestProvider || "").trim().toLowerCase() === "mock") return "mock";
+  return resolveTranslateProvider();
+}
+
 export async function translateCaption(
   text: string,
   from: Lang,
   targets: Lang[] = LANGS,
+  options?: { provider?: string },
 ): Promise<{ provider: TranslateProvider; text: Record<Lang, string> }> {
   const source = text.trim();
+  const provider = effectiveTranslateProvider(options?.provider);
   if (!source) {
-    return { provider: resolveTranslateProvider(), text: emptyLocalized("", from) };
+    return { provider, text: emptyLocalized("", from) };
   }
   if (source.length > MAX_TEXT) {
     throw Object.assign(new Error("Text is too long"), { status: 400 });
@@ -99,7 +107,6 @@ export async function translateCaption(
 
   const unique = [...new Set(targets.filter((lang) => lang !== from))];
   const out = emptyLocalized(source, from);
-  const provider = resolveTranslateProvider();
 
   if (provider === "deepl") {
     try {

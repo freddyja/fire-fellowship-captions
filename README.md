@@ -129,6 +129,36 @@ Install on the Fold ([above](#install-on-the-fold-chrome-on-android)). Bookmark 
 
 No Play Store APK. Chrome’s installed PWA is the app format.
 
+## Travel: Offline / Local meeting
+
+Freddy sometimes has **no public internet**. Use **Offline / Local meeting** in the app (home and phone). That preference is saved in `localStorage`.
+
+**On:** captions use the built-in mock dictionary (limited EN/ES/PT phrases). No MyMemory, no DeepL, no keys. A banner says: *Offline translate (limited phrases). For full local setup see laptop steps.*
+
+**Off:** current hosted default — MyMemory on Render (or DeepL if a server key is set).
+
+### Laptop LAN / hotspot (Fold + TV)
+
+On a laptop that can share Wi‑Fi or a phone hotspot with the Fold and the TV:
+
+```
+npm install
+npm run build
+npm start
+```
+
+`npm start` listens on **port 8080** (`HOST=0.0.0.0`). Then open `http://LAPTOP-LAN-IP:PORT` on the Fold and the TV — usually `http://192.168.x.x:8080` — while they are on that same network.
+
+Optional laptop env (same mock dictionary the in-app toggle uses):
+
+```bash
+TRANSLATE_PROVIDER=mock
+```
+
+Use **Chrome** for the mic. Speech recognition may still need a network path to the device’s speech service (Chrome / Google), depending on the phone. That is not fully offline. **Type a caption** and Send if the mic cannot reach a recognizer.
+
+Smart View, Send to TV, topics, captions-only, trilingual sheets, and the footer credit are unchanged. Phone and TV still need to reach **this laptop’s** process for the room relay — they cannot stay on the public Render URL if that host is unreachable.
+
 ## Verify phone + TV in the production shape
 
 After `npm run build`, either locally or against the public URL:
@@ -211,7 +241,7 @@ The phone translates **before** it sends captions to the TV. The Fold calls `POS
 
 **If the DeepL key is missing:** [MyMemory](https://mymemory.translated.net/doc/spec.php) (free, no key, about 5,000 characters/day per host IP), then the mock dictionary. Hosted demos still translate without secrets.
 
-**Mock** (`TRANSLATE_PROVIDER=mock`) is the offline built-in EN/ES/PT dictionary.
+**Mock** (`TRANSLATE_PROVIDER=mock`, or the in-app **Offline / Local meeting** toggle) is the offline built-in EN/ES/PT dictionary. The phone uses that dictionary locally so captions do not call MyMemory. `POST /api/translate` also accepts `provider: "mock"` (the only client override) so a laptop server can force mock without env or keys.
 
 **Google Cloud Translation** needs a **billing admin** on a GCP project. Skip it unless someone can enable billing.
 
@@ -221,7 +251,7 @@ The phone translates **before** it sends captions to the TV. The Fold calls `POS
 | --- | --- |
 | `TRANSLATE_PROVIDER=deepl` + `DEEPL_AUTH_KEY` | DeepL (recommended). Default host `https://api-free.deepl.com`. Optional `DEEPL_API_URL=https://api.deepl.com` for Pro. |
 | *(unset)* or `TRANSLATE_PROVIDER=mymemory`, or DeepL requested with no key | MyMemory. No key. Demo / fallback path. |
-| `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. |
+| `TRANSLATE_PROVIDER=mock` | Built-in dictionary. Works offline, no keys. Same path as in-app **Offline / Local meeting**. |
 | `TRANSLATE_PROVIDER=google` + `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API v2. Failures fall back to MyMemory, then mock. |
 | *(unset)* `OPENAI_API_KEY` | Offline “Ask for topic” generator. Curated KJV + templates. |
 | `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) | Better teaching text. Verse wording still comes from the KJV catalog. Falls back offline if the call fails. |

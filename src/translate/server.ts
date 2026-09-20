@@ -1,3 +1,4 @@
+import { isOfflineMeeting } from "../offline-mode";
 import type { Lang } from "../types";
 import type { Translator } from "./types";
 
@@ -34,10 +35,12 @@ export function createServerTranslator(): Translator {
 }
 
 async function postTranslate(text: string, from: Lang, to?: Lang[]): Promise<TranslateResponse> {
+  const payload: Record<string, unknown> = to ? { text, from, to } : { text, from };
+  if (isOfflineMeeting()) payload.provider = "mock";
   const res = await fetch("/api/translate", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(to ? { text, from, to } : { text, from }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Translate HTTP ${res.status}`);
   return (await res.json()) as TranslateResponse;

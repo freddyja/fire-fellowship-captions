@@ -117,6 +117,10 @@ async function main() {
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
   assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
+  assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
+  assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
+  assert(appJs.includes("npm run build"), "laptop setup npm run build");
+  assert(appJs.includes("http://LAPTOP-LAN-IP:PORT"), "laptop LAN URL");
   assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit footer");
   assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
@@ -186,6 +190,21 @@ async function main() {
     assert(String(translated.text.es).trim() !== translated.text.en, "mymemory es differs from en");
     assert(String(translated.text.pt).trim() !== translated.text.en, "mymemory pt differs from en");
   }
+
+  const mockRes = await fetch(`${base}/api/translate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      text: "Welcome brothers. Thank you for coming tonight. Let us begin.",
+      from: "en",
+      provider: "mock",
+    }),
+  });
+  assert(mockRes.ok, "POST /api/translate provider=mock");
+  const mocked = await mockRes.json();
+  assert(mocked.provider === "mock", "client can force mock without env");
+  assert(String(mocked.text.es).toLowerCase().includes("bienvenidos"), "forced mock es");
+  assert(String(mocked.text.pt).toLowerCase().includes("irm"), "forced mock pt");
   const leaked =
     JSON.stringify(translated).includes("GOOGLE_TRANSLATE") ||
     JSON.stringify(translated).includes("DEEPL_AUTH") ||

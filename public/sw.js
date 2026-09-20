@@ -1,4 +1,4 @@
-const CACHE = "fire-fellowship-v5";
+const CACHE = "fire-fellowship-v6";
 const PRECACHE = [
   "/",
   "/index.html",
