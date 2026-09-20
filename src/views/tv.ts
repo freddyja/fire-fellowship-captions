@@ -1,4 +1,5 @@
 import { brandBlock } from "../brand";
+import { finalizedLines } from "../caption-history";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
 import { emptyState, type ConnStatus, type PeerCounts } from "../types";
@@ -46,7 +47,7 @@ export function mountTv(root: HTMLElement, room: string): () => void {
     room,
     role: "tv",
     onState(next) {
-      state = { ...next, topic: next.topic ?? null };
+      state = { ...next, topic: next.topic ?? null, lines: finalizedLines(next.lines ?? []) };
       render();
     },
     onPeers(next) {

@@ -190,6 +190,7 @@ Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the l
 - Allow microphone permission when prompted.
 - Stand close; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption instead.
+- Caption windows (phone preview, Smart View mode, and the TV page) show **finished sentences only**. Partial speech-to-text drafts do not stack in the history. While you speak, the phone may show a single “Listening…” / live line that replaces itself; translations run when the sentence is final.
 
 Demo line (works on DeepL, MyMemory, and the built-in mock dictionary):
 
