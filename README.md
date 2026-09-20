@@ -42,11 +42,11 @@ Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the
 
 Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mirror the Fold screen**. If the Fold is showing the control / mic UI, the TV shows that. The app cannot open a separate caption page through system Smart View, and it does **not** auto-launch Smart View or Cast intents.
 
-**Smart View mode** switches the Fold itself to the same big EN / ES / PT + topic layout as the TV page, while speech recognition **keeps running**. Then you open system Smart View from the Fold quick panel so the TV mirrors those captions.
+**Smart View mode** switches the Fold itself to the same big EN / ES / PT layout as the TV page, while speech recognition **keeps running**. Then you open system Smart View from the Fold quick panel so the TV mirrors those captions.
 
 1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
 2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
-3. A small always-visible bar keeps **Start / Stop** (mic) and **Exit Smart View mode**.
+3. A small always-visible bar keeps **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session.
 4. The tip on screen: “Now open system Smart View → My TV. TV will mirror these captions.” Use the Fold **quick panel Smart View tile** — do not expect the app to launch it.
 5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
 
@@ -152,7 +152,7 @@ The script checks:
 2. TV: open the TV link. Confirm verse / handout above the windows.
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
-5. On the Fold, tap **Smart View mode**. The phone should switch to the same EN/ES/PT + topic layout; the mic should keep its current Start/Stop state. Tap **Exit Smart View mode** to get the controls back.
+5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). The mic should keep its current Start/Stop state. Tap **Captions only** to show the topic band, then **Exit Smart View mode** to get the controls back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
@@ -184,7 +184,7 @@ Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`,
 
 - Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
 - **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls.
-- **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it.
+- **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.

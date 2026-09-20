@@ -214,6 +214,11 @@ textarea {
   min-height: 0;
 }
 
+.tv-topic[hidden],
+.smart-view-captions.is-captions-only .tv-topic {
+  display: none;
+}
+
 .tv-topic-kicker {
   margin: 0 0 0.65rem;
   color: var(--gold);
@@ -824,6 +829,16 @@ textarea {
   background: radial-gradient(circle at 50% 40%, #f07a3d, var(--ember) 72%);
   border-color: #f3a57a;
   color: #fff8f2;
+}
+
+.smart-view-captions-only {
+  min-height: 44px;
+  padding: 0.4rem 0.95rem;
+}
+
+.smart-view-captions-only.active {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .ghost {
