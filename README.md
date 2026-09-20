@@ -57,7 +57,7 @@ Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when y
 1. On the Fold app, note the 4-letter room code, or tap **Send to TV** → **Copy TV link**.
 2. On the TV browser, open the **same public URL**.
 3. Enter the room code and tap **Open TV windows**, or paste the copied TV link.
-4. On the Fold, pick **Topic of the day** (try **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse and handout above the caption windows.
+4. On the Fold, pick **Topic of the day** (try **Contentment** or **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the verse, hook, teaching, and discussion questions above the caption windows.
 5. Tap the mic on the Fold and speak (or type a caption). Captions should appear on the TV in the layout you chose:
    - One language, full-screen
    - Dual columns (`EN | ES`, `EN | PT`, or `ES | PT`)
@@ -160,7 +160,7 @@ If the TV stays on **Waiting for phone**, you are on two different hosts or more
 
 Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only displays it. This is unchanged in production: the phone pushes room state over the relay, including `topic`.
 
-**Pick:** tap a built-in topic (Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials).
+**Pick:** tap a built-in topic (Contentment, Brotherhood, Integrity, Courage, Work, Self-control, Forgiveness, Humility, Accountability, Servant leadership, Faith in trials). The phone preview and the TV handout use the same layout: **bold verse reference**, *italic Scripture*, **bold hook**, short teaching paragraphs, then numbered **Discussion Questions**.
 
 **Insert / search:** type a name or reference and tap **Set**. Examples that resolve to seed data:
 
@@ -168,10 +168,12 @@ Freddy sets the day’s Bible / Christian topic on the **Fold**. The TV only dis
 - `iron`
 - `Proverbs 27:17`
 - `Joshua 1:9`
+- `contentment`
+- `Philippians 4:11-12`
 
 If nothing matches, the typed title still goes to the TV with a short generic discussion prompt (no verse until you pick a seeded topic). Tap **Clear** to remove it.
 
-Seed verses and prompts are English, Spanish, and Portuguese. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys).
+Seed verses are English, Spanish, and Portuguese. Newer teaching fields (`hook`, `body`, `discussionQuestions`) keep English first and fall back to English when a translation is empty. The TV shows the languages of the current caption layout. To add or edit the built-in set, change `src/topics.ts` (offline, no API keys).
 
 ## Galaxy Z Fold 7 + Chrome
 

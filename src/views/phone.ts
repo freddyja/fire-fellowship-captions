@@ -5,7 +5,8 @@ import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, tvUrl } from "../router";
 import { createWebSpeechProvider } from "../stt/web-speech";
-import { hasTopicBody, localized, resolveTopic, TOPIC_LIST } from "../topics";
+import { renderTopicHandout } from "../topic-layout";
+import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } from "../topics";
 import { createTranslator, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
@@ -23,6 +24,7 @@ import {
   type RoomState,
   type TopicContent,
 } from "../types";
+
 const micIcon = `
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
   <rect x="9" y="3" width="6" height="11" rx="3"/>
@@ -486,7 +488,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         ...next,
         room,
         listening: false,
-        topic: next.topic ?? null,
+        topic: normalizeTopic(next.topic),
         lines: finalizedLines(next.lines ?? []),
       };
       speech.setLang(speechLocale(state.sourceLang));
@@ -531,12 +533,11 @@ function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {
   if (!hasTopicBody(topic) || !topic) {
     return `<p class="hint">Pick a topic or insert one. Verse and handout go to the TV.</p>`;
   }
+  const title = localized(topic.title, lang);
   const verse = localized(topic.verse, lang);
-  const prompt = localized(topic.prompt, lang);
   return `
-    <p class="topic-preview-title">${escapeHtml(localized(topic.title, lang))}</p>
-    ${topic.reference ? `<p class="topic-preview-ref">${escapeHtml(topic.reference)}</p>` : ""}
-    ${verse ? `<p class="topic-preview-verse">${escapeHtml(verse)}</p>` : "<p class=\"hint\">No built-in verse for this custom topic.</p>"}
-    <p class="topic-preview-prompt">${escapeHtml(prompt)}</p>
+    ${title ? `<p class="topic-preview-kicker">${escapeHtml(title)}</p>` : ""}
+    ${renderTopicHandout(topic, lang)}
+    ${!verse && topic.id === "custom" ? `<p class="hint">No built-in verse for this custom topic.</p>` : ""}
   `;
 }

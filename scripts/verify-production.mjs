@@ -98,6 +98,8 @@ async function main() {
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
   const { body: appJs } = await text(scriptSrc);
+  assert(appJs.includes("Discussion Questions:"), "topic discussion heading");
+  assert(appJs.includes("Paul didn't wake up content"), "contentment hook in seeds");
   assert(appJs.includes("Send to TV"), "phone Send to TV button");
   assert(appJs.includes("Open TV view"), "optional Open TV view");
   assert(appJs.includes("Copy TV link"), "copy TV link");
@@ -187,6 +189,9 @@ async function main() {
       title: { en: "Brotherhood", es: "Fraternidad", pt: "Irmandade" },
       reference: "Proverbs 27:17",
       verse: { en: "Iron sharpens iron.", es: "Hierro con hierro se aguza.", pt: "O ferro com o ferro se afia." },
+      hook: { en: "A dull man is usually a lonely man.", es: "", pt: "" },
+      body: { en: "Iron does not sharpen iron from across the room.", es: "", pt: "" },
+      discussionQuestions: [{ en: "Who is sharpening you?", es: "", pt: "" }],
       prompt: { en: "Talk.", es: "Hablen.", pt: "Falemos." },
     },
   };
