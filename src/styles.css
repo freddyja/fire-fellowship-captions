@@ -1068,6 +1068,8 @@ textarea {
   padding: 0.4rem 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+  color: var(--cream);
+  border-color: #6a5748;
 }
 
 .smart-view-mic {
