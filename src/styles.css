@@ -924,6 +924,10 @@ textarea {
   display: none;
 }
 
+.tv-screen.is-lang-lock .line.faded {
+  display: none;
+}
+
 .phone-screen.is-smart-view {
   width: 100%;
   max-width: none;

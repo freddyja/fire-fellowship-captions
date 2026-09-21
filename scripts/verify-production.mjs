@@ -150,6 +150,7 @@ async function main() {
     "Smart View landscape keeps language panes",
   );
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
+  assert(appCss.includes("is-lang-lock") && appCss.includes(".line.faded"), "lang-lock shows latest caption");
   assert(!appCss.includes("min(28vh, 10rem)"), "Smart View topic not clipped to 10rem");
   assert(!appCss.includes("min(30vh, 7.5rem)"), "Smart View topic not clipped to 7.5rem");
 
