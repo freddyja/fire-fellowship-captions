@@ -335,10 +335,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const connNote = connStatus === "live" ? `${tvNote}${guestNote}` : connStatus === "connecting" ? "Connecting…" : "Reconnecting…";
     els.status.textContent = state.listening ? `Listening · ${connNote}` : connNote;
     els.dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
-    els.mic.classList.toggle("hot", state.listening);
+    els.mic.classList.toggle("hot", holding && state.listening);
     els.mic.disabled = blocked;
-    els.mic.setAttribute("aria-pressed", String(state.listening));
-    els.micLabel.textContent = state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    els.mic.setAttribute("aria-pressed", String(holding && state.listening));
+    els.micLabel.textContent = holding && state.listening ? "Stop" : blocked ? "Wait" : "Start";
     if (blocked) {
       els.floor.textContent = someoneElseSpeaking(floor);
     } else if (holding && state.listening) {
@@ -367,10 +367,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     smartCaptions.classList.toggle("is-captions-only", captionsOnly);
     captionsOnlyBtn.classList.toggle("active", captionsOnly);
     captionsOnlyBtn.setAttribute("aria-pressed", String(captionsOnly));
-    smartMic.classList.toggle("hot", state.listening);
+    smartMic.classList.toggle("hot", holding && state.listening);
     smartMic.disabled = blocked;
-    smartMic.setAttribute("aria-pressed", String(state.listening));
-    els.smartMicLabel.textContent = state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    smartMic.setAttribute("aria-pressed", String(holding && state.listening));
+    els.smartMicLabel.textContent = holding && state.listening ? "Stop" : blocked ? "Wait" : "Start";
     els.svRoom.textContent = state.room;
     const speaker =
       blocked && floor.holderName
