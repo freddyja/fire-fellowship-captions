@@ -13,7 +13,7 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 [Build playbook (lessons for the next bot)](docs/BUILD_PLAYBOOK.md) — what went right and wrong, translator stack, Render, Fold/TV, and a copy/paste brief.
 
 - **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold, and **Join on phones** so brothers can scan a QR and follow (or speak) from their own phones.
-- **Brothers’ phones:** join via QR (`/?view=join&room=ABCD`). Same captions + optional topic. One mic at a time; the speaker’s language drives translation for everyone.
+- **Brothers’ phones (Android or iPhone):** join via QR (`/?view=join&room=ABCD`) in the mobile browser — no app store install. Same captions + optional topic. One mic at a time. Chrome on Android is best for live speech; iPhone can always watch and can type a caption if Web Speech is missing.
 - **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
 - **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
 - **Render host** (`fire-fellowship-captions.onrender.com`): one Node process serves the PWA, the WebSocket room relay, `POST /api/translate`, and the topic / handout API.
@@ -79,13 +79,19 @@ Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when y
 
 ### Brothers join on their phones
 
-The Fold is still the host (topic, TV layout, Send to TV, Smart View). Brothers can watch the **same meeting on their own phones** and take turns speaking. There is no video or audio call — each phone uses its own mic; only captions sync.
+The Fold is still the host (topic, TV layout, Send to TV, Smart View). Brothers can watch the **same meeting on their own phones** — **Android or iPhone** — and take turns speaking. There is no video or audio call, and no Play Store / App Store app. Each phone uses its own mic (or typed captions); only captions sync.
+
+The join QR opens an **https://…/?view=join&room=ABCD** link (same public host as the Fold). HTTPS is required for live speech. One speaker at a time is enforced on the room relay for every phone.
 
 1. On the Fold, create a room as usual. Tap **Join on phones**.
 2. Show the QR (or **Copy join link**). Short reminder on that sheet: **Brothers scan to watch & speak**.
-3. Each brother opens the join URL in **Chrome** (`/?view=join&room=ABCD`). They see the topic (unless they turn on **Captions only**) and the same **EN | ES | PT** caption windows.
-4. They pick **Spoken language** EN / ES / PT, then **Start** when the mic is free. Captions from that speaker appear on the Fold, the other phones, and the TV.
-5. **One speaker at a time.** If someone already has the mic, Start is disabled and the phone says **Someone else is speaking**. They wait until that brother taps Stop. The Fold can **Reclaim mic** if it needs the floor back.
+3. Each brother opens the join URL:
+   - **Android:** Chrome (not Samsung Internet). Live speech (Web Speech) works best here.
+   - **iPhone:** Safari or Chrome. Captions + topic always work. Live mic is limited in iOS browsers (Chrome on iPhone uses the same engine as Safari). If Start does not capture speech, **type a caption** and Send — that still goes to every phone and the TV.
+4. They pick **Spoken language** EN / ES / PT. When the floor is free: **Start** if this browser supports live speech, or type a caption. Captions from that speaker appear on the Fold, the other phones, and the TV.
+5. **One speaker at a time.** If someone already has the mic, Start / Send wait and the phone says **Someone else is speaking**. The Fold can **Reclaim mic**.
+
+Add to Home Screen is optional on both platforms (Chrome menu on Android; Share → Add to Home Screen on iPhone). It is not required.
 
 If nobody joins, the Fold works exactly as before (mic + TV / Smart View). Join does not replace Send to TV.
 
@@ -257,7 +263,7 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 ## Galaxy Z Fold 7 + Chrome
 
 - Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
-- **Join on phones** (QR / copy link) is for brothers’ phones: same captions, optional topic, one speaker at a time. It does not replace Send to TV or Smart View.
+- **Join on phones** (QR / copy HTTPS link) is for brothers’ Android and iPhone browsers: same captions, optional topic, one speaker at a time. Chrome on Android for live mic; iPhone Safari/Chrome can view and type. It does not replace Send to TV or Smart View.
 - **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls. Optional EN / ES / PT links open one language per window; they do not change the room layout or Smart View.
 - **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view. Switch spoken language from the Smart View bar (**EN / ES / PT**) without exiting.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
@@ -268,8 +274,9 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 
 ## Mic tip
 
-- Use **Chrome** or the Chrome-installed PWA. Do not use Samsung Internet for the mic.
-- Allow microphone permission when prompted.
+- Use **Chrome** or the Chrome-installed PWA on Android / the Fold. Do not use Samsung Internet for the mic.
+- **iPhone:** Safari (or Chrome) can always show captions. Live speech is limited; type a caption if Start does not capture audio.
+- Allow microphone permission when prompted. The join QR must open an **https** link.
 - Stand close; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption instead.
 - Caption windows (phone preview, Smart View mode, and the TV page) show **finished sentences only**. Partial speech-to-text drafts do not stack in the history. While you speak, the phone may show a single “Listening…” / live line that replaces itself; translations run when the sentence is final.

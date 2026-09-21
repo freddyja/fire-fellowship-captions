@@ -135,6 +135,10 @@ async function main() {
   assert(appJs.includes("Reclaim mic"), "host can reclaim the mic");
   assert(appJs.includes("view=join"), "brothers join query");
   assert(appJs.includes("Spoken language"), "spoken language chips");
+  assert(appJs.includes("Type a caption"), "type-to-send caption fallback");
+  assert(appJs.includes("Chrome on Android"), "Android Chrome is best for live speech");
+  assert(appJs.includes("iPhone"), "iPhone join is documented in the UI");
+  assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
   assert(appJs.includes("npm run build"), "laptop setup npm run build");
@@ -160,6 +164,9 @@ async function main() {
     "Smart View landscape keeps language panes",
   );
   assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
+  assert(appCss.includes("join-screen"), "guest join screen class");
+  assert(appCss.includes("100svh"), "iOS small viewport height");
+  assert(appCss.includes("safe-area-inset-top") && appCss.includes("safe-area-inset-bottom"), "safe area insets");
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
   assert(appCss.includes("is-lang-lock") && appCss.includes(".line.faded"), "lang-lock shows latest caption");
   assert(!appCss.includes("min(28vh, 10rem)"), "Smart View topic not clipped to 10rem");

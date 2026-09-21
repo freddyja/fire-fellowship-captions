@@ -28,7 +28,7 @@ export function mountHome(root: HTMLElement): () => void {
           <button class="secondary" type="submit">Open TV windows</button>
           <button class="secondary" data-join-phone type="button">Join on this phone</button>
         </form>
-        <p class="hint">Use <strong>Chrome</strong> on the phone (Galaxy Z Fold 7: Chrome, not Samsung Internet). <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> puts the caption layout on the Fold so system Smart View can mirror it. <strong>Join on phones</strong> is a QR from the host so brothers watch the same captions and take the mic one at a time.</p>
+        <p class="hint">Host: <strong>Chrome</strong> on the Galaxy Z Fold (not Samsung Internet). Brothers: scan <strong>Join on phones</strong> in <strong>Chrome on Android</strong> or <strong>Safari / Chrome on iPhone</strong> — no app store install. <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> is Fold-only mirroring.</p>
         <div class="meeting-mode">
           <p class="control-label">Meeting mode</p>
           <button class="chip" data-offline-mode type="button" aria-pressed="false" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">

@@ -1,3 +1,5 @@
+import { isAppleMobile } from "./capability";
+
 export type SpeechResult = {
   text: string;
   isFinal: boolean;
@@ -69,7 +71,7 @@ export function createWebSpeechProvider(): SpeechProvider {
     },
     start() {
       if (!Ctor) {
-        provider.onError?.("This browser has no Web Speech API. Use Chrome on the phone.");
+        provider.onError?.("This browser has no Web Speech. Type a caption instead.");
         return;
       }
       wantListening = true;
@@ -82,7 +84,8 @@ export function createWebSpeechProvider(): SpeechProvider {
       }
       rec = new Ctor();
       rec.lang = locale;
-      rec.continuous = true;
+      // iOS Safari/Chrome (WebKit) often ignores continuous; one-shot + restart on end.
+      rec.continuous = !isAppleMobile();
       rec.interimResults = true;
       rec.maxAlternatives = 1;
       const emittedFinals = new Set<number>();
