@@ -46,10 +46,21 @@ The TV opens the caption page in **its own browser**. The Fold stays on topic + 
    - A large QR code of this room’s TV caption URL
    - **Copy TV link**
    - Short steps: on the TV browser, open this link or scan the QR; keep the Fold on the mic page
+   - Optional **One language per monitor** helpers: EN / ES / PT links, copy buttons, and small QRs. These do **not** replace the combined TV link.
 3. On the TV browser, scan the QR or paste the copied link (`/?view=tv&room=ABCD`).
 4. **Open TV view** on the phone is only for testing on this device. It is not the meeting-night path.
 
-Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the **same public host**.
+**Three Chrome windows (optional).** Same host, same room, one language each. This is an opt-in display override for that browser window only — it does **not** change the Fold’s TV layout chips, Smart View, or other TVs in the room.
+
+1. Create the room on the Fold as usual. Leave the layout chips on **EN | ES | PT** (or whatever the meeting needs on the combined TV).
+2. Open three Chrome windows (or tabs you then drag into windows) on the same public URL:
+   - `/?view=tv&room=ABCD&lang=es`
+   - `/?view=tv&room=ABCD&lang=pt`
+   - `/?view=tv&room=ABCD&lang=en`
+3. Drag each window to its own monitor and full-screen it. Each window still joins the **same** WebSocket room and receives the full caption stream; it only **shows** that language (captions, full-screen). Topic sheet stays on the combined TV / Smart View.
+4. Without `lang=` (or with an unknown value), that TV behaves exactly as today: 1 / 2 / 3 panes from the phone’s layout chips.
+
+Send to TV copies those three links for you so you do not have to type them. Any TV browser (or a laptop HDMI’d to the TV) works. Phone and TV must use the **same public host**.
 
 ### Smart View mode — mirror the caption layout
 
@@ -75,6 +86,8 @@ Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when y
    - One language, full-screen
    - Dual columns (`EN | ES`, `EN | PT`, or `ES | PT`)
    - Triple columns (`EN | ES | PT`)
+
+Those chips are still the **room** layout. Every TV without `lang=` follows them, including Smart View. A `lang=es` (or `en` / `pt`) window is a local override for that client only.
 
 Phone and TV must use the **same public host**. The room lives in memory on that one server — nothing is stored, and there is no account.
 
@@ -185,6 +198,7 @@ The script checks:
 
 - `/health` is OK
 - `/` and `/?view=phone&room=ABCD` / `/?view=tv&room=ABCD` serve the app shell (so the home-screen icon can open both routes)
+- `/?view=tv&room=ABCD&lang=es` also serves the app shell (optional one-language TV window)
 - Manifest: name **Fire and Fellowship**, short name, standalone, theme, 192/512 icons
 - Service worker registers a `fetch` handler and does not intercept `/caption-ws`
 - Two WebSocket clients in room `ABCD`: a phone **topic of the day** push arrives on the TV
@@ -226,7 +240,7 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 ## Galaxy Z Fold 7 + Chrome
 
 - Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
-- **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls.
+- **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls. Optional EN / ES / PT links open one language per window; they do not change the room layout or Smart View.
 - **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
@@ -332,6 +346,8 @@ Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`).
 
 The Fold owns the caption layout. The TV only displays it. Caption windows follow those chips (one, two, or three languages). The topic / talk sheet is always three columns — **EN | ES | PT** — on the TV page and in Smart View when the topic is visible.
 
+**`lang=` is opt-in and local.** `/?view=tv&room=ABCD` (no `lang`) is unchanged. Adding `&lang=en|es|pt` makes **that** browser show one language full-screen (captions only). Other TVs in the room, the phone preview, and Smart View still follow the chips. Use this when you have three monitors and want one Chrome window per language.
+
 ## Scripts
 
 ```bash
@@ -350,4 +366,4 @@ Local LAN Fold testing still works with `npm run dev` (Chrome will warn about th
 
 - Manifest: **Fire and Fellowship** name and short name, standalone display, theme `#120c09`, 192/512 (any + maskable) icons.
 - Service worker: offline app shell (HTML/CSS/JS/icons/fonts after first load). Live captions still need the network so the relay can reach the TV.
-- `start_url` is `/`. Phone and TV are query routes (`/?view=phone&room=ABCD`, `/?view=tv&room=ABCD`) inside that scope, so both work from the installed icon and from copied links.
+- `start_url` is `/`. Phone and TV are query routes (`/?view=phone&room=ABCD`, `/?view=tv&room=ABCD`, optional `/?view=tv&room=ABCD&lang=es`) inside that scope, so both work from the installed icon and from copied links.
