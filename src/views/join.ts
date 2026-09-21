@@ -12,6 +12,9 @@ import {
   floorHeldByOther,
   isFloorHolder,
   isLang,
+  keepsLocalCaptions,
+  lostFloor,
+  reconcileFloor,
   LANG_LABEL,
   LANG_SHORT,
   LANGS,
@@ -56,6 +59,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   let captionsOnly = readCaptionsOnlyPref();
   let lastCaptionWasMock = false;
   let typeFallback = stt.preferType;
+  let pendingFinal = "";
 
   const push = () =>
     conn?.push({
@@ -169,7 +173,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     els.mic.classList.toggle("hot", holding && state.listening);
     els.mic.disabled = blocked;
     els.mic.setAttribute("aria-pressed", String(holding && state.listening));
-    els.micLabel.textContent = holding && state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    els.micLabel.textContent = holding ? "Stop" : blocked ? "Wait" : "Start";
     if (blocked) {
       els.floor.textContent = someoneElseSpeaking(floor);
     } else if (holding && state.listening) {
@@ -239,8 +243,9 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
-      if (state.listening) {
+      if (isFloorHolder(floor, peerId)) {
         stopLocalMic();
+        pendingFinal = "";
         await conn?.releaseFloor();
         renderDynamic();
         push();
@@ -251,29 +256,56 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
+      // iOS Safari only allows SpeechRecognition.start() in the click turn.
+      // Claim the floor after start — an await first makes the mic a silent no-op.
+      error = "";
+      speech.setLang(speechLocale(sourceLang));
+      speech.start();
       const ok = (await conn?.claimFloor(displayName)) ?? false;
       if (!ok) {
+        speech.stop();
+        pendingFinal = "";
         error = someoneElseSpeaking(floor);
         renderDynamic();
         return;
       }
-      speech.setLang(speechLocale(sourceLang));
-      speech.start();
+      if (micFailed(error)) {
+        stopLocalMic();
+        typeFallback = true;
+        typeInput.focus();
+        state = { ...state, listening: false, sourceLang, floor };
+        renderDynamic();
+        return;
+      }
       void requestWake();
       state = { ...state, listening: true, sourceLang, floor };
       renderDynamic();
       push();
+      const queued = pendingFinal.trim();
+      pendingFinal = "";
+      if (queued) void publishFinal(queued);
     })();
   };
 
   async function publishFinal(text: string, coalesce = true) {
     const spoken = text.trim();
     if (!spoken) return;
-    if (!isFloorHolder(floor, peerId)) {
+    if (floorHeldByOther(floor, peerId)) {
       error = someoneElseSpeaking(floor);
       renderDynamic();
       return;
     }
+    if (!isFloorHolder(floor, peerId)) {
+      const ok = (await conn?.claimFloor(displayName)) ?? false;
+      if (!ok || !isFloorHolder(floor, peerId)) {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
+      }
+      state = { ...state, listening: true, sourceLang, floor };
+      push();
+    }
+    error = "";
     liveInterim = "";
     renderDynamic();
     const epoch = publishEpoch;
@@ -298,9 +330,18 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   speech.onResult = (result) => {
     error = "";
     if (result.isFinal) {
-      void publishFinal(result.text);
+      if (isFloorHolder(floor, peerId)) {
+        pendingFinal = "";
+        void publishFinal(result.text);
+      } else if (!floorHeldByOther(floor, peerId)) {
+        pendingFinal = result.text;
+      } else {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+      }
       return;
     }
+    if (!isFloorHolder(floor, peerId)) return;
     const next = result.text.trim();
     if (next === liveInterim) return;
     liveInterim = next;
@@ -309,13 +350,9 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   speech.onError = (message) => {
     error = message;
     typeFallback = true;
-    if (message.includes("Microphone blocked") || message.includes("no Web Speech")) {
-      stopLocalMic();
-      typeInput.focus();
-      renderDynamic();
-      push();
-      return;
-    }
+    pendingFinal = "";
+    stopLocalMic();
+    typeInput.focus();
     renderDynamic();
   };
 
@@ -405,19 +442,22 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       renderDynamic();
     },
     onFloor(next) {
-      const lost = state.listening && peerId && next.holderId !== peerId;
+      const lost = lostFloor(floor, next, peerId);
       floor = next;
       if (lost) {
         publishEpoch += 1;
+        pendingFinal = "";
         stopLocalMic();
         error = someoneElseSpeaking(next);
+      } else if (isFloorHolder(next, peerId) && error.startsWith("Someone else is speaking")) {
+        error = "";
       }
       state = { ...state, floor: next };
       renderDynamic();
     },
     onState(next) {
-      const holding = isFloorHolder(floor, peerId) || isFloorHolder(next.floor, peerId);
-      floor = next.floor ?? floor;
+      const holding = keepsLocalCaptions(floor, next.floor, peerId);
+      floor = reconcileFloor(floor, next.floor, peerId);
       state = {
         ...next,
         room,
@@ -458,6 +498,15 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     nameInput.removeEventListener("change", onName);
     typeForm.removeEventListener("submit", onType);
   };
+}
+
+function micFailed(message: string): boolean {
+  return (
+    message.includes("Type a caption") ||
+    message.includes("Microphone blocked") ||
+    message.includes("no Web Speech") ||
+    message.includes("microphone stopped")
+  );
 }
 
 function readGuestName(): string {

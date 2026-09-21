@@ -910,6 +910,38 @@ textarea {
   font-style: italic;
 }
 
+.phone-caption-preview .control-label {
+  margin-bottom: 0.45rem;
+}
+
+.phone-live-board {
+  flex: none;
+  gap: 0.4rem;
+  min-height: 0;
+  margin-top: 0.7rem;
+}
+
+.phone-live-board[data-count="2"],
+.phone-live-board[data-count="3"] {
+  grid-template-columns: 1fr;
+}
+
+.phone-live-board .window {
+  border-radius: 14px;
+  padding: 0.55rem 0.7rem 0.7rem;
+  box-shadow: none;
+}
+
+.phone-live-board .window-label {
+  margin-bottom: 0.2rem;
+  font-size: 0.68rem;
+}
+
+.phone-live-board .line,
+.phone-live-board .empty-caption {
+  font-size: 0.95rem;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;

@@ -138,6 +138,11 @@ async function main() {
   assert(appJs.includes("Type a caption"), "type-to-send caption fallback");
   assert(appJs.includes("Chrome on Android"), "Android Chrome is best for live speech");
   assert(appJs.includes("iPhone"), "iPhone join is documented in the UI");
+  assert(
+    appJs.includes("Type a caption — Send still reaches every phone and the TV."),
+    "iPhone mic failure tells you to type",
+  );
+  assert(appJs.includes("phone-live-board"), "host phone shows EN ES PT caption panes");
   assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
@@ -165,6 +170,7 @@ async function main() {
   );
   assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
   assert(appCss.includes("join-screen"), "guest join screen class");
+  assert(appCss.includes("phone-live-board"), "host caption panes are styled");
   assert(appCss.includes("100svh"), "iOS small viewport height");
   assert(appCss.includes("safe-area-inset-top") && appCss.includes("safe-area-inset-bottom"), "safe area insets");
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
@@ -513,6 +519,12 @@ async function main() {
   guestA.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Carlos" }));
   const guestAFloor = await waitFor(guestA.inbox, "floor", (msg) => msg.ok === true);
   assert(guestAFloor.floor?.holderName === "Carlos", "guest A holds the floor");
+  const claimSnap = await waitFor(
+    hostWs.inbox,
+    "state",
+    (msg) => msg.state?.floor?.holderId === guestAJoined.peerId,
+  );
+  assert(claimSnap.state?.floor?.holderName === "Carlos", "join claim snapshot names the guest on the host, not a stale empty floor");
 
   guestB.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Luis" }));
   const guestBBusy = await waitFor(guestB.inbox, "floor", (msg) => msg.ok === false);
@@ -593,6 +605,41 @@ async function main() {
   guestB.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Luis" }));
   const guestBClaim = await waitFor(guestB.inbox, "floor", (msg) => msg.ok === true);
   assert(guestBClaim.floor?.holderName === "Luis", "floor is free after host release");
+
+  guestB.ws.send(
+    JSON.stringify({
+      type: "push",
+      state: {
+        room: floorRoom,
+        sourceLang: "es",
+        listening: true,
+        lines: [
+          {
+            id: "guest-es-after-host",
+            isFinal: true,
+            at: Date.now(),
+            text: { en: "Peace to you brothers.", es: "Paz a ustedes hermanos.", pt: "Paz a vocês irmãos." },
+          },
+        ],
+      },
+    }),
+  );
+  const hostSeesGuestEs = await waitFor(
+    hostWs.inbox,
+    "state",
+    (msg) => msg.state?.lines?.some((line) => line.id === "guest-es-after-host"),
+  );
+  assert(hostSeesGuestEs.state?.sourceLang === "es", "host receives guest Spanish sourceLang after releasing the floor");
+  assert(
+    hostSeesGuestEs.state?.lines?.find((line) => line.id === "guest-es-after-host")?.text?.es === "Paz a ustedes hermanos.",
+    "join-role caption is on the host",
+  );
+  const tvSeesGuestEs = await waitFor(
+    floorTv.inbox,
+    "state",
+    (msg) => msg.state?.lines?.some((line) => line.id === "guest-es-after-host"),
+  );
+  assert(tvSeesGuestEs.state?.sourceLang === "es", "TV receives guest Spanish after the host released");
 
   const dropRoom = "FLRB";
   const stayHost = await connect("phone", dropRoom);

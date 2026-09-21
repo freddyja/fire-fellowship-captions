@@ -116,6 +116,43 @@ export function floorHeldByOther(floor: FloorState | null | undefined, peerId: s
   return floor.holderId !== peerId;
 }
 
+/** True when this phone should keep its in-progress lines.
+ * A named incoming holder wins over a stale local floor, so a guest caption
+ * is applied even if this phone still thinks it has the mic.
+ * An empty incoming floor does not wipe lines while we still hold.
+ */
+export function keepsLocalCaptions(
+  local: FloorState | null | undefined,
+  incoming: FloorState | null | undefined,
+  peerId: string | null | undefined,
+): boolean {
+  if (incoming?.holderId) return incoming.holderId === peerId;
+  return isFloorHolder(local, peerId);
+}
+
+/** Prefer a named incoming holder. Ignore an empty snapshot while we still hold. */
+export function reconcileFloor(
+  local: FloorState | null | undefined,
+  incoming: FloorState | null | undefined,
+  peerId: string | null | undefined,
+): FloorState {
+  if (incoming?.holderId) return { holderId: incoming.holderId, holderName: incoming.holderName ?? null };
+  if (isFloorHolder(local, peerId)) return { holderId: local?.holderId ?? null, holderName: local?.holderName ?? null };
+  return {
+    holderId: incoming?.holderId ?? local?.holderId ?? null,
+    holderName: incoming?.holderName ?? local?.holderName ?? null,
+  };
+}
+
+/** Someone else took the floor. Our own Stop (floor goes empty) is not a loss. */
+export function lostFloor(
+  previous: FloorState | null | undefined,
+  next: FloorState | null | undefined,
+  peerId: string | null | undefined,
+): boolean {
+  return isFloorHolder(previous, peerId) && Boolean(next?.holderId) && next?.holderId !== peerId;
+}
+
 export function someoneElseSpeaking(floor: FloorState | null | undefined): string {
   const name = floor?.holderName?.trim();
   if (!name) return "Someone else is speaking";

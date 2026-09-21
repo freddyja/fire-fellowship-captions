@@ -1,5 +1,5 @@
 import { brandBlock, creditFooter } from "../brand";
-import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
+import { appendFinalLine, applyFinalLine, finalizedLines, previewCaption } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
@@ -18,6 +18,9 @@ import {
   floorHeldByOther,
   isFloorHolder,
   isLang,
+  keepsLocalCaptions,
+  lostFloor,
+  reconcileFloor,
   LANG_LABEL,
   LANG_SHORT,
   LANGS,
@@ -64,6 +67,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let askAbort: AbortController | null = null;
   let lastCaptionWasMock = false;
   let sourceTouched = false;
+  let pendingFinal = "";
   let peerId: string | null = null;
   let floor: FloorState = emptyFloor();
 
@@ -133,9 +137,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">TV layout</p>
               <div class="chips" data-layouts></div>
             </div>
-            <div class="preview">
+            <div class="preview phone-caption-preview">
               <p class="control-label">On this phone</p>
               <p data-preview></p>
+              <div class="tv-board phone-live-board" data-phone-board></div>
+              <aside class="tv-topic" data-phone-topic hidden></aside>
             </div>
             <div class="row-actions tv-path-actions">
               <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" aria-label="Send to TV — show QR and TV caption link">
@@ -318,6 +324,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     micLabel: root.querySelector("[data-mic-label]") as HTMLElement,
     error: root.querySelector("[data-error]") as HTMLElement,
     preview: root.querySelector("[data-preview]") as HTMLElement,
+    phoneBoard: root.querySelector("[data-phone-board]") as HTMLElement,
+    phoneTopic: root.querySelector("[data-phone-topic]") as HTMLElement,
     topicInput: topicForm.elements.namedItem("topic") as HTMLInputElement,
     svRoom: root.querySelector("[data-sv-room]") as HTMLElement,
     svStatus: root.querySelector("[data-sv-status]") as HTMLElement,
@@ -351,14 +359,25 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     reclaimBtn.hidden = !blocked;
     els.error.textContent = error;
     const lastFinal = finalizedLines(state.lines).at(-1);
-    if (liveInterim) {
+    const spoken = previewCaption(lastFinal, state.sourceLang);
+    if (liveInterim && holding) {
       els.preview.textContent = liveInterim;
-    } else if (state.listening) {
-      els.preview.textContent = lastFinal?.text[state.sourceLang] || "Listening…";
+    } else if (spoken) {
+      els.preview.textContent = spoken;
+    } else if (holding && state.listening) {
+      els.preview.textContent = "Listening…";
     } else {
-      els.preview.textContent = lastFinal?.text[state.sourceLang] || "Captions will appear here and on the TV.";
+      els.preview.textContent = "Captions will appear here and on the TV.";
     }
-    els.preview.classList.toggle("interim", Boolean(liveInterim) || (state.listening && !lastFinal));
+    els.preview.classList.toggle("interim", Boolean(liveInterim && holding) || (holding && state.listening && !lastFinal));
+    paintCaptionBoard(
+      els.phoneBoard,
+      els.phoneTopic,
+      { layout: state.layout, lines: finalizedLines(state.lines), topic: null },
+      liveInterim && holding ? { text: liveInterim, sourceLang: state.sourceLang } : null,
+    );
+    els.phoneTopic.hidden = true;
+    els.phoneTopic.innerHTML = "";
 
     screen.classList.toggle("is-smart-view", smartViewMode);
     smartLayer.hidden = !smartViewMode;
@@ -472,8 +491,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onMic = () => {
     void (async () => {
       error = "";
-      if (state.listening) {
+      if (isFloorHolder(floor, peerId)) {
         stopLocalMic();
+        pendingFinal = "";
         await conn?.releaseFloor();
         setState({ ...state, listening: false });
         return;
@@ -483,16 +503,21 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
+      speech.setLang(speechLocale(state.sourceLang));
+      speech.start();
       const ok = (await conn?.claimFloor("Host")) ?? false;
       if (!ok) {
+        speech.stop();
+        pendingFinal = "";
         error = someoneElseSpeaking(floor);
         renderDynamic();
         return;
       }
-      speech.setLang(speechLocale(state.sourceLang));
-      speech.start();
       void requestWake();
       setState({ ...state, listening: true });
+      const queued = pendingFinal.trim();
+      pendingFinal = "";
+      if (queued) void publishFinal(queued);
     })();
   };
 
@@ -525,9 +550,15 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   speech.onResult = (result) => {
     error = "";
     if (result.isFinal) {
-      void publishFinal(result.text);
+      if (isFloorHolder(floor, peerId)) {
+        pendingFinal = "";
+        void publishFinal(result.text);
+      } else if (!floorHeldByOther(floor, peerId)) {
+        pendingFinal = result.text;
+      }
       return;
     }
+    if (!isFloorHolder(floor, peerId)) return;
     setLiveInterim(result.text);
   };
   speech.onError = (message) => {
@@ -903,21 +934,23 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       renderDynamic();
     },
     onFloor(next) {
-      const lost = state.listening && peerId && next.holderId !== peerId;
+      const lost = lostFloor(floor, next, peerId);
       floor = next;
       if (lost) {
         publishEpoch += 1;
+        pendingFinal = "";
         stopLocalMic();
         error = someoneElseSpeaking(next);
         setState({ ...state, listening: false }, false);
         return;
       }
+      if (isFloorHolder(next, peerId) && error.startsWith("Someone else is speaking")) error = "";
       state = { ...state, floor: next };
       renderDynamic();
     },
     onState(next) {
-      const holding = isFloorHolder(floor, peerId) || isFloorHolder(next.floor, peerId);
-      floor = next.floor ?? floor;
+      const holding = keepsLocalCaptions(floor, next.floor, peerId);
+      floor = reconcileFloor(floor, next.floor, peerId);
       if (!hydrated) {
         hydrated = true;
         state = {
