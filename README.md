@@ -226,6 +226,7 @@ The script checks:
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
 5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **ES** on the Smart View bar, type or speak Spanish, and confirm the other panes translate from Spanish; tap **EN** to switch back. Tap **Captions only** off to show the EN | ES | PT topic sheet, then **Exit Smart View mode** to get the controls back.
+6. Tap **Join on phones** and open the join link on a second phone. That guest picks Spoken **ES** and Starts. Captions should appear on the Fold and the TV. A third phone should see **Someone else is speaking** and cannot Start until the guest Stops. The Fold **Reclaim mic** takes the floor back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
