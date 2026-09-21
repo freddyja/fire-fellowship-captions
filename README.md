@@ -10,6 +10,8 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 
 ![Fire and Fellowship Captions — How it works](docs/architecture.png)
 
+[Build playbook (lessons for the next bot)](docs/BUILD_PLAYBOOK.md) — what went right and wrong, translator stack, Render, Fold/TV, and a copy/paste brief.
+
 - **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold.
 - **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
 - **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
