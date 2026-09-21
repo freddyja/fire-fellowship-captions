@@ -6,6 +6,17 @@ export function finalizedLines(lines: CaptionLine[]): CaptionLine[] {
   return lines.filter((line) => line.isFinal && line.id !== INTERIM_ID);
 }
 
+/** Prefer the spoken language, then any pane that actually has words. */
+export function previewCaption(line: CaptionLine | undefined, preferred: Lang): string {
+  if (!line) return "";
+  const ordered: Lang[] = [preferred, "en", "es", "pt"];
+  for (const lang of ordered) {
+    const text = line.text[lang]?.trim();
+    if (text) return text;
+  }
+  return "";
+}
+
 export function normalizeCaption(text: string): string {
   return text
     .trim()

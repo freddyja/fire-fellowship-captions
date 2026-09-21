@@ -1,5 +1,6 @@
 import { joinSearch, parseRoute, parseTvLang, tvSearch } from "../src/router.ts";
 import { detectSpeechCapability, isAppleMobile } from "../src/stt/capability.ts";
+import { keepsLocalCaptions, lostFloor, reconcileFloor } from "../src/types.ts";
 
 function assert(cond, message) {
   if (!cond) throw new Error(message);
@@ -99,5 +100,17 @@ const httpLan = detectSpeechCapability({
   hasSpeechCtor: true,
 });
 assert(httpLan.canListen === false && httpLan.insecure === true && httpLan.preferType === true, "HTTP LAN cannot use the mic");
+
+const hostFloor = { holderId: "host", holderName: "Host" };
+const guestFloor = { holderId: "guest", holderName: "Brother" };
+const emptyFloor = { holderId: null, holderName: null };
+assert(keepsLocalCaptions(hostFloor, guestFloor, "host") === false, "guest holder replaces a stale host floor");
+assert(keepsLocalCaptions(hostFloor, emptyFloor, "host") === true, "empty snapshot does not steal lines from the holder");
+assert(keepsLocalCaptions(emptyFloor, guestFloor, "host") === false, "host applies a guest caption");
+assert(reconcileFloor(hostFloor, guestFloor, "host").holderId === "guest", "incoming guest floor wins");
+assert(reconcileFloor(hostFloor, emptyFloor, "host").holderId === "host", "stale empty floor keeps the local holder");
+assert(lostFloor(guestFloor, hostFloor, "guest") === true, "another holder takes the floor");
+assert(lostFloor(guestFloor, emptyFloor, "guest") === false, "our own Stop is not someone else speaking");
+assert(lostFloor(emptyFloor, emptyFloor, "guest") === false, "watching a release is not losing the mic");
 
 console.log("OK route — lang= is TV-only, opt-in, and omitted from the combined TV link");

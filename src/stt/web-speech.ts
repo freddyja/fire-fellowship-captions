@@ -109,10 +109,21 @@ export function createWebSpeechProvider(): SpeechProvider {
         provider.onResult?.({ text: interim.trim(), isFinal: false });
       };
       rec.onerror = (event) => {
-        if (event.error === "no-speech" || event.error === "aborted" || event.error === "network") return;
+        if (event.error === "aborted" || event.error === "no-speech") return;
+        // Desktop Chrome blips "network" and restarts. On iPhone that error means
+        // the speech service never returned words — say so instead of spinning.
+        if (event.error === "network" && !isAppleMobile()) return;
+        wantListening = false;
         if (event.error === "not-allowed") {
-          provider.onError?.("Microphone blocked. Allow mic access for this site.");
-          wantListening = false;
+          provider.onError?.(
+            isAppleMobile()
+              ? "iPhone couldn't capture speech. Type a caption — Send still reaches every phone and the TV."
+              : "Microphone blocked. Allow mic access for this site, or type a caption.",
+          );
+          return;
+        }
+        if (isAppleMobile()) {
+          provider.onError?.("iPhone couldn't capture speech. Type a caption — Send still reaches every phone and the TV.");
           return;
         }
         provider.onError?.(event.error);
@@ -125,7 +136,12 @@ export function createWebSpeechProvider(): SpeechProvider {
             try {
               rec?.start();
             } catch {
-              /* Chrome throws if start() overlaps */
+              wantListening = false;
+              provider.onError?.(
+                isAppleMobile()
+                  ? "iPhone couldn't capture speech. Type a caption — Send still reaches every phone and the TV."
+                  : "The microphone stopped. Type a caption instead.",
+              );
             }
           }, 120);
         }

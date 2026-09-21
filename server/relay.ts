@@ -160,6 +160,7 @@ function handleFloor(bucket: Room, client: Client, action: "claim" | "release" |
     if (!bucket.floor.holderId || bucket.floor.holderId === client.id) {
       bucket.floor = emptyFloor();
       patchListening(bucket, false);
+      rememberFloor(bucket);
       sendFloorResult(client, true, undefined, bucket.floor);
       broadcastFloor(bucket);
       if (bucket.state) broadcastState(bucket, client.ws);
@@ -176,6 +177,7 @@ function handleFloor(bucket: Room, client: Client, action: "claim" | "release" |
     }
     bucket.floor = { holderId: client.id, holderName: client.name };
     patchListening(bucket, false);
+    rememberFloor(bucket);
     sendFloorResult(client, true, undefined, bucket.floor);
     broadcastFloor(bucket);
     if (bucket.state) broadcastState(bucket, client.ws);
@@ -185,6 +187,7 @@ function handleFloor(bucket: Room, client: Client, action: "claim" | "release" |
   if (action === "claim") {
     if (!bucket.floor.holderId || bucket.floor.holderId === client.id) {
       bucket.floor = { holderId: client.id, holderName: client.name };
+      rememberFloor(bucket);
       sendFloorResult(client, true, undefined, bucket.floor);
       broadcastFloor(bucket);
       if (bucket.state) broadcastState(bucket, client.ws);
@@ -234,11 +237,14 @@ function applyPush(bucket: Room, client: Client, raw: unknown): void {
   const holding = bucket.floor.holderId === client.id;
   const hostOwnsIdle = isHost && !bucket.floor.holderId;
   if (isGuest && !holding) {
-    send(client.ws, {
-      type: "error",
-      message: "Mic in use",
-      floor: snapshotFloor(bucket.floor),
-    });
+    if (wantsMic) {
+      send(client.ws, {
+        type: "error",
+        message: "Mic in use",
+        floor: snapshotFloor(bucket.floor),
+      });
+    }
+    // listening:false after the floor was already released is not a caption.
     return;
   }
 
@@ -286,6 +292,13 @@ function applyHostMeta(bucket: Room, client: Client, incoming: RoomState): void 
 function patchListening(bucket: Room, listening: boolean): void {
   if (!bucket.state) return;
   bucket.state = withFloor({ ...bucket.state, listening }, bucket.floor, String(bucket.state.room ?? ""));
+}
+
+/** State snapshots must carry the live floor. A claim used to broadcast the previous null holder. */
+function rememberFloor(bucket: Room): void {
+  if (!bucket.state) return;
+  const room = typeof bucket.state.room === "string" ? bucket.state.room : "";
+  bucket.state = withFloor(bucket.state, bucket.floor, room);
 }
 
 function defaultState(room: string): RoomState {
