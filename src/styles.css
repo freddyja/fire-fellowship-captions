@@ -608,6 +608,64 @@ textarea {
   animation: pulse 1.4s ease-out infinite;
 }
 
+.mic:disabled,
+.smart-view-mic:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  animation: none;
+}
+
+.floor-banner {
+  margin: 0;
+  min-height: 1.2rem;
+  color: var(--gold);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.floor-reclaim {
+  width: min(100%, 16rem);
+  justify-self: center;
+}
+
+.join-phones-btn {
+  width: 100%;
+}
+
+.join-name {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.join-name input {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1rem;
+  color: var(--cream);
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  min-height: 48px;
+}
+
+.join-dock .chips {
+  margin-bottom: 0.35rem;
+}
+
+.phone-screen.is-join .smart-view-layer {
+  display: flex;
+}
+
+.phone-screen.is-join .join-captions {
+  min-height: 100dvh;
+}
+
 .mic-chrome-hint {
   text-align: center;
   max-width: 22rem;
@@ -1433,6 +1491,10 @@ textarea {
 @media (min-width: 600px) {
   .tv-path-actions {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .join-phones-btn {
+    grid-column: 1 / -1;
   }
 
   .phone-body {

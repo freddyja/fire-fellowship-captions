@@ -5,7 +5,7 @@ import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
-import { goto, tvUrl } from "../router";
+import { goto, joinUrl, tvUrl } from "../router";
 import { createWebSpeechProvider } from "../stt/web-speech";
 import { requestTopicHandout } from "../topic-ask";
 import { renderTopicHandout } from "../topic-layout";
@@ -13,15 +13,20 @@ import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } fro
 import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
+  emptyFloor,
   emptyState,
+  floorHeldByOther,
+  isFloorHolder,
   isLang,
   LANG_LABEL,
   LANG_SHORT,
   LANGS,
   LAYOUTS,
+  someoneElseSpeaking,
   speechLocale,
   type CaptionLine,
   type ConnStatus,
+  type FloorState,
   type Lang,
   type Layout,
   type PeerCounts,
@@ -41,7 +46,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const translator = createTranslator();
   const speech = createWebSpeechProvider();
   let state = emptyState(room);
-  let peers: PeerCounts = { phones: 1, tvs: 0 };
+  let peers: PeerCounts = { phones: 1, tvs: 0, guests: 0 };
   let connStatus: ConnStatus = "connecting";
   let error = "";
   let conn: RoomConnection | null = null;
@@ -50,6 +55,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
   const copyLangTimers: Partial<Record<Lang, number>> = {};
+  let copyJoinTimer = 0;
   let smartViewMode = false;
   let captionsOnly = readCaptionsOnlyPref();
   let liveInterim = "";
@@ -58,11 +64,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let askAbort: AbortController | null = null;
   let lastCaptionWasMock = false;
   let sourceTouched = false;
+  let peerId: string | null = null;
+  let floor: FloorState = emptyFloor();
 
   const push = () => conn?.push(state);
 
   const setState = (next: RoomState, sync = true) => {
-    state = next;
+    state = { ...next, floor };
     renderDynamic();
     if (sync) push();
   };
@@ -101,6 +109,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <small data-mic-label>Start</small>
             </button>
             <p class="hint" data-error></p>
+            <p class="floor-banner" data-floor></p>
+            <button class="secondary floor-reclaim" data-reclaim type="button" hidden>Reclaim mic</button>
             <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
           </div>
 
@@ -133,6 +143,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               </button>
               <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" aria-label="Smart View mode — show caption layout for system mirroring">
                 Smart View mode
+              </button>
+              <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" aria-label="Join on phones — show QR so brothers can watch and speak">
+                Join on phones
               </button>
             </div>
             <div class="row-actions">
@@ -171,6 +184,24 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
             <p class="hint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
             <div class="send-tv-lang-list" data-send-tv-lang-list></div>
           </section>
+        </div>
+      </dialog>
+
+      <dialog class="send-tv-dialog" id="join-phones-dialog" data-join-phones-dialog aria-labelledby="join-phones-title">
+        <div class="send-tv-sheet">
+          <header class="send-tv-head">
+            <h2 id="join-phones-title">Join on phones</h2>
+            <button class="ghost send-tv-close" data-join-phones-close type="button">Close</button>
+          </header>
+          <p class="hint">Brothers scan to watch &amp; speak</p>
+          <div class="send-tv-qr" data-join-phones-qr></div>
+          <p class="send-tv-url" data-join-phones-url></p>
+          <button class="primary send-tv-copy" data-copy-join type="button">Copy join link</button>
+          <ol class="send-tv-steps">
+            <li>Each brother scans this QR (or opens the join link) on Chrome.</li>
+            <li>They see the same topic and EN | ES | PT captions.</li>
+            <li>One mic at a time — they wait if someone else is speaking.</li>
+          </ol>
         </div>
       </dialog>
 
@@ -251,6 +282,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const urlEl = root.querySelector("[data-send-tv-url]") as HTMLElement;
   const copyBtn = root.querySelector("[data-copy]") as HTMLButtonElement;
   const langList = root.querySelector("[data-send-tv-lang-list]") as HTMLElement;
+  const joinBtn = root.querySelector("[data-join-phones]") as HTMLButtonElement;
+  const joinDialog = root.querySelector("[data-join-phones-dialog]") as HTMLDialogElement;
+  const joinQr = root.querySelector("[data-join-phones-qr]") as HTMLElement;
+  const joinUrlEl = root.querySelector("[data-join-phones-url]") as HTMLElement;
+  const copyJoinBtn = root.querySelector("[data-copy-join]") as HTMLButtonElement;
+  const reclaimBtn = root.querySelector("[data-reclaim]") as HTMLButtonElement;
   const screen = root.querySelector(".phone-screen") as HTMLElement;
   const smartLayer = root.querySelector("[data-smart-view-layer]") as HTMLElement;
   const smartEnter = root.querySelector("[data-smart-view-mode]") as HTMLButtonElement;
@@ -286,17 +323,32 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     svStatus: root.querySelector("[data-sv-status]") as HTMLElement,
     svDot: root.querySelector("[data-sv-dot]") as HTMLElement,
     smartMicLabel: root.querySelector("[data-smart-mic-label]") as HTMLElement,
+    floor: root.querySelector("[data-floor]") as HTMLElement,
   };
 
   function renderDynamic() {
     els.room.textContent = state.room;
+    const blocked = floorHeldByOther(floor, peerId);
+    const holding = isFloorHolder(floor, peerId);
     const tvNote = peers.tvs > 0 ? `TV connected (${peers.tvs})` : "Waiting for TV";
-    const connNote = connStatus === "live" ? tvNote : connStatus === "connecting" ? "Connecting…" : "Reconnecting…";
+    const guestNote = peers.guests > 0 ? ` · ${peers.guests} on phones` : "";
+    const connNote = connStatus === "live" ? `${tvNote}${guestNote}` : connStatus === "connecting" ? "Connecting…" : "Reconnecting…";
     els.status.textContent = state.listening ? `Listening · ${connNote}` : connNote;
     els.dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     els.mic.classList.toggle("hot", state.listening);
+    els.mic.disabled = blocked;
     els.mic.setAttribute("aria-pressed", String(state.listening));
-    els.micLabel.textContent = state.listening ? "Stop" : "Start";
+    els.micLabel.textContent = state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    if (blocked) {
+      els.floor.textContent = someoneElseSpeaking(floor);
+    } else if (holding && state.listening) {
+      els.floor.textContent = "You're speaking";
+    } else if (peers.guests > 0) {
+      els.floor.textContent = "Mic is free. Brothers can take a turn from their phones.";
+    } else {
+      els.floor.textContent = "";
+    }
+    reclaimBtn.hidden = !blocked;
     els.error.textContent = error;
     const lastFinal = finalizedLines(state.lines).at(-1);
     if (liveInterim) {
@@ -316,11 +368,17 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     captionsOnlyBtn.classList.toggle("active", captionsOnly);
     captionsOnlyBtn.setAttribute("aria-pressed", String(captionsOnly));
     smartMic.classList.toggle("hot", state.listening);
+    smartMic.disabled = blocked;
     smartMic.setAttribute("aria-pressed", String(state.listening));
-    els.smartMicLabel.textContent = state.listening ? "Stop" : "Start";
+    els.smartMicLabel.textContent = state.listening ? "Stop" : blocked ? "Wait" : "Start";
     els.svRoom.textContent = state.room;
-    const svNote = state.listening ? "Listening · Smart View mode" : "Smart View mode";
-    els.svStatus.textContent = svNote;
+    const speaker =
+      blocked && floor.holderName
+        ? someoneElseSpeaking(floor)
+        : state.listening
+          ? "Listening · Smart View mode"
+          : "Smart View mode";
+    els.svStatus.textContent = speaker;
     els.svDot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     if (smartViewMode) {
       paintCaptionBoard(
@@ -404,19 +462,60 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     }
   };
 
+  const stopLocalMic = () => {
+    speech.stop();
+    releaseWake();
+    liveInterim = "";
+    state = { ...state, listening: false, floor };
+  };
+
   const onMic = () => {
-    error = "";
-    if (state.listening) {
-      speech.stop();
-      releaseWake();
-      liveInterim = "";
-      setState({ ...state, listening: false });
-      return;
-    }
-    speech.setLang(speechLocale(state.sourceLang));
-    speech.start();
-    void requestWake();
-    setState({ ...state, listening: true });
+    void (async () => {
+      error = "";
+      if (state.listening) {
+        stopLocalMic();
+        await conn?.releaseFloor();
+        setState({ ...state, listening: false });
+        return;
+      }
+      if (floorHeldByOther(floor, peerId)) {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
+      }
+      const ok = (await conn?.claimFloor("Host")) ?? false;
+      if (!ok) {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
+      }
+      speech.setLang(speechLocale(state.sourceLang));
+      speech.start();
+      void requestWake();
+      setState({ ...state, listening: true });
+    })();
+  };
+
+  const onReclaim = () => {
+    void (async () => {
+      error = "";
+      const freed = (await conn?.forceRelease()) ?? false;
+      if (!freed) {
+        error = "Could not reclaim the mic.";
+        renderDynamic();
+        return;
+      }
+      const ok = (await conn?.claimFloor("Host")) ?? false;
+      if (!ok) {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
+      }
+      speech.setLang(speechLocale(state.sourceLang));
+      speech.start();
+      void requestWake();
+      setState({ ...state, listening: true });
+    })();
   };
 
   const onVisibility = () => {
@@ -438,6 +537,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       releaseWake();
       typeForm.hidden = false;
       liveInterim = "";
+      void conn?.releaseFloor();
       setState({ ...state, listening: false });
       return;
     }
@@ -563,6 +663,52 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     }).join("");
   };
 
+  const paintJoinPhones = () => {
+    const url = joinUrl(room);
+    joinQr.innerHTML = tvQrSvg(url, "QR code so brothers can join this meeting on their phones");
+    joinUrlEl.textContent = url;
+  };
+
+  const onJoinPhones = () => {
+    paintJoinPhones();
+    copyJoinBtn.textContent = "Copy join link";
+    joinBtn.setAttribute("aria-expanded", "true");
+    if (typeof joinDialog.showModal === "function") joinDialog.showModal();
+    else joinDialog.setAttribute("open", "");
+  };
+
+  const onCloseJoinPhones = () => {
+    joinBtn.setAttribute("aria-expanded", "false");
+    if (typeof joinDialog.close === "function" && joinDialog.open) joinDialog.close();
+    else joinDialog.removeAttribute("open");
+  };
+
+  const onJoinDialogClose = () => {
+    joinBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const onJoinDialogClick = (event: Event) => {
+    if (event.target === joinDialog) onCloseJoinPhones();
+  };
+
+  const onCopyJoin = async () => {
+    const url = joinUrl(room);
+    try {
+      await navigator.clipboard.writeText(url);
+      error = "Join link copied.";
+      copyJoinBtn.textContent = "Copied";
+      window.clearTimeout(copyJoinTimer);
+      copyJoinTimer = window.setTimeout(() => {
+        copyJoinBtn.textContent = "Copy join link";
+      }, 1600);
+      renderDynamic();
+    } catch {
+      error = url;
+      copyJoinBtn.textContent = "Copy join link";
+      renderDynamic();
+    }
+  };
+
   const setSmartViewMode = (next: boolean) => {
     smartViewMode = next;
     if (next) onCloseSendTv();
@@ -670,15 +816,31 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onHome = () => {
     speech.stop();
     releaseWake();
+    void conn?.releaseFloor();
     goto("home");
   };
   const onType = (event: Event) => {
     event.preventDefault();
-    const input = typeForm.elements.namedItem("caption") as HTMLInputElement;
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = "";
-    void publishFinal(text, false);
+    void (async () => {
+      const input = typeForm.elements.namedItem("caption") as HTMLInputElement;
+      const text = input.value.trim();
+      if (!text) return;
+      if (floorHeldByOther(floor, peerId)) {
+        error = someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
+      }
+      if (!isFloorHolder(floor, peerId)) {
+        const ok = (await conn?.claimFloor("Host")) ?? false;
+        if (!ok) {
+          error = someoneElseSpeaking(floor);
+          renderDynamic();
+          return;
+        }
+      }
+      input.value = "";
+      void publishFinal(text, false);
+    })();
   };
 
   const onOrientationChange = () => syncSmartViewOrientation();
@@ -698,6 +860,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   setBtn.addEventListener("click", onSetTopic);
   askStatus.addEventListener("click", onCancelAsk);
   sendBtn.addEventListener("click", onSendTv);
+  joinBtn.addEventListener("click", onJoinPhones);
+  reclaimBtn.addEventListener("click", onReclaim);
   smartEnter.addEventListener("click", onEnterSmartView);
   smartExit.addEventListener("click", onExitSmartView);
   captionsOnlyBtn.addEventListener("click", onCaptionsOnly);
@@ -717,6 +881,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   root.querySelector("[data-send-tv-close]")?.addEventListener("click", onCloseSendTv);
   sendDialog.addEventListener("click", onDialogClick);
   sendDialog.addEventListener("close", onDialogClose);
+  joinDialog.addEventListener("click", onJoinDialogClick);
+  joinDialog.addEventListener("close", onJoinDialogClose);
+  root.querySelector("[data-join-phones-close]")?.addEventListener("click", onCloseJoinPhones);
+  copyJoinBtn.addEventListener("click", onCopyJoin);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
   langList.addEventListener("click", onLangActions);
   copyBtn.addEventListener("click", onCopy);
@@ -727,20 +895,58 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   conn = connectRoom({
     room,
     role: "phone",
-    onState(next) {
-      if (hydrated) return;
-      hydrated = true;
-      state = {
-        ...next,
-        room,
-        listening: false,
-        sourceLang: sourceTouched && isLang(state.sourceLang) ? state.sourceLang : isLang(next.sourceLang) ? next.sourceLang : state.sourceLang,
-        topic: normalizeTopic(next.topic),
-        lines: finalizedLines(next.lines ?? []),
-      };
-      speech.setLang(speechLocale(state.sourceLang));
+    name: "Host",
+    onJoined(info) {
+      peerId = info.peerId;
+      floor = info.floor ?? floor;
+      state = { ...state, floor };
       renderDynamic();
-      push();
+    },
+    onFloor(next) {
+      const lost = state.listening && peerId && next.holderId !== peerId;
+      floor = next;
+      if (lost) {
+        publishEpoch += 1;
+        stopLocalMic();
+        error = someoneElseSpeaking(next);
+        setState({ ...state, listening: false }, false);
+        return;
+      }
+      state = { ...state, floor: next };
+      renderDynamic();
+    },
+    onState(next) {
+      const holding = isFloorHolder(floor, peerId) || isFloorHolder(next.floor, peerId);
+      floor = next.floor ?? floor;
+      if (!hydrated) {
+        hydrated = true;
+        state = {
+          ...next,
+          room,
+          floor,
+          listening: false,
+          sourceLang:
+            sourceTouched && isLang(state.sourceLang)
+              ? state.sourceLang
+              : isLang(next.sourceLang)
+                ? next.sourceLang
+                : state.sourceLang,
+          topic: normalizeTopic(next.topic),
+          lines: finalizedLines(next.lines ?? []),
+        };
+        speech.setLang(speechLocale(state.sourceLang));
+        renderDynamic();
+        return;
+      }
+      state = {
+        ...state,
+        floor,
+        topic: normalizeTopic(next.topic),
+        layout: next.layout ?? state.layout,
+        lines: holding ? state.lines : finalizedLines(next.lines ?? []),
+        listening: holding ? state.listening : Boolean(next.listening),
+      };
+      renderDynamic();
     },
     onPeers(next) {
       peers = next;
@@ -759,6 +965,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     releaseWake();
     conn?.close();
     window.clearTimeout(copyLabelTimer);
+    window.clearTimeout(copyJoinTimer);
     for (const timer of Object.values(copyLangTimers)) window.clearTimeout(timer);
     landscapeMq.removeEventListener("change", onOrientationChange);
     window.removeEventListener("resize", onOrientationChange);
@@ -788,6 +995,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     onCloseLocalSetup();
     typeForm.removeEventListener("submit", onType);
     langList.removeEventListener("click", onLangActions);
+    reclaimBtn.removeEventListener("click", onReclaim);
+    joinBtn.removeEventListener("click", onJoinPhones);
+    joinDialog.removeEventListener("click", onJoinDialogClick);
+    joinDialog.removeEventListener("close", onJoinDialogClose);
+    copyJoinBtn.removeEventListener("click", onCopyJoin);
+    onCloseJoinPhones();
     onCloseSendTv();
   };
 }

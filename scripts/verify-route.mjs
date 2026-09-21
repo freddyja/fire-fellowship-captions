@@ -1,4 +1,4 @@
-import { parseRoute, parseTvLang, tvSearch } from "../src/router.ts";
+import { joinSearch, parseRoute, parseTvLang, tvSearch } from "../src/router.ts";
 
 function assert(cond, message) {
   if (!cond) throw new Error(message);
@@ -35,14 +35,30 @@ same(
 );
 same(
   parseRoute("?view=phone&room=ABCD&lang=es"),
-  { view: "phone", room: "ABCD" },
+  { view: "phone", room: "ABCD", role: "host" },
   "lang= on phone is ignored",
 );
 same(parseRoute("?lang=es"), { view: "home", room: "" }, "lang= without TV view is ignored");
+same(
+  parseRoute("?view=join&room=abcd"),
+  { view: "join", room: "ABCD", role: "guest" },
+  "join view is a guest phone",
+);
+same(
+  parseRoute("?view=phone&room=ABCD&role=guest"),
+  { view: "phone", room: "ABCD", role: "guest" },
+  "phone role=guest is the brothers join path",
+);
+same(
+  parseRoute("?view=phone&room=ABCD"),
+  { view: "phone", room: "ABCD", role: "host" },
+  "phone without role stays the host Fold",
+);
 
 assert(tvSearch("ABCD") === "view=tv&room=ABCD", "combined TV query has no lang");
 assert(tvSearch("ABCD", "es") === "view=tv&room=ABCD&lang=es", "per-language TV query");
 assert(tvSearch("ABCD", "en") === "view=tv&room=ABCD&lang=en", "en TV query");
 assert(tvSearch("ABCD", "pt") === "view=tv&room=ABCD&lang=pt", "pt TV query");
+assert(joinSearch("ABCD") === "view=join&room=ABCD", "brothers join query");
 
 console.log("OK route — lang= is TV-only, opt-in, and omitted from the combined TV link");

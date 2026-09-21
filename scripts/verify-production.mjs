@@ -36,7 +36,7 @@ async function waitForHealth() {
   throw new Error(`No /health from ${base}`);
 }
 
-async function connect(role, room) {
+async function connect(role, room, name) {
   const ws = new WebSocket(`${wsBase}/caption-ws`);
   const inbox = [];
   await new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ async function connect(role, room) {
     ws.once("open", resolve);
   });
   ws.on("message", (raw) => inbox.push(JSON.parse(String(raw))));
-  ws.send(JSON.stringify({ type: "join", room, role }));
+  ws.send(JSON.stringify({ type: "join", room, role, name }));
   return { ws, inbox };
 }
 
@@ -95,9 +95,11 @@ async function main() {
   const phone = await text("/?view=phone&room=ABCD");
   const tv = await text("/?view=tv&room=ABCD");
   const tvLang = await text("/?view=tv&room=ABCD&lang=es");
+  const join = await text("/?view=join&room=ABCD");
   assert(phone.body.includes('<div id="app">'), "phone route serves shell");
   assert(tv.body.includes('<div id="app">'), "tv route serves shell");
   assert(tvLang.body.includes('<div id="app">'), "tv lang=es route serves shell");
+  assert(join.body.includes('<div id="app">'), "join route serves shell");
 
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
@@ -127,6 +129,12 @@ async function main() {
   assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
   assert(appJs.includes("data-smart-source"), "Smart View spoken language chips");
   assert(appJs.includes("Spoken language:"), "Smart View spoken language aria labels");
+  assert(appJs.includes("Join on phones"), "host Join on phones button");
+  assert(appJs.includes("Brothers scan to watch"), "join QR reminder");
+  assert(appJs.includes("Someone else is speaking"), "floor busy copy");
+  assert(appJs.includes("Reclaim mic"), "host can reclaim the mic");
+  assert(appJs.includes("view=join"), "brothers join query");
+  assert(appJs.includes("Spoken language"), "spoken language chips");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
   assert(appJs.includes("npm run build"), "laptop setup npm run build");
@@ -468,13 +476,139 @@ async function main() {
   assert(toPt.state?.lines?.[0]?.text?.es === "Bienvenidos hermanos.", "PT window still receives ES text");
   assert(toCombined.state?.lines?.[0]?.text?.pt === toPt.state?.lines?.[0]?.text?.pt, "all TVs get the same caption stream");
 
+  const floorRoom = "FLRA";
+  const hostWs = await connect("phone", floorRoom);
+  const guestA = await connect("guest", floorRoom, "Carlos");
+  const guestB = await connect("guest", floorRoom, "Luis");
+  const floorTv = await connect("tv", floorRoom);
+  const hostJoined = await waitFor(hostWs.inbox, "joined");
+  const guestAJoined = await waitFor(guestA.inbox, "joined");
+  await waitFor(guestB.inbox, "joined");
+  await waitFor(floorTv.inbox, "joined");
+  assert(Boolean(hostJoined.peerId), "host receives peerId");
+  assert(guestAJoined.role === "guest", "guest join role");
+
+  hostWs.ws.send(
+    JSON.stringify({
+      type: "push",
+      state: {
+        room: floorRoom,
+        sourceLang: "en",
+        layout: "en-es-pt",
+        listening: false,
+        lines: [],
+        topic: { id: "brotherhood", title: { en: "Brotherhood", es: "Fraternidad", pt: "Irmandade" } },
+      },
+    }),
+  );
+  await waitFor(guestA.inbox, "state", (msg) => msg.state?.topic?.id === "brotherhood");
+
+  guestA.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Carlos" }));
+  const guestAFloor = await waitFor(guestA.inbox, "floor", (msg) => msg.ok === true);
+  assert(guestAFloor.floor?.holderName === "Carlos", "guest A holds the floor");
+
+  guestB.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Luis" }));
+  const guestBBusy = await waitFor(guestB.inbox, "floor", (msg) => msg.ok === false);
+  assert(guestBBusy.reason === "busy", "second guest cannot take the mic");
+  assert(guestBBusy.floor?.holderName === "Carlos", "busy result still names the speaker");
+
+  guestB.ws.send(
+    JSON.stringify({
+      type: "push",
+      state: {
+        room: floorRoom,
+        sourceLang: "es",
+        listening: true,
+        topic: null,
+        layout: "en",
+        lines: [
+          {
+            id: "guest-b-should-not-land",
+            isFinal: true,
+            at: Date.now(),
+            text: { en: "Nope", es: "Nope", pt: "Nope" },
+          },
+        ],
+      },
+    }),
+  );
+  await delay(200);
+  assert(
+    !hostWs.inbox.some((msg) => msg.state?.lines?.[0]?.id === "guest-b-should-not-land"),
+    "guest without the floor cannot push captions",
+  );
+
+  guestA.ws.send(
+    JSON.stringify({
+      type: "push",
+      state: {
+        room: floorRoom,
+        sourceLang: "es",
+        listening: true,
+        topic: null,
+        layout: "pt",
+        lines: [
+          {
+            id: "guest-a-line",
+            isFinal: true,
+            at: Date.now(),
+            text: { en: "Peace to you brothers.", es: "Paz a ustedes hermanos.", pt: "Paz a vocês irmãos." },
+          },
+        ],
+      },
+    }),
+  );
+  const guestCaption = await waitFor(hostWs.inbox, "state", (msg) => msg.state?.lines?.[0]?.id === "guest-a-line");
+  const tvCaption = await waitFor(floorTv.inbox, "state", (msg) => msg.state?.lines?.[0]?.id === "guest-a-line");
+  const otherGuestCaption = await waitFor(guestB.inbox, "state", (msg) => msg.state?.lines?.[0]?.id === "guest-a-line");
+  assert(guestCaption.state?.topic?.id === "brotherhood", "guest speaker cannot wipe host topic");
+  assert(guestCaption.state?.layout === "en-es-pt", "guest speaker cannot wipe host layout");
+  assert(guestCaption.state?.sourceLang === "es", "speaker sourceLang is the guest spoken language");
+  assert(tvCaption.state?.lines?.[0]?.text?.es === "Paz a ustedes hermanos.", "TV shows guest captions");
+  assert(otherGuestCaption.state?.lines?.[0]?.text?.en === "Peace to you brothers.", "other guest sees captions");
+  assert(guestCaption.state?.floor?.holderName === "Carlos", "floor holder name rides on state");
+
+  hostWs.ws.send(JSON.stringify({ type: "floor", action: "force" }));
+  const hostForce = await waitFor(hostWs.inbox, "floor", (msg) => msg.ok === true && msg.floor?.holderId === hostJoined.peerId);
+  assert(hostForce.floor?.holderName === "Host", "host reclaim takes the floor");
+  await waitFor(guestA.inbox, "floor", (msg) => msg.floor && msg.floor.holderId === hostJoined.peerId);
+
+  guestB.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Luis" }));
+  const guestBStillBusy = await waitFor(
+    guestB.inbox,
+    "floor",
+    (msg) => msg.ok === false && msg.reason === "busy" && msg.floor?.holderId === hostJoined.peerId,
+  );
+  assert(guestBStillBusy.reason === "busy", "guest cannot start while host holds the floor");
+
+  hostWs.ws.send(JSON.stringify({ type: "floor", action: "release" }));
+  await waitFor(guestB.inbox, "floor", (msg) => msg.floor && msg.floor.holderId === null);
+  guestB.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Luis" }));
+  const guestBClaim = await waitFor(guestB.inbox, "floor", (msg) => msg.ok === true);
+  assert(guestBClaim.floor?.holderName === "Luis", "floor is free after host release");
+
+  const dropRoom = "FLRB";
+  const stayHost = await connect("phone", dropRoom);
+  const dropGuest = await connect("guest", dropRoom, "Marco");
+  await waitFor(stayHost.inbox, "joined");
+  await waitFor(dropGuest.inbox, "joined");
+  dropGuest.ws.send(JSON.stringify({ type: "floor", action: "claim", name: "Marco" }));
+  await waitFor(stayHost.inbox, "floor", (msg) => msg.floor?.holderName === "Marco");
+  dropGuest.ws.close();
+  await waitFor(stayHost.inbox, "floor", (msg) => msg.floor && msg.floor.holderId === null);
+
   phoneWs.ws.close();
   tvWs.ws.close();
   captionPhone.ws.close();
   tvCombined.ws.close();
   tvEs.ws.close();
   tvPt.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
+  hostWs.ws.close();
+  guestA.ws.close();
+  guestB.ws.close();
+  floorTv.ws.close();
+  stayHost.ws.close();
+  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()

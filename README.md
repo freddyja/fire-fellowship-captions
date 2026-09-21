@@ -12,7 +12,8 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 
 [Build playbook (lessons for the next bot)](docs/BUILD_PLAYBOOK.md) — what went right and wrong, translator stack, Render, Fold/TV, and a copy/paste brief.
 
-- **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold.
+- **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold, and **Join on phones** so brothers can scan a QR and follow (or speak) from their own phones.
+- **Brothers’ phones:** join via QR (`/?view=join&room=ABCD`). Same captions + optional topic. One mic at a time; the speaker’s language drives translation for everyone.
 - **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
 - **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
 - **Render host** (`fire-fellowship-captions.onrender.com`): one Node process serves the PWA, the WebSocket room relay, `POST /api/translate`, and the topic / handout API.
@@ -75,6 +76,20 @@ Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mir
 5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
 
 Use **Send to TV** when the TV can run a browser. Use **Smart View mode** when you will mirror from the Fold because that is all Samsung Smart View can do.
+
+### Brothers join on their phones
+
+The Fold is still the host (topic, TV layout, Send to TV, Smart View). Brothers can watch the **same meeting on their own phones** and take turns speaking. There is no video or audio call — each phone uses its own mic; only captions sync.
+
+1. On the Fold, create a room as usual. Tap **Join on phones**.
+2. Show the QR (or **Copy join link**). Short reminder on that sheet: **Brothers scan to watch & speak**.
+3. Each brother opens the join URL in **Chrome** (`/?view=join&room=ABCD`). They see the topic (unless they turn on **Captions only**) and the same **EN | ES | PT** caption windows.
+4. They pick **Spoken language** EN / ES / PT, then **Start** when the mic is free. Captions from that speaker appear on the Fold, the other phones, and the TV.
+5. **One speaker at a time.** If someone already has the mic, Start is disabled and the phone says **Someone else is speaking**. They wait until that brother taps Stop. The Fold can **Reclaim mic** if it needs the floor back.
+
+If nobody joins, the Fold works exactly as before (mic + TV / Smart View). Join does not replace Send to TV.
+
+Home also has **Join on this phone** next to **Open TV windows** if a brother types the room code instead of scanning.
 
 ### Same room, two browsers
 
@@ -197,11 +212,12 @@ npm run verify:prod -- https://YOUR-APP.fly.dev
 The script checks:
 
 - `/health` is OK
-- `/` and `/?view=phone&room=ABCD` / `/?view=tv&room=ABCD` serve the app shell (so the home-screen icon can open both routes)
+- `/` and `/?view=phone&room=ABCD` / `/?view=tv&room=ABCD` / `/?view=join&room=ABCD` serve the app shell (so the home-screen icon can open host, TV, and brothers-join routes)
 - `/?view=tv&room=ABCD&lang=es` also serves the app shell (optional one-language TV window)
 - Manifest: name **Fire and Fellowship**, short name, standalone, theme, 192/512 icons
 - Service worker registers a `fetch` handler and does not intercept `/caption-ws`
 - Two WebSocket clients in room `ABCD`: a phone **topic of the day** push arrives on the TV
+- Room relay: one speaker at a time (guest claim is rejected while the floor is held); guest captions reach the host and TV; guests cannot wipe the host topic
 
 **Meeting-night dry run on the real URL**
 
@@ -240,6 +256,7 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 ## Galaxy Z Fold 7 + Chrome
 
 - Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
+- **Join on phones** (QR / copy link) is for brothers’ phones: same captions, optional topic, one speaker at a time. It does not replace Send to TV or Smart View.
 - **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls. Optional EN / ES / PT links open one language per window; they do not change the room layout or Smart View.
 - **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view. Switch spoken language from the Smart View bar (**EN / ES / PT**) without exiting.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
@@ -366,4 +383,4 @@ Local LAN Fold testing still works with `npm run dev` (Chrome will warn about th
 
 - Manifest: **Fire and Fellowship** name and short name, standalone display, theme `#120c09`, 192/512 (any + maskable) icons.
 - Service worker: offline app shell (HTML/CSS/JS/icons/fonts after first load). Live captions still need the network so the relay can reach the TV.
-- `start_url` is `/`. Phone and TV are query routes (`/?view=phone&room=ABCD`, `/?view=tv&room=ABCD`, optional `/?view=tv&room=ABCD&lang=es`) inside that scope, so both work from the installed icon and from copied links.
+- `start_url` is `/`. Phone, TV, and brothers-join are query routes (`/?view=phone&room=ABCD`, `/?view=tv&room=ABCD`, optional `/?view=tv&room=ABCD&lang=es`, `/?view=join&room=ABCD`) inside that scope, so they work from the installed icon and from copied links.

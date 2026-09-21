@@ -1,12 +1,14 @@
-import type { Lang } from "./types";
+import type { Lang, PhoneRole } from "./types";
 
-export type View = "home" | "phone" | "tv";
+export type View = "home" | "phone" | "tv" | "join";
 
 export type Route = {
   view: View;
   room: string;
   /** TV-only opt-in. Missing/invalid leaves the room layout unchanged. */
   lang?: Lang;
+  /** Phone vs brothers-join. Host is the Fold that created the room. */
+  role?: PhoneRole;
 };
 
 export function parseTvLang(value: string | null | undefined): Lang | undefined {
@@ -15,15 +17,29 @@ export function parseTvLang(value: string | null | undefined): Lang | undefined 
   return undefined;
 }
 
+export function parsePhoneRole(value: string | null | undefined): PhoneRole | undefined {
+  const role = (value ?? "").trim().toLowerCase();
+  if (role === "guest") return "guest";
+  if (role === "host") return "host";
+  return undefined;
+}
+
 export function parseRoute(search: string): Route {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const view = params.get("view");
   const room = (params.get("room") || "").trim().toUpperCase();
-  if ((view === "phone" || view === "tv") && room) {
+  if (view === "join" && room) {
+    return { view: "join", room, role: "guest" };
+  }
+  if (view === "phone" && room) {
+    const role = parsePhoneRole(params.get("role")) ?? "host";
+    return { view: "phone", room, role };
+  }
+  if (view === "tv" && room) {
     return {
       view,
       room,
-      lang: view === "tv" ? parseTvLang(params.get("lang")) : undefined,
+      lang: parseTvLang(params.get("lang")),
     };
   }
   return { view: "home", room };
@@ -37,6 +53,10 @@ export function tvSearch(room: string, lang?: Lang): string {
   const params = new URLSearchParams({ view: "tv", room });
   if (lang) params.set("lang", lang);
   return params.toString();
+}
+
+export function joinSearch(room: string): string {
+  return `view=join&room=${encodeURIComponent(room)}`;
 }
 
 export function goto(view: View, room = ""): void {
@@ -53,5 +73,11 @@ export function goto(view: View, room = ""): void {
 export function tvUrl(room: string, lang?: Lang): string {
   const url = new URL(location.href);
   url.search = tvSearch(room, lang);
+  return url.toString();
+}
+
+export function joinUrl(room: string): string {
+  const url = new URL(location.href);
+  url.search = joinSearch(room);
   return url.toString();
 }

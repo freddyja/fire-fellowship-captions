@@ -8,7 +8,7 @@ import { paintCaptionBoard } from "./caption-board";
 
 export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => void {
   let state = emptyState(room);
-  let peers: PeerCounts = { phones: 0, tvs: 1 };
+  let peers: PeerCounts = { phones: 0, tvs: 1, guests: 0 };
   let connStatus: ConnStatus = "connecting";
   const langLock = lang;
 
@@ -49,7 +49,14 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
       langPill.hidden = true;
       langPill.textContent = "";
     }
-    const phoneNote = peers.phones > 0 ? "Phone connected" : "Waiting for phone";
+    const phoneNote =
+      state.listening && state.floor?.holderName
+        ? `${state.floor.holderName} speaking`
+        : peers.phones > 0
+          ? peers.guests > 0
+            ? `Phones connected (${peers.phones})`
+            : "Phone connected"
+          : "Waiting for phone";
     statusEl.textContent = state.listening ? `Live · ${phoneNote}` : phoneNote;
     dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     paintCaptionBoard(
