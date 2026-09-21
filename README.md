@@ -70,7 +70,7 @@ Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mir
 
 1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
 2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
-3. A small always-visible bar keeps **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session. Rotate the Fold: landscape keeps **EN | ES | PT** in a row; portrait keeps all three panes on screen as stacked rows. A 1-language or 2-language TV layout still follows the picker.
+3. A small always-visible bar keeps **spoken language** (**EN / ES / PT**), **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. Tap **EN / ES / PT** to switch the speaker’s language mid-meeting without leaving Smart View — same as the control page Spoken language picker. Speech recognition picks up the new locale even if the mic is already on. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session. Rotate the Fold: landscape keeps **EN | ES | PT** in a row; portrait keeps all three panes on screen as stacked rows. A 1-language or 2-language TV layout still follows the picker.
 4. The tip on screen: “Now open system Smart View → My TV. TV will mirror these captions.” Use the Fold **quick panel Smart View tile** — do not expect the app to launch it.
 5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
 
@@ -209,7 +209,7 @@ The script checks:
 2. TV: open the TV link. Confirm the **EN | ES | PT** talk sheet above the caption windows.
 3. Type `Welcome brothers. Thank you for coming tonight. Let us begin.` on the Fold (or speak). Confirm captions on the TV.
 4. Status pills: Fold shows **TV connected**; TV shows **Phone connected**.
-5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **Captions only** off to show the EN | ES | PT topic sheet, then **Exit Smart View mode** to get the controls back.
+5. On the Fold, tap **Smart View mode**. The phone should switch to the EN/ES/PT caption windows (topic hidden while **Captions only** is on). Rotate to landscape: all three windows stay in a row. Portrait: all three stay visible (stacked). The mic should keep its current Start/Stop state. Tap **ES** on the Smart View bar, type or speak Spanish, and confirm the other panes translate from Spanish; tap **EN** to switch back. Tap **Captions only** off to show the EN | ES | PT topic sheet, then **Exit Smart View mode** to get the controls back.
 
 If the TV stays on **Waiting for phone**, you are on two different hosts or more than one server instance.
 
@@ -241,7 +241,7 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 
 - Open (or install) in **Chrome**. Samsung Internet, Firefox, and in-app browsers usually will not capture live speech or offer a solid install.
 - **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls. Optional EN / ES / PT links open one language per window; they do not change the room layout or Smart View.
-- **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view.
+- **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view. Switch spoken language from the Smart View bar (**EN / ES / PT**) without exiting.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
 - Unfolded: topic + mic on one side, language / TV layout / captions on the other.
 - Cover screen: same controls, stacked, with the mic docked in the thumb zone.

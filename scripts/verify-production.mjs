@@ -125,6 +125,8 @@ async function main() {
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
   assert(appJs.includes("Captions only"), "Smart View captions-only toggle");
+  assert(appJs.includes("data-smart-source"), "Smart View spoken language chips");
+  assert(appJs.includes("Spoken language:"), "Smart View spoken language aria labels");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
   assert(appJs.includes("npm run build"), "laptop setup npm run build");
@@ -149,6 +151,7 @@ async function main() {
       appCss.includes('[data-orientation=landscape]'),
     "Smart View landscape keeps language panes",
   );
+  assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
   assert(appCss.includes("is-lang-lock") && appCss.includes(".line.faded"), "lang-lock shows latest caption");
   assert(!appCss.includes("min(28vh, 10rem)"), "Smart View topic not clipped to 10rem");

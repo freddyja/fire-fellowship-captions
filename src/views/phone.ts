@@ -200,6 +200,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <div class="smart-view-dock">
             <p class="smart-view-tip">Now open system Smart View → My TV. TV will mirror these captions.</p>
             <div class="smart-view-controls">
+              <div class="smart-view-source" role="group" aria-label="Spoken language">
+                <span class="smart-view-source-label">Spoken</span>
+                <div class="chips smart-view-source-chips" data-smart-source></div>
+              </div>
               <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="true" aria-label="Captions only — hide the topic handout on this mirrored view">
                 Captions only
               </button>
@@ -217,6 +221,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   `;
 
   const sourceBox = root.querySelector("[data-source]") as HTMLElement;
+  const smartSourceBox = root.querySelector("[data-smart-source]") as HTMLElement;
   const layoutBox = root.querySelector("[data-layouts]") as HTMLElement;
   const topicBox = root.querySelector("[data-topics]") as HTMLElement;
   const topicForm = root.querySelector("[data-topic-form]") as HTMLFormElement;
@@ -226,6 +231,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const askStatus = root.querySelector("[data-ask-status]") as HTMLElement;
   sourceBox.innerHTML = LANGS.map(
     (lang) => `<button class="chip" type="button" data-lang="${lang}">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
+  ).join("");
+  smartSourceBox.innerHTML = LANGS.map(
+    (lang) =>
+      `<button class="chip smart-view-source-chip" type="button" data-lang="${lang}" aria-label="Spoken language: ${LANG_LABEL[lang]}" aria-pressed="false">${LANG_SHORT[lang]}</button>`,
   ).join("");
   layoutBox.innerHTML = LAYOUTS.map(
     (item) => `<button class="chip" type="button" data-layout="${item.id}">${item.label}</button>`,
@@ -326,8 +335,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       }
     }
 
-    for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
-      btn.classList.toggle("active", btn.dataset.lang === state.sourceLang);
+    for (const btn of root.querySelectorAll<HTMLButtonElement>("[data-source] [data-lang], [data-smart-source] [data-lang]")) {
+      const on = btn.dataset.lang === state.sourceLang;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", String(on));
     }
     for (const btn of layoutBox.querySelectorAll<HTMLButtonElement>("[data-layout]")) {
       btn.classList.toggle("active", btn.dataset.layout === state.layout);
@@ -437,6 +448,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const sourceLang = btn.dataset.lang as Lang;
     if (!isLang(sourceLang)) return;
     sourceTouched = true;
+    if (sourceLang !== state.sourceLang) liveInterim = "";
+    // setLang rebuilds the recognizer while listening — Chrome ignores mid-session lang.
     speech.setLang(speechLocale(sourceLang));
     setState({ ...state, sourceLang });
   };
@@ -675,6 +688,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   els.mic.addEventListener("click", onMic);
   document.addEventListener("visibilitychange", onVisibility);
   sourceBox.addEventListener("click", onSource);
+  smartSourceBox.addEventListener("click", onSource);
   layoutBox.addEventListener("click", onLayout);
   topicBox.addEventListener("click", onTopicChip);
   root.querySelector("[data-clear-topic]")?.addEventListener("click", onClearTopic);
@@ -750,6 +764,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
+    smartSourceBox.removeEventListener("click", onSource);
     layoutBox.removeEventListener("click", onLayout);
     topicBox.removeEventListener("click", onTopicChip);
     topicForm.removeEventListener("submit", onTopicForm);
