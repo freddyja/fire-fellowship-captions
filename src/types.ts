@@ -1,8 +1,14 @@
 export type Lang = "en" | "es" | "pt";
-export type Role = "phone" | "tv";
+export type Role = "phone" | "tv" | "guest";
+export type PhoneRole = "host" | "guest";
 export type Layout = "en" | "es" | "pt" | "en-es" | "en-pt" | "es-pt" | "en-es-pt";
 export type ConnStatus = "connecting" | "live" | "offline";
 export type Localized = Record<Lang, string>;
+
+export type FloorState = {
+  holderId: string | null;
+  holderName: string | null;
+};
 
 export type TopicContent = {
   id: string;
@@ -30,11 +36,13 @@ export type RoomState = {
   listening: boolean;
   lines: CaptionLine[];
   topic: TopicContent | null;
+  floor: FloorState;
 };
 
 export type PeerCounts = {
   phones: number;
   tvs: number;
+  guests: number;
 };
 
 export const LANGS: Lang[] = ["en", "es", "pt"];
@@ -74,6 +82,10 @@ export function langsForLayout(layout: Layout): Lang[] {
   return LAYOUTS.find((item) => item.id === layout)?.langs ?? ["en", "es", "pt"];
 }
 
+export function emptyFloor(): FloorState {
+  return { holderId: null, holderName: null };
+}
+
 export function emptyState(room: string): RoomState {
   return {
     room,
@@ -82,7 +94,32 @@ export function emptyState(room: string): RoomState {
     listening: false,
     lines: [],
     topic: null,
+    floor: emptyFloor(),
   };
+}
+
+export function sanitizePeerName(value: unknown, fallback = "Brother"): string {
+  const name = String(value ?? "")
+    .replace(/[\u0000-\u001f]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 24);
+  return name || fallback;
+}
+
+export function isFloorHolder(floor: FloorState | null | undefined, peerId: string | null | undefined): boolean {
+  return Boolean(peerId && floor?.holderId === peerId);
+}
+
+export function floorHeldByOther(floor: FloorState | null | undefined, peerId: string | null | undefined): boolean {
+  if (!floor?.holderId || !peerId) return false;
+  return floor.holderId !== peerId;
+}
+
+export function someoneElseSpeaking(floor: FloorState | null | undefined): string {
+  const name = floor?.holderName?.trim();
+  if (!name) return "Someone else is speaking";
+  return `Someone else is speaking · ${name}`;
 }
 
 export function speechLocale(lang: Lang): string {
