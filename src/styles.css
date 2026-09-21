@@ -1040,6 +1040,38 @@ textarea {
   gap: 0.55rem;
 }
 
+.smart-view-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+}
+
+.smart-view-source-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.smart-view-source-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+.smart-view-source-chip {
+  min-width: 3.1rem;
+  min-height: 44px;
+  padding: 0.4rem 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--cream);
+  border-color: #6a5748;
+}
+
 .smart-view-mic {
   display: inline-flex;
   align-items: center;
@@ -1327,15 +1359,16 @@ textarea {
   }
 
   .phone-screen.is-smart-view .smart-view-controls {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.4rem;
   }
 
   .phone-screen.is-smart-view .smart-view-captions-only,
   .phone-screen.is-smart-view .smart-view-mic,
-  .phone-screen.is-smart-view .smart-view-controls .secondary {
+  .phone-screen.is-smart-view .smart-view-controls .secondary,
+  .phone-screen.is-smart-view .smart-view-source-chip {
     min-height: 40px;
-    padding: 0.3rem 0.75rem;
+    padding: 0.3rem 0.65rem;
   }
 }
 
