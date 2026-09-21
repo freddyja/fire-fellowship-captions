@@ -117,10 +117,10 @@ async function main() {
   assert(appJs.includes("Copy TV link"), "copy TV link");
   assert(appJs.includes("Keep the Fold on the mic page"), "send-to-TV steps");
   assert(appJs.includes("One language per monitor"), "per-language TV helpers");
-  assert(appJs.includes("Copy EN link"), "copy EN TV link");
-  assert(appJs.includes("Copy ES link"), "copy ES TV link");
-  assert(appJs.includes("Copy PT link"), "copy PT TV link");
+  assert(appJs.includes("data-copy-lang"), "copy per-language TV link");
+  assert(appJs.includes("data-open-lang"), "open per-language TV window");
   assert(appJs.includes("does not change other TVs in this room"), "lang= does not drive other TVs");
+  assert(appJs.includes("is-lang-lock"), "TV lang lock class");
   assert(appJs.includes("QR code for the TV caption page"), "TV QR code");
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
