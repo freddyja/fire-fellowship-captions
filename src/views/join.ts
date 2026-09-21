@@ -76,8 +76,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         </div>
       </div>
       <p class="floor-banner" data-floor></p>
-      <aside class="tv-topic" data-topic hidden></aside>
-      <main class="tv-board" data-board></main>
+      <div class="join-main">
+        <aside class="tv-topic" data-topic hidden></aside>
+        <main class="tv-board" data-board></main>
+      </div>
       <div class="join-dock">
         <p class="smart-view-tip" data-stt-hint></p>
         <label class="join-name">

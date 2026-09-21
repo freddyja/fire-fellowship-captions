@@ -662,13 +662,12 @@ textarea {
   width: 100%;
   max-width: 52rem;
   margin: 0 auto;
-  min-height: 100dvh;
-  min-height: 100svh;
+  height: 100dvh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  gap: 0.55rem;
+  overflow: hidden;
   overscroll-behavior: contain;
   padding:
     max(0.75rem, env(safe-area-inset-top))
@@ -685,6 +684,16 @@ textarea {
 
 .join-screen .tv-meta {
   justify-content: flex-start;
+}
+
+.join-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
 .join-screen .tv-board {
@@ -715,14 +724,13 @@ textarea {
 
 .join-dock {
   flex: none;
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 4;
   display: grid;
   gap: 0.55rem;
-  margin-top: auto;
-  padding: 0.65rem 0 max(0.85rem, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, var(--bg) 18%);
+  margin-top: 0;
+  padding: 0.55rem 0 max(0.85rem, env(safe-area-inset-bottom));
+  background: var(--bg);
   border-top: 1px solid var(--line);
 }
 
@@ -739,6 +747,22 @@ textarea {
 
 .join-type.is-primary .primary {
   min-height: 52px;
+}
+
+@media (max-width: 430px) {
+  .join-dock {
+    gap: 0.4rem;
+    padding-top: 0.4rem;
+  }
+
+  .join-screen .smart-view-tip {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .join-screen .chips {
+    gap: 0.4rem;
+  }
 }
 
 @media (min-width: 700px) {
