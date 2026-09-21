@@ -49,6 +49,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
+  const copyLangTimers: Partial<Record<Lang, number>> = {};
   let smartViewMode = false;
   let captionsOnly = readCaptionsOnlyPref();
   let liveInterim = "";
@@ -160,10 +161,16 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <ol class="send-tv-steps">
             <li>On the TV browser, open this link or scan the QR.</li>
             <li>Keep the Fold on the mic page.</li>
+            <li>Optional: three Chrome windows, one language per monitor — use the EN / ES / PT links below. That does not change other TVs in this room.</li>
           </ol>
           <button class="ghost send-tv-open" data-open-tv type="button" aria-label="Open TV view on this device for testing">
             Open TV view
           </button>
+          <section class="send-tv-langs" data-send-tv-langs>
+            <h3>One language per monitor</h3>
+            <p class="hint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
+            <div class="send-tv-lang-list" data-send-tv-lang-list></div>
+          </section>
         </div>
       </dialog>
 
@@ -234,6 +241,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const qrBox = root.querySelector("[data-send-tv-qr]") as HTMLElement;
   const urlEl = root.querySelector("[data-send-tv-url]") as HTMLElement;
   const copyBtn = root.querySelector("[data-copy]") as HTMLButtonElement;
+  const langList = root.querySelector("[data-send-tv-lang-list]") as HTMLElement;
   const screen = root.querySelector(".phone-screen") as HTMLElement;
   const smartLayer = root.querySelector("[data-smart-view-layer]") as HTMLElement;
   const smartEnter = root.querySelector("[data-smart-view-mode]") as HTMLButtonElement;
@@ -522,6 +530,22 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const url = tvUrl(room);
     qrBox.innerHTML = tvQrSvg(url);
     urlEl.textContent = url;
+    langList.innerHTML = LANGS.map((lang) => {
+      const langUrl = tvUrl(room, lang);
+      return `
+        <article class="send-tv-lang">
+          <div class="send-tv-lang-qr">${tvQrSvg(langUrl, `QR code for ${LANG_LABEL[lang]} TV captions`)}</div>
+          <div class="send-tv-lang-meta">
+            <p class="control-label">${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</p>
+            <p class="send-tv-lang-url">${escapeHtml(langUrl)}</p>
+            <div class="send-tv-lang-actions">
+              <button class="secondary" data-copy-lang="${lang}" type="button">Copy ${LANG_SHORT[lang]} link</button>
+              <button class="ghost" data-open-lang="${lang}" type="button">Open</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
   };
 
   const setSmartViewMode = (next: boolean) => {
@@ -576,6 +600,36 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   };
 
   const onOpenTv = () => window.open(tvUrl(room), "ff-tv", "noopener");
+  const onLangActions = (event: Event) => {
+    const target = event.target as HTMLElement;
+    const openBtn = target.closest<HTMLButtonElement>("[data-open-lang]");
+    const copyLangBtn = target.closest<HTMLButtonElement>("[data-copy-lang]");
+    const langValue = openBtn?.dataset.openLang ?? copyLangBtn?.dataset.copyLang;
+    if (!isLang(langValue)) return;
+    const url = tvUrl(room, langValue);
+    if (openBtn) {
+      window.open(url, `ff-tv-${langValue}`, "noopener");
+      return;
+    }
+    if (!copyLangBtn) return;
+    void (async () => {
+      const restore = `Copy ${LANG_SHORT[langValue]} link`;
+      try {
+        await navigator.clipboard.writeText(url);
+        error = `${LANG_SHORT[langValue]} TV link copied.`;
+        copyLangBtn.textContent = "Copied";
+        window.clearTimeout(copyLangTimers[langValue]);
+        copyLangTimers[langValue] = window.setTimeout(() => {
+          copyLangBtn.textContent = restore;
+        }, 1600);
+        renderDynamic();
+      } catch {
+        error = url;
+        copyLangBtn.textContent = restore;
+        renderDynamic();
+      }
+    })();
+  };
   const onCopy = async () => {
     const url = tvUrl(room);
     try {
@@ -648,6 +702,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   sendDialog.addEventListener("click", onDialogClick);
   sendDialog.addEventListener("close", onDialogClose);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
+  langList.addEventListener("click", onLangActions);
   copyBtn.addEventListener("click", onCopy);
   root.querySelector("[data-clear]")?.addEventListener("click", onClear);
   root.querySelector("[data-home]")?.addEventListener("click", onHome);
@@ -688,6 +743,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     releaseWake();
     conn?.close();
     window.clearTimeout(copyLabelTimer);
+    for (const timer of Object.values(copyLangTimers)) window.clearTimeout(timer);
     landscapeMq.removeEventListener("change", onOrientationChange);
     window.removeEventListener("resize", onOrientationChange);
     window.removeEventListener("orientationchange", onOrientationChange);
@@ -714,6 +770,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     setupDialog.removeEventListener("click", onSetupDialogClick);
     onCloseLocalSetup();
     typeForm.removeEventListener("submit", onType);
+    langList.removeEventListener("click", onLangActions);
     onCloseSendTv();
   };
 }

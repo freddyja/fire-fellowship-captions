@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "start": "node --experimental-strip-types server/index.ts",
-    "verify:prod": "node scripts/verify-production.mjs",
+    "verify:prod": "node --experimental-strip-types scripts/verify-route.mjs && node scripts/verify-production.mjs",
     "verify:translate": "node --experimental-strip-types scripts/verify-translate.mjs",
     "icons": "node scripts/generate-icons.mjs"
   },

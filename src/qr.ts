@@ -1,7 +1,8 @@
 import { renderSVG } from "uqr";
 
 /** Large, high-contrast QR of the current room’s TV caption URL. */
-export function tvQrSvg(url: string): string {
+export function tvQrSvg(url: string, label = "QR code for the TV caption page"): string {
+  const aria = label.replace(/"/g, "&quot;");
   return renderSVG(url, {
     border: 4,
     ecc: "M",
@@ -10,7 +11,7 @@ export function tvQrSvg(url: string): string {
     blackColor: "#120c09",
   }).replace(
     "<svg ",
-    '<svg role="img" aria-label="QR code for the TV caption page" shape-rendering="crispEdges" ',
+    `<svg role="img" aria-label="${aria}" shape-rendering="crispEdges" `,
   );
 }
 

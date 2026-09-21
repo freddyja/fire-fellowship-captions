@@ -16,7 +16,7 @@ export function startApp(root: HTMLElement): void {
       return;
     }
     if (route.view === "tv" && isRoomCode(route.room)) {
-      unmount = mountTv(root, route.room);
+      unmount = mountTv(root, route.room, route.lang);
       return;
     }
     unmount = mountHome(root);

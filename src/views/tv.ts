@@ -3,20 +3,22 @@ import { finalizedLines } from "../caption-history";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
 import { normalizeTopic } from "../topics";
-import { emptyState, type ConnStatus, type PeerCounts } from "../types";
+import { LANG_LABEL, LANG_SHORT, emptyState, type ConnStatus, type Lang, type PeerCounts } from "../types";
 import { paintCaptionBoard } from "./caption-board";
 
-export function mountTv(root: HTMLElement, room: string): () => void {
+export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => void {
   let state = emptyState(room);
   let peers: PeerCounts = { phones: 0, tvs: 1 };
   let connStatus: ConnStatus = "connecting";
+  const langLock = lang;
 
   root.innerHTML = `
-    <section class="screen tv-screen">
+    <section class="screen tv-screen${langLock ? " is-lang-lock" : ""}">
       <div class="tv-top">
         ${brandBlock(true)}
         <div class="tv-meta">
           <div class="room-pill">Room <strong data-room></strong></div>
+          <div class="room-pill" data-lang-pill hidden></div>
           <div class="status-pill"><span class="dot" data-dot></span><span data-status></span></div>
           <button class="ghost" data-home type="button">Leave</button>
         </div>
@@ -30,6 +32,7 @@ export function mountTv(root: HTMLElement, room: string): () => void {
   const board = root.querySelector("[data-board]") as HTMLElement;
   const topicEl = root.querySelector("[data-topic]") as HTMLElement;
   const roomEl = root.querySelector("[data-room]") as HTMLElement;
+  const langPill = root.querySelector("[data-lang-pill]") as HTMLElement;
   const statusEl = root.querySelector("[data-status]") as HTMLElement;
   const dot = root.querySelector("[data-dot]") as HTMLElement;
   const home = root.querySelector("[data-home]");
@@ -39,10 +42,21 @@ export function mountTv(root: HTMLElement, room: string): () => void {
 
   function render() {
     roomEl.textContent = state.room;
+    if (langLock) {
+      langPill.hidden = false;
+      langPill.textContent = `${LANG_SHORT[langLock]} · ${LANG_LABEL[langLock]}`;
+    } else {
+      langPill.hidden = true;
+      langPill.textContent = "";
+    }
     const phoneNote = peers.phones > 0 ? "Phone connected" : "Waiting for phone";
     statusEl.textContent = state.listening ? `Live · ${phoneNote}` : phoneNote;
     dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
-    paintCaptionBoard(board, topicEl, state);
+    paintCaptionBoard(
+      board,
+      topicEl,
+      langLock ? { ...state, layout: langLock, topic: null } : state,
+    );
   }
 
   const conn = connectRoom({

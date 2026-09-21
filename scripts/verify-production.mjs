@@ -94,8 +94,10 @@ async function main() {
 
   const phone = await text("/?view=phone&room=ABCD");
   const tv = await text("/?view=tv&room=ABCD");
+  const tvLang = await text("/?view=tv&room=ABCD&lang=es");
   assert(phone.body.includes('<div id="app">'), "phone route serves shell");
   assert(tv.body.includes('<div id="app">'), "tv route serves shell");
+  assert(tvLang.body.includes('<div id="app">'), "tv lang=es route serves shell");
 
   const scriptSrc = home.body.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
   assert(scriptSrc, "built app script");
@@ -114,6 +116,11 @@ async function main() {
   assert(appJs.includes("Open TV view"), "optional Open TV view");
   assert(appJs.includes("Copy TV link"), "copy TV link");
   assert(appJs.includes("Keep the Fold on the mic page"), "send-to-TV steps");
+  assert(appJs.includes("One language per monitor"), "per-language TV helpers");
+  assert(appJs.includes("Copy EN link"), "copy EN TV link");
+  assert(appJs.includes("Copy ES link"), "copy ES TV link");
+  assert(appJs.includes("Copy PT link"), "copy PT TV link");
+  assert(appJs.includes("does not change other TVs in this room"), "lang= does not drive other TVs");
   assert(appJs.includes("QR code for the TV caption page"), "TV QR code");
   assert(appJs.includes("Smart View mode"), "Smart View mode button");
   assert(appJs.includes("Exit Smart View mode"), "exit Smart View mode");
@@ -417,8 +424,52 @@ async function main() {
   assert(delivered.state?.topic?.id === "brotherhood", "topic of the day reached TV");
   assert(delivered.state?.topic?.reference === "Proverbs 27:17", "verse reference reached TV");
 
+  const captionRoom = "LNGK";
+  const captionPhone = await connect("phone", captionRoom);
+  const tvCombined = await connect("tv", captionRoom);
+  const tvEs = await connect("tv", captionRoom);
+  const tvPt = await connect("tv", captionRoom);
+  await waitFor(captionPhone.inbox, "joined");
+  await waitFor(tvCombined.inbox, "joined");
+  await waitFor(tvEs.inbox, "joined");
+  await waitFor(tvPt.inbox, "joined");
+  const captionState = {
+    room: captionRoom,
+    sourceLang: "en",
+    layout: "en-es-pt",
+    listening: true,
+    topic: null,
+    lines: [
+      {
+        id: "line-1",
+        isFinal: true,
+        at: Date.now(),
+        text: {
+          en: "Welcome brothers.",
+          es: "Bienvenidos hermanos.",
+          pt: "Bem-vindos irmãos.",
+        },
+      },
+    ],
+  };
+  captionPhone.ws.send(JSON.stringify({ type: "push", state: captionState }));
+  const matchCaption = (msg) => msg.state?.lines?.[0]?.text?.es === "Bienvenidos hermanos.";
+  const toCombined = await waitFor(tvCombined.inbox, "state", matchCaption);
+  const toEs = await waitFor(tvEs.inbox, "state", matchCaption);
+  const toPt = await waitFor(tvPt.inbox, "state", matchCaption);
+  assert(toCombined.state?.layout === "en-es-pt", "combined TV still gets room layout");
+  assert(toEs.state?.layout === "en-es-pt", "lang window still receives full room layout");
+  assert(toEs.state?.lines?.[0]?.text?.en === "Welcome brothers.", "ES window still receives EN text");
+  assert(String(toEs.state?.lines?.[0]?.text?.pt || "").includes("irm"), "ES window still receives PT text");
+  assert(toPt.state?.lines?.[0]?.text?.es === "Bienvenidos hermanos.", "PT window still receives ES text");
+  assert(toCombined.state?.lines?.[0]?.text?.pt === toPt.state?.lines?.[0]?.text?.pt, "all TVs get the same caption stream");
+
   phoneWs.ws.close();
   tvWs.ws.close();
+  captionPhone.ws.close();
+  tvCombined.ws.close();
+  tvEs.ws.close();
+  tvPt.ws.close();
   console.log(`OK ${base} — PWA shell, phone/TV routes, Send to TV + Smart View mode, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
