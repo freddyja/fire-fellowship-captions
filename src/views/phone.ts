@@ -335,7 +335,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       }
     }
 
-    for (const btn of root.querySelectorAll<HTMLButtonElement>("[data-source] [data-lang], [data-smart-source] [data-lang]")) {
+    for (const btn of root.querySelectorAll<HTMLButtonElement>(
+      "[data-source] [data-lang], [data-smart-source] [data-lang]",
+    )) {
       const on = btn.dataset.lang === state.sourceLang;
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-pressed", String(on));
