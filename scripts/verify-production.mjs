@@ -737,6 +737,179 @@ async function assertIphoneSpeechPublishes() {
   }
 }
 
+async function assertSpokenEsReachesEnglish() {
+  const room = "ESPA";
+  const watcher = await connect("tv", room);
+  const hostRelay = await connect("phone", room, "Host");
+  await waitFor(watcher.inbox, "joined");
+  await waitFor(hostRelay.inbox, "joined");
+  const chrome = await openChrome();
+  const waitForEval = async (sessionId, expression, match) => {
+    let last = null;
+    for (let i = 0; i < 60; i += 1) {
+      try {
+        last = await chrome.evaluate(sessionId, expression);
+        if (match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for Spoken translation: ${JSON.stringify(last)}`);
+  };
+  const readPanes = (selector) => `(() => {
+    const board = document.querySelector(${JSON.stringify(selector)});
+    if (!board) return null;
+    const pane = (lang) => [...board.querySelectorAll('.window[data-lang="' + lang + '"] .line-text')].map((node) => node.textContent || "");
+    return { en: pane("en"), es: pane("es"), pt: pane("pt") };
+  })()`;
+  const spanishLeftInEnglish = (text) => {
+    const value = String(text || "").trim();
+    return /^mi esposa$/i.test(value) || /^minha esposa$/i.test(value) || /^mi esposo$/i.test(value);
+  };
+
+  try {
+    const host = await chrome.open(`${base}/?view=phone&room=${room}`, { width: 390, height: 900, mobile: true });
+    const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const guest = await chrome.open(`${base}/?view=join&room=${room}`, {
+      width: 390,
+      height: 844,
+      mobile: true,
+      userAgent: IPHONE_UA,
+      prelude: WEBKIT_SPEECH_MOCK,
+    });
+    await waitForEval(host, `Boolean(document.querySelector("[data-phone-board]"))`, (ready) => ready === true);
+    await chrome.waitForSnapshot(tv, (snap) => snap.langs.length === 3);
+    await chrome.waitForSnapshot(guest, (snap) => snap.setupVisible && !snap.roomVisible);
+    const primed = await chrome.evaluate(
+      guest,
+      `(() => {
+        document.querySelector('[data-setup-lang="es"]').click();
+        const recs = (window.__ffRecs || []).map((item) => ({ lang: item.lang, running: item.running, engineLang: item.engineLang }));
+        return {
+          spoken: document.querySelector("[data-setup-lang].active")?.dataset.setupLang || "",
+          htmlLang: document.documentElement.lang,
+          recs,
+        };
+      })()`,
+    );
+    assert(primed.spoken === "es", "Join onboarding Spoken=ES is selected");
+    assert(primed.recs.length === 1, "Spoken=ES creates the reused iOS recognizer before Start");
+    assert(primed.recs[0].lang === "es-ES" && primed.recs[0].running === false, "Spoken=ES sets es-ES on that recognizer before start");
+    assert(primed.htmlLang === "es-ES", "Spoken=ES points the document language at es-ES so WebKit does not fall back to English");
+
+    await chrome.evaluate(
+      guest,
+      `const name = document.querySelector("[data-setup-name]");
+       name.value = "Ana";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    await chrome.waitForSnapshot(guest, (snap) => snap.roomVisible && snap.spoken === "es");
+    const stillPrimed = await chrome.evaluate(
+      guest,
+      `({
+        spoken: document.querySelector("[data-source] [data-lang].active")?.dataset.lang || "",
+        recs: (window.__ffRecs || []).map((item) => ({ lang: item.lang, running: item.running })),
+      })`,
+    );
+    assert(stillPrimed.spoken === "es" && stillPrimed.recs.length === 1 && stillPrimed.recs[0].lang === "es-ES", "Join keeps Spoken=ES on the same recognizer");
+
+    await waitForEval(
+      guest,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.length > 0 && !text.includes("Connecting"),
+    );
+    const armed = await chrome.evaluate(
+      guest,
+      `(() => { document.querySelector("[data-mic]").click(); return window.__ffSpeechSnap(); })()`,
+    );
+    assert(armed.instances === 1 && armed.lang === "es-ES" && armed.engineLang === "es-ES", "Start uses the primed es-ES recognizer, not en-US");
+    await waitForEval(
+      guest,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.includes("Listening"),
+    );
+    const heard = await chrome.evaluate(guest, `window.__ffSpeak("mi esposa", "es-ES")`);
+    assert(heard?.ok === true, `Spanish speech must match es-ES, not an English engine: ${JSON.stringify(heard)}`);
+
+    const hostEs = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /wife/i.test(snap?.en?.at(-1) || ""));
+    const tvEs = await waitForEval(tv, readPanes("[data-board]"), (snap) => /wife/i.test(snap?.en?.at(-1) || ""));
+    const guestEs = await waitForEval(guest, readPanes("[data-board]"), (snap) => /wife/i.test(snap?.en?.at(-1) || ""));
+    assert(!spanishLeftInEnglish(hostEs.en.at(-1)), `host EN left Spanish in place: ${hostEs.en.at(-1)}`);
+    assert(/esposa/i.test(hostEs.es.at(-1) || ""), `host ES pane should keep the Spanish source, got ${hostEs.es.at(-1)}`);
+    assert(/esposa|mulher/i.test(hostEs.pt.at(-1) || "") && !/^mi esposa$/i.test(hostEs.pt.at(-1) || ""), `host PT should be a translation, got ${hostEs.pt.at(-1)}`);
+    assert(/wife/i.test(tvEs.en.at(-1) || "") && /esposa/i.test(guestEs.es.at(-1) || ""), "TV and the speaker both get the Spanish caption");
+    const wireEs = await waitFor(
+      hostRelay.inbox,
+      "state",
+      (msg) => /wife/i.test(msg.state?.lines?.at(-1)?.text?.en || ""),
+    );
+    assert(wireEs.state?.sourceLang === "es", "published sourceLang is Spoken ES, not en");
+    assert(!spanishLeftInEnglish(wireEs.state?.lines?.at(-1)?.text?.en), "relay EN is not the untranslated Spanish");
+    await chrome.evaluate(host, `document.querySelector("[data-phone-board]")?.scrollIntoView({ block: "center" })`);
+    await saveWatchShot(chrome, host, "host-en-my-wife.png", false);
+    await saveWatchShot(chrome, guest, "guest-spoken-es-mi-esposa.png", true);
+
+    await chrome.evaluate(
+      guest,
+      `const input = document.querySelector('[data-type] input[name="caption"]');
+       input.value = "mi esposo";
+       document.querySelector("[data-type]").requestSubmit();`,
+    );
+    const hostTyped = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /husband/i.test(snap?.en?.at(-1) || ""));
+    assert(!spanishLeftInEnglish(hostTyped.en.at(-1)), `Type+Send EN left Spanish in place: ${hostTyped.en.at(-1)}`);
+    assert(/esposo/i.test(hostTyped.es.at(-1) || ""), `Type+Send ES pane should keep mi esposo, got ${hostTyped.es.at(-1)}`);
+    const wireTyped = await waitFor(
+      hostRelay.inbox,
+      "state",
+      (msg) => /husband/i.test(msg.state?.lines?.at(-1)?.text?.en || ""),
+    );
+    assert(wireTyped.state?.sourceLang === "es", "Type+Send with Spoken=ES still publishes sourceLang es");
+
+    await chrome.evaluate(guest, `document.querySelector('[data-source] [data-lang="pt"]').click()`);
+    const switchedPt = await waitForEval(
+      guest,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "pt-BR" && snap.lang === "pt-BR",
+    );
+    assert(switchedPt.instances === 1, "Spoken=PT keeps the single iOS recognizer");
+    const heardPt = await chrome.evaluate(guest, `window.__ffSpeak("minha esposa", "pt-BR")`);
+    assert(heardPt?.ok === true, `Portuguese speech must match pt-BR: ${JSON.stringify(heardPt)}`);
+    const hostPt = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /minha/i.test(snap?.pt?.at(-1) || ""));
+    assert(/wife/i.test(hostPt.en.at(-1) || "") && !spanishLeftInEnglish(hostPt.en.at(-1)), `Spoken=PT EN pane: ${hostPt.en.at(-1)}`);
+    assert(/minha/i.test(hostPt.pt.at(-1) || ""), `Spoken=PT pane should keep the Portuguese source, got ${hostPt.pt.at(-1)}`);
+    const wirePt = await waitFor(
+      hostRelay.inbox,
+      "state",
+      (msg) => /minha/i.test(msg.state?.lines?.at(-1)?.text?.pt || ""),
+    );
+    assert(wirePt.state?.sourceLang === "pt", "published sourceLang is Spoken PT");
+    await saveWatchShot(chrome, host, "host-en-from-portuguese.png", false);
+
+    await chrome.evaluate(guest, `document.querySelector('[data-source] [data-lang="en"]').click()`);
+    await waitForEval(
+      guest,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "en-US",
+    );
+    const heardEn = await chrome.evaluate(guest, `window.__ffSpeak("Welcome brothers.", "en-US")`);
+    assert(heardEn?.ok === true, `Spoken=EN speech: ${JSON.stringify(heardEn)}`);
+    const hostEn = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /welcome brothers/i.test(snap?.en?.at(-1) || ""));
+    assert(/welcome brothers/i.test(hostEn.en.at(-1) || ""), "Spoken=EN still publishes English");
+    const wireEn = await waitFor(
+      watcher.inbox,
+      "state",
+      (msg) => /welcome brothers/i.test(msg.state?.lines?.at(-1)?.text?.en || ""),
+    );
+    assert(wireEn.state?.sourceLang === "en", "Spoken=EN publishes sourceLang en");
+  } finally {
+    chrome.close();
+    watcher.ws.close();
+    hostRelay.ws.close();
+  }
+}
+
 async function assertJoinWatchIsDeviceLocal() {
   const room = "WACH";
   const host = await connect("phone", room, "Host");
@@ -1670,6 +1843,7 @@ async function main() {
   stayHost.ws.close();
   await assertNamedSpeakerRenders();
   await assertIphoneSpeechPublishes();
+  await assertSpokenEsReachesEnglish();
   await assertJoinWatchIsDeviceLocal();
   console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, speaker names on captions, iPhone speech publish, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
