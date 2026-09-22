@@ -3,7 +3,7 @@ import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-hist
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
 import { detectSpeechCapability } from "../stt/capability";
-import { createWebSpeechProvider, isSpeechFallbackMessage } from "../stt/web-speech";
+import { createWebSpeechProvider, isNonFatalSpeechNote, isSpeechFallbackMessage } from "../stt/web-speech";
 import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
@@ -303,32 +303,33 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   };
 
   const onMic = () => {
-    void (async () => {
-      error = "";
-      if (!stt.canListen) {
-        typeFallback = true;
-        typeInput.focus();
-        renderDynamic();
-        return;
-      }
-      if (isFloorHolder(floor, peerId)) {
-        stopLocalMic();
-        pendingFinal = "";
+    error = "";
+    if (!stt.canListen) {
+      typeFallback = true;
+      typeInput.focus();
+      renderDynamic();
+      return;
+    }
+    if (isFloorHolder(floor, peerId)) {
+      stopLocalMic();
+      pendingFinal = "";
+      void (async () => {
         await conn?.releaseFloor();
         renderDynamic();
         push();
-        return;
-      }
-      if (floorHeldByOther(floor, peerId)) {
-        error = someoneElseSpeaking(floor);
-        renderDynamic();
-        return;
-      }
-      // iOS Safari only allows SpeechRecognition.start() in the click turn.
-      // Claim the floor after start — an await first makes the mic a silent no-op.
-      error = "";
-      speech.setLang(speechLocale(sourceLang));
-      speech.start();
+      })();
+      return;
+    }
+    if (floorHeldByOther(floor, peerId)) {
+      error = someoneElseSpeaking(floor);
+      renderDynamic();
+      return;
+    }
+    // iOS Safari only runs SpeechRecognition.start() on the click stack.
+    // An await (floor claim) before start() makes the mic a silent no-op.
+    speech.setLang(speechLocale(sourceLang));
+    speech.start();
+    void (async () => {
       const ok = (await conn?.claimFloor(displayName)) ?? false;
       if (!ok) {
         speech.stop();
@@ -337,7 +338,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
-      if (micFailed(error)) {
+      if (micFailed(error) && !isNonFatalSpeechNote(error)) {
         stopLocalMic();
         typeFallback = true;
         typeInput.focus();
@@ -351,7 +352,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       push();
       const queued = pendingFinal.trim();
       pendingFinal = "";
-      if (queued) void publishFinal(queued);
+      if (queued) queuePublish(queued);
     })();
   };
 
@@ -397,12 +398,17 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     push();
   }
 
+  let publishQueue: Promise<void> = Promise.resolve();
+  const queuePublish = (text: string, coalesce = true) => {
+    publishQueue = publishQueue.then(() => publishFinal(text, coalesce)).catch(() => undefined);
+  };
+
   speech.onResult = (result) => {
     error = "";
     if (result.isFinal) {
       if (isFloorHolder(floor, peerId)) {
         pendingFinal = "";
-        void publishFinal(result.text);
+        queuePublish(result.text);
       } else if (!floorHeldByOther(floor, peerId)) {
         pendingFinal = result.text;
       } else {
@@ -420,6 +426,11 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   speech.onError = (message) => {
     error = message;
     typeFallback = true;
+    // no-speech is a pause or a WebKit miss. Keep the mic up and show the note.
+    if (isNonFatalSpeechNote(message)) {
+      renderDynamic();
+      return;
+    }
     pendingFinal = "";
     stopLocalMic();
     typeInput.focus();
@@ -490,7 +501,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         push();
       }
       typeInput.value = "";
-      void publishFinal(text, false);
+      queuePublish(text, false);
     })();
   };
 

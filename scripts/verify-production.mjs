@@ -233,7 +233,7 @@ async function openChrome() {
     return result.result?.value;
   }
 
-  async function open(url, { width, height, mobile }) {
+  async function open(url, { width, height, mobile, userAgent, prelude }) {
     const created = await cdp.send("Target.createTarget", { url: "about:blank" });
     const attached = await cdp.send("Target.attachToTarget", { targetId: created.targetId, flatten: true });
     const sessionId = attached.sessionId;
@@ -244,6 +244,12 @@ async function openChrome() {
       { width, height, deviceScaleFactor: 1, mobile },
       sessionId,
     );
+    if (userAgent) {
+      await cdp.send("Emulation.setUserAgentOverride", { userAgent }, sessionId);
+    }
+    if (prelude) {
+      await cdp.send("Page.addScriptToEvaluateOnNewDocument", { source: prelude }, sessionId);
+    }
     await cdp.send("Page.navigate", { url }, sessionId);
     return sessionId;
   }
@@ -420,6 +426,314 @@ async function assertNamedSpeakerRenders() {
   } finally {
     chrome.close();
     watcher.ws.close();
+  }
+}
+
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
+
+// WebKit-shaped recognizer: one-shot, isFinal stays false, the first object owns lang.
+const WEBKIT_SPEECH_MOCK = `(() => {
+  if (window.__ffSpeechMock) return;
+  window.__ffSpeechMock = true;
+  window.__ffRecs = [];
+  let firstRec = null;
+  let firstEngine = null;
+  class Rec {
+    constructor() {
+      this.lang = "";
+      this.continuous = false;
+      this.interimResults = false;
+      this.maxAlternatives = 1;
+      this.onstart = null;
+      this.onaudiostart = null;
+      this.onresult = null;
+      this.onerror = null;
+      this.onend = null;
+      this.running = false;
+      this.engineLang = "";
+      window.__ffRecs.push(this);
+    }
+    start() {
+      if (this.running) {
+        const err = new Error("recognition has already started.");
+        err.name = "InvalidStateError";
+        throw err;
+      }
+      const requested = this.lang || "en-US";
+      if (!firstRec) {
+        firstRec = this;
+        firstEngine = requested;
+      }
+      this.engineLang = this === firstRec ? requested : firstEngine;
+      this.running = true;
+      const mine = this;
+      queueMicrotask(() => {
+        if (mine.running) mine.onstart?.();
+      });
+    }
+    abort() {
+      if (!this.running) return;
+      this.running = false;
+      const mine = this;
+      queueMicrotask(() => {
+        mine.onerror?.({ error: "aborted" });
+        mine.onend?.();
+      });
+    }
+    stop() {
+      if (!this.running) return;
+      this.running = false;
+      const mine = this;
+      queueMicrotask(() => mine.onend?.());
+    }
+  }
+  window.SpeechRecognition = Rec;
+  window.webkitSpeechRecognition = Rec;
+  window.__ffSpeechSnap = () => {
+    const live = window.__ffRecs.filter((item) => item.running);
+    return {
+      instances: window.__ffRecs.length,
+      running: live.length,
+      lang: live[0]?.lang || "",
+      engineLang: live[0]?.engineLang || "",
+      continuous: live.length ? live[0].continuous : null,
+      ua: navigator.userAgent,
+    };
+  };
+  window.__ffSpeak = (text, locale) => {
+    const rec = [...window.__ffRecs].reverse().find((item) => item.running);
+    if (!rec) return { ok: false, reason: "idle", instances: window.__ffRecs.length, snap: window.__ffSpeechSnap() };
+    if (locale && rec.engineLang !== locale) {
+      rec.running = false;
+      rec.onerror?.({ error: "no-speech" });
+      rec.onend?.();
+      return { ok: false, reason: "no-speech", engineLang: rec.engineLang, lang: rec.lang, instances: window.__ffRecs.length };
+    }
+    rec.onresult?.({ resultIndex: 0, results: [{ isFinal: false, 0: { transcript: text } }] });
+    rec.running = false;
+    rec.onend?.();
+    return { ok: true, engineLang: rec.engineLang, lang: rec.lang, instances: window.__ffRecs.length, continuous: rec.continuous };
+  };
+  window.__ffSilence = () => {
+    const rec = [...window.__ffRecs].reverse().find((item) => item.running);
+    if (!rec) return { ok: false, reason: "idle" };
+    rec.running = false;
+    rec.onerror?.({ error: "no-speech" });
+    rec.onend?.();
+    return { ok: true };
+  };
+})();`;
+
+async function assertIphoneSpeechPublishes() {
+  const room = "IPHN";
+  const hostRoom = "IPHH";
+  const watcher = await connect("tv", room);
+  const hostRelay = await connect("phone", room, "Host");
+  await waitFor(watcher.inbox, "joined");
+  await waitFor(hostRelay.inbox, "joined");
+  const chrome = await openChrome();
+  const waitForEval = async (sessionId, expression, match) => {
+    let last = null;
+    for (let i = 0; i < 60; i += 1) {
+      try {
+        last = await chrome.evaluate(sessionId, expression);
+        if (match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for iPhone speech path: ${JSON.stringify(last)}`);
+  };
+  const hasSpeaker = (snap, name, text) =>
+    Boolean(snap?.lines?.some((line) => line.speaker === name && line.text.includes(text)));
+
+  try {
+    const host = await chrome.open(`${base}/?view=phone&room=${room}`, { width: 390, height: 900, mobile: true });
+    const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const other = await chrome.open(`${base}/?view=join&room=${room}`, { width: 390, height: 844, mobile: true });
+    const join = await chrome.open(`${base}/?view=join&room=${room}`, {
+      width: 390,
+      height: 844,
+      mobile: true,
+      userAgent: IPHONE_UA,
+      prelude: WEBKIT_SPEECH_MOCK,
+    });
+    await waitForEval(host, `Boolean(document.querySelector("[data-phone-board]"))`, (ready) => ready === true);
+    await chrome.waitForSnapshot(tv, (snap) => snap.langs.length === 3);
+    await chrome.waitForSnapshot(other, (snap) => snap.setupVisible && !snap.roomVisible);
+    await chrome.evaluate(other, `document.querySelector("[data-join-continue]").click()`);
+    await chrome.waitForSnapshot(other, (snap) => snap.roomVisible && !snap.setupVisible);
+    await chrome.waitForSnapshot(join, (snap) => snap.setupVisible && !snap.roomVisible);
+    const ua = await chrome.evaluate(join, `navigator.userAgent`);
+    assert(String(ua).includes("iPhone"), "join page is an iPhone user agent");
+    assert(await chrome.evaluate(join, `typeof window.__ffSpeak === "function"`), "WebKit speech mock is installed before the app");
+    await chrome.evaluate(
+      join,
+      `const name = document.querySelector("[data-setup-name]");
+       name.value = "Ana";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    await chrome.waitForSnapshot(join, (snap) => snap.roomVisible && !snap.setupVisible && snap.spoken === "en");
+    await waitForEval(
+      join,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.length > 0 && !text.includes("Connecting") && !text.includes("Reconnecting"),
+    );
+
+    const armed = await chrome.evaluate(
+      join,
+      `(() => {
+        localStorage.setItem("ff-offline-local-meeting", "1");
+        document.querySelector("[data-mic]").click();
+        return window.__ffSpeechSnap();
+      })()`,
+    );
+    assert(armed.instances === 1, "iPhone Start creates one recognizer");
+    assert(armed.running === 1, "iPhone Start calls recognition.start() before the floor claim await");
+    assert(armed.lang === "en-US" && armed.engineLang === "en-US", "onboarding English is the recognizer locale");
+    assert(armed.continuous === false, "iPhone path is one-shot WebKit, not Android continuous");
+    await waitForEval(
+      join,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.includes("Listening"),
+    );
+    const heardEn = await chrome.evaluate(join, `window.__ffSpeak("Welcome brothers.", "en-US")`);
+    assert(heardEn?.ok === true, `iPhone English interim should match the engine: ${JSON.stringify(heardEn)}`);
+
+    const hostEn = await waitForEval(host, readCaptionLines("[data-phone-board]"), (snap) => hasSpeaker(snap, "Ana", "Welcome brothers"));
+    const tvEn = await waitForEval(tv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Welcome brothers"));
+    const otherEn = await waitForEval(other, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Welcome brothers"));
+    const joinEn = await waitForEval(join, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Welcome brothers"));
+    assert(hostEn.lines[0].speaker === "Ana" && tvEn.lines[0].speaker === "Ana", "host and TV show Ana's spoken caption");
+    assert(otherEn.lines.some((line) => line.speaker === "Ana"), "the other join phone shows the iPhone caption");
+    assert(joinEn.lines[0].text.includes("Welcome brothers"), "iPhone guest sees its own final");
+    await waitFor(
+      watcher.inbox,
+      "state",
+      (msg) => msg.state?.lines?.some((line) => line.speaker === "Ana" && String(line.text?.en || "").includes("Welcome brothers")),
+    );
+    await waitFor(
+      hostRelay.inbox,
+      "state",
+      (msg) => msg.state?.lines?.some((line) => line.speaker === "Ana" && String(line.text?.en || "").includes("Welcome brothers")),
+    );
+    await chrome.evaluate(host, `document.querySelector("[data-phone-board]")?.scrollIntoView({ block: "center" })`);
+    await saveWatchShot(chrome, join, "iphone-guest-en.png", true);
+    await saveWatchShot(chrome, host, "host-receives-iphone.png", false);
+    await saveWatchShot(chrome, tv, "tv-receives-iphone.png", false);
+    await saveWatchShot(chrome, other, "other-join-receives-iphone.png", true);
+
+    await chrome.evaluate(join, `document.querySelector('[data-source] [data-lang="es"]').click()`);
+    const switched = await waitForEval(
+      join,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "es-ES" && snap.lang === "es-ES",
+    );
+    assert(switched.continuous === false, "Spanish switch keeps the same one-shot recognizer");
+    const heardEs = await chrome.evaluate(join, `window.__ffSpeak("Gracias por venir.", "es-ES")`);
+    assert(heardEs?.ok === true, `iPhone Spanish interim should match the reused engine: ${JSON.stringify(heardEs)}`);
+    const hostEs = await waitForEval(host, readCaptionLines("[data-phone-board]"), (snap) => hasSpeaker(snap, "Ana", "Thank you for coming"));
+    const tvEs = await waitForEval(tv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Thank you for coming"));
+    const otherEs = await waitForEval(other, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Thank you for coming"));
+    assert(
+      hostEs.lines.some((line) => line.text.includes("Welcome brothers")) && hostEs.lines.some((line) => line.text.includes("Thank you for coming")),
+      "host keeps the English line and adds the Spanish one",
+    );
+    assert(tvEs.lines.at(-1).speaker === "Ana" && otherEs.lines.at(-1).speaker === "Ana", "TV and other join name Ana on the Spanish line");
+    await saveWatchShot(chrome, host, "host-receives-iphone-es.png", false);
+    await saveWatchShot(chrome, tv, "tv-receives-iphone-es.png", false);
+
+    await chrome.evaluate(
+      join,
+      `const input = document.querySelector('[data-type] input[name="caption"]');
+       input.value = "Abran sus biblias.";
+       document.querySelector("[data-type]").requestSubmit();`,
+    );
+    const hostTyped = await waitForEval(host, readCaptionLines("[data-phone-board]"), (snap) => hasSpeaker(snap, "Ana", "Open your bibles"));
+    const tvTyped = await waitForEval(tv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Ana", "Open your bibles"));
+    assert(hostTyped.lines.at(-1).speaker === "Ana" && tvTyped.lines.at(-1).text.includes("Open your bibles"), "Type + Send still publishes Ana when speech is the other path");
+    await saveWatchShot(chrome, join, "iphone-guest-typed.png", true);
+    await saveWatchShot(chrome, host, "host-receives-iphone-typed.png", false);
+
+    const silenced = await waitForEval(join, `window.__ffSilence()`, (snap) => snap?.ok === true);
+    assert(silenced.ok === true, "empty no-speech can be delivered to the running recognizer");
+    const noted = await waitForEval(
+      join,
+      `document.querySelector("[data-error]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.includes("no-speech"),
+    );
+    assert(noted.includes("Type a caption"), "empty no-speech tells the iPhone to type");
+    const stillThere = await chrome.evaluate(host, readCaptionLines("[data-phone-board]"));
+    assert(hasSpeaker(stillThere, "Ana", "Open your bibles"), "no-speech note does not remove captions already sent");
+    await saveWatchShot(chrome, join, "iphone-nospeech-note.png", false);
+
+    const hostWatcher = await connect("tv", hostRoom);
+    await waitFor(hostWatcher.inbox, "joined");
+    const iphoneHost = await chrome.open(`${base}/?view=phone&room=${hostRoom}`, {
+      width: 390,
+      height: 900,
+      mobile: true,
+      userAgent: IPHONE_UA,
+      prelude: WEBKIT_SPEECH_MOCK,
+    });
+    const hostTv = await chrome.open(`${base}/?view=tv&room=${hostRoom}`, { width: 1280, height: 800, mobile: false });
+    await waitForEval(iphoneHost, `Boolean(document.querySelector("[data-mic]"))`, (ready) => ready === true);
+    await waitForEval(
+      iphoneHost,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.length > 0 && !text.includes("Connecting"),
+    );
+    const hostArmed = await chrome.evaluate(
+      iphoneHost,
+      `(() => {
+        localStorage.setItem("ff-offline-local-meeting", "1");
+        document.querySelector("[data-mic]").click();
+        return window.__ffSpeechSnap();
+      })()`,
+    );
+    assert(hostArmed.running === 1 && hostArmed.instances === 1 && hostArmed.lang === "en-US", "iPhone host Start runs the single recognizer in the click");
+    assert(hostArmed.continuous === false, "iPhone host uses the WebKit one-shot path");
+    await waitForEval(
+      iphoneHost,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.includes("Listening"),
+    );
+    const hostSpoke = await chrome.evaluate(iphoneHost, `window.__ffSpeak("Welcome brothers.", "en-US")`);
+    assert(hostSpoke?.ok === true, `iPhone host English speech: ${JSON.stringify(hostSpoke)}`);
+    const hostOnTv = await waitForEval(hostTv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Host", "Welcome brothers"));
+    assert(hostOnTv.lines[0].speaker === "Host", "TV shows the iPhone host caption");
+    await waitFor(
+      hostWatcher.inbox,
+      "state",
+      (msg) => msg.state?.lines?.some((line) => line.speaker === "Host" && String(line.text?.en || "").includes("Welcome brothers")),
+    );
+    await chrome.evaluate(iphoneHost, `document.querySelector('[data-source] [data-lang="es"]').click()`);
+    await waitForEval(
+      iphoneHost,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "es-ES",
+    );
+    const hostSpokeEs = await chrome.evaluate(iphoneHost, `window.__ffSpeak("Gracias por venir.", "es-ES")`);
+    assert(hostSpokeEs?.ok === true, `iPhone host Spanish speech: ${JSON.stringify(hostSpokeEs)}`);
+    await waitForEval(hostTv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Host", "Thank you for coming"));
+    await chrome.evaluate(
+      iphoneHost,
+      `const input = document.querySelector('[data-type] input[name="caption"]');
+       input.value = "Abran sus biblias.";
+       document.querySelector("[data-type]").requestSubmit();`,
+    );
+    await waitForEval(hostTv, readCaptionLines("[data-board]"), (snap) => hasSpeaker(snap, "Host", "Open your bibles"));
+    await chrome.evaluate(iphoneHost, `document.querySelector("[data-phone-board]")?.scrollIntoView({ block: "center" })`);
+    await saveWatchShot(chrome, iphoneHost, "iphone-host-captions.png", false);
+    await saveWatchShot(chrome, hostTv, "tv-receives-iphone-host.png", false);
+    hostWatcher.ws.close();
+  } finally {
+    chrome.close();
+    watcher.ws.close();
+    hostRelay.ws.close();
   }
 }
 
@@ -803,10 +1117,11 @@ async function main() {
   assert(appJs.includes("Type a caption"), "type-to-send caption fallback");
   assert(appJs.includes("Chrome on Android"), "Android Chrome is best for live speech");
   assert(appJs.includes("iPhone"), "iPhone join is documented in the UI");
-  assert(
-    appJs.includes("Type a caption — Send still reaches every phone and the TV."),
-    "iPhone mic failure tells you to type",
-  );
+    assert(
+      appJs.includes("Type a caption — Send still reaches every phone and the TV."),
+      "iPhone mic failure tells you to type",
+    );
+    assert(appJs.includes("(no-speech)"), "iPhone no-speech is shown instead of swallowed");
   assert(appJs.includes("Safari rejected"), "rejected speech locale is named");
   assert(appJs.includes("phone-live-board"), "host phone shows EN ES PT caption panes");
   assert(appJs.includes("line-speaker"), "caption panes print the speaker name");
@@ -1354,8 +1669,9 @@ async function main() {
   floorTv.ws.close();
   stayHost.ws.close();
   await assertNamedSpeakerRenders();
+  await assertIphoneSpeechPublishes();
   await assertJoinWatchIsDeviceLocal();
-  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, speaker names on captions, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
+  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, speaker names on captions, iPhone speech publish, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()
