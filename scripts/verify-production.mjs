@@ -876,13 +876,20 @@ async function assertSpokenEsReachesEnglish() {
     assert(switchedPt.instances === 1, "Spoken=PT keeps the single iOS recognizer");
     const heardPt = await chrome.evaluate(guest, `window.__ffSpeak("minha esposa", "pt-BR")`);
     assert(heardPt?.ok === true, `Portuguese speech must match pt-BR: ${JSON.stringify(heardPt)}`);
-    const hostPt = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /minha/i.test(snap?.pt?.at(-1) || ""));
+    const hostPt = await waitForEval(
+      host,
+      readPanes("[data-phone-board]"),
+      (snap) => (snap?.en?.length || 0) >= 3 && /wife/i.test(snap?.en?.at(-1) || "") && /minha/i.test(snap?.pt?.at(-1) || ""),
+    );
     assert(/wife/i.test(hostPt.en.at(-1) || "") && !spanishLeftInEnglish(hostPt.en.at(-1)), `Spoken=PT EN pane: ${hostPt.en.at(-1)}`);
     assert(/minha/i.test(hostPt.pt.at(-1) || ""), `Spoken=PT pane should keep the Portuguese source, got ${hostPt.pt.at(-1)}`);
     const wirePt = await waitFor(
       hostRelay.inbox,
       "state",
-      (msg) => /minha/i.test(msg.state?.lines?.at(-1)?.text?.pt || ""),
+      (msg) =>
+        msg.state?.sourceLang === "pt" &&
+        /wife/i.test(msg.state?.lines?.at(-1)?.text?.en || "") &&
+        /minha/i.test(msg.state?.lines?.at(-1)?.text?.pt || ""),
     );
     assert(wirePt.state?.sourceLang === "pt", "published sourceLang is Spoken PT");
     await saveWatchShot(chrome, host, "host-en-from-portuguese.png", false);
@@ -895,12 +902,16 @@ async function assertSpokenEsReachesEnglish() {
     );
     const heardEn = await chrome.evaluate(guest, `window.__ffSpeak("Welcome brothers.", "en-US")`);
     assert(heardEn?.ok === true, `Spoken=EN speech: ${JSON.stringify(heardEn)}`);
-    const hostEn = await waitForEval(host, readPanes("[data-phone-board]"), (snap) => /welcome brothers/i.test(snap?.en?.at(-1) || ""));
+    const hostEn = await waitForEval(
+      host,
+      readPanes("[data-phone-board]"),
+      (snap) => (snap?.en?.length || 0) >= 4 && /welcome brothers/i.test(snap?.en?.at(-1) || ""),
+    );
     assert(/welcome brothers/i.test(hostEn.en.at(-1) || ""), "Spoken=EN still publishes English");
     const wireEn = await waitFor(
       watcher.inbox,
       "state",
-      (msg) => /welcome brothers/i.test(msg.state?.lines?.at(-1)?.text?.en || ""),
+      (msg) => msg.state?.sourceLang === "en" && /welcome brothers/i.test(msg.state?.lines?.at(-1)?.text?.en || ""),
     );
     assert(wireEn.state?.sourceLang === "en", "Spoken=EN publishes sourceLang en");
   } finally {
