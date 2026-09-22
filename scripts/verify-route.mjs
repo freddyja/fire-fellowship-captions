@@ -141,6 +141,8 @@ function createRecognitionWorld({ stickyFirstInstance, rejectLocales = [] }) {
       this.continuous = false;
       this.interimResults = false;
       this.maxAlternatives = 1;
+      this.onstart = null;
+      this.onaudiostart = null;
       this.onresult = null;
       this.onerror = null;
       this.onend = null;
@@ -203,6 +205,27 @@ function createRecognitionWorld({ stickyFirstInstance, rejectLocales = [] }) {
       }
       return "final";
     }
+    emitInterim(text) {
+      if (!this.running) return "idle";
+      this.onresult?.({
+        resultIndex: 0,
+        results: [{ isFinal: false, 0: { transcript: text } }],
+      });
+      return "interim";
+    }
+    end() {
+      if (!this.running) return "idle";
+      this.running = false;
+      this.onend?.();
+      return "end";
+    }
+    emitNoSpeech() {
+      if (!this.running) return "idle";
+      this.running = false;
+      this.onerror?.({ error: "no-speech" });
+      this.onend?.();
+      return "no-speech";
+    }
   }
   return {
     Rec,
@@ -224,6 +247,8 @@ function harness(world, appleMobile) {
     appleMobile,
     recognitionCtor: world.Rec,
     scheduleRestart: (run) => queueMicrotask(run),
+    scheduleCommit: (run) => queueMicrotask(run),
+    scheduleWatchdog: () => {},
   });
   speech.onResult = (result) => {
     if (result.isFinal) finals.push(result.text);
@@ -320,6 +345,92 @@ await flush();
 assert(chrome.active()[0]?.engineLang === "pt-BR", "Chrome Portuguese session is pt-BR");
 assert(chrome.active()[0].emit("pt-BR", "Boa noite irmãos") === "final", "Chrome Portuguese final");
 assert(chromeSpeech.errors.length === 0, `Chrome switch raised ${chromeSpeech.errors.join(" | ")}`);
+
+const iphoneDraft = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneDraftSpeech = harness(iphoneDraft, true);
+iphoneDraftSpeech.speech.setLang(speechLocale("es"));
+iphoneDraftSpeech.speech.start();
+await flush();
+assert(iphoneDraft.instances.length === 1, "Spoken chip before Start still uses one iPhone recognizer");
+assert(iphoneDraft.active()[0]?.engineLang === "es-ES", "onboarding Spanish is the first iPhone session");
+assert(iphoneDraft.active()[0].continuous === false, "iPhone stays one-shot");
+assert(iphoneDraft.active()[0].emitInterim("Bienvenidos hermanos") === "interim", "iPhone interim has no isFinal");
+iphoneDraft.active()[0].end();
+await flush();
+assert(
+  iphoneDraftSpeech.finals.join("|") === "Bienvenidos hermanos",
+  `iPhone onend publishes the interim: ${iphoneDraftSpeech.finals.join("|")}`,
+);
+assert(iphoneDraftSpeech.errors.length === 0, `interim end raised ${iphoneDraftSpeech.errors.join(" | ")}`);
+
+const iphonePause = createRecognitionWorld({ stickyFirstInstance: true });
+const iphonePauseSpeech = harness(iphonePause, true);
+iphonePauseSpeech.speech.start();
+await flush();
+assert(iphonePause.active()[0].emitInterim("Welcome") === "interim", "first hypothesis");
+assert(iphonePause.active()[0].emitInterim("Welcome brothers") === "interim", "longer hypothesis replaces the draft");
+await flush();
+assert(
+  iphonePauseSpeech.finals.join("|") === "Welcome brothers",
+  `silence commits the latest iPhone draft once: ${iphonePauseSpeech.finals.join("|")}`,
+);
+
+const iphoneHeard = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneHeardSpeech = harness(iphoneHeard, true);
+iphoneHeardSpeech.speech.start();
+await flush();
+const heard = iphoneHeard.active()[0];
+assert(heard.emitInterim("Welcome brothers") === "interim", "words before no-speech");
+assert(heard.emitNoSpeech() === "no-speech", "WebKit can end a heard phrase with no-speech");
+await flush();
+assert(
+  iphoneHeardSpeech.finals.join("|") === "Welcome brothers",
+  `no-speech still publishes heard words: ${iphoneHeardSpeech.finals.join("|")}`,
+);
+assert(iphoneHeardSpeech.errors.length === 0, `heard no-speech raised ${iphoneHeardSpeech.errors.join(" | ")}`);
+
+const iphoneSilent = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneSilentSpeech = harness(iphoneSilent, true);
+iphoneSilentSpeech.speech.start();
+await flush();
+assert(iphoneSilent.active()[0].emitNoSpeech() === "no-speech", "empty pause is no-speech");
+await flush();
+assert(
+  iphoneSilentSpeech.errors.some((message) => message.includes("(no-speech)") && message.includes("Type a caption")),
+  `empty no-speech is shown: ${iphoneSilentSpeech.errors.join(" | ")}`,
+);
+assert(iphoneSilent.active().length === 1, "empty no-speech keeps the iPhone mic armed");
+assert(iphoneSilentSpeech.finals.length === 0, "empty no-speech does not invent a caption");
+
+const iphoneDead = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneDeadErrors = [];
+const iphoneDeadSpeech = createWebSpeechProvider({
+  appleMobile: true,
+  recognitionCtor: iphoneDead.Rec,
+  scheduleRestart: (run) => queueMicrotask(run),
+  scheduleCommit: (run) => queueMicrotask(run),
+  scheduleWatchdog: (run) => queueMicrotask(run),
+});
+iphoneDeadSpeech.onError = (message) => iphoneDeadErrors.push(message);
+iphoneDeadSpeech.onResult = () => {};
+iphoneDeadSpeech.start();
+await flush();
+assert(
+  iphoneDeadErrors.some((message) => message.includes("Type a caption") && !message.includes("(no-speech)")),
+  `silent iPhone start is surfaced: ${iphoneDeadErrors.join(" | ")}`,
+);
+assert(iphoneDead.active().length === 0, "silent iPhone start does not stay listening");
+
+const chromeDraft = createRecognitionWorld({ stickyFirstInstance: false });
+const chromeDraftSpeech = harness(chromeDraft, false);
+chromeDraftSpeech.speech.start();
+await flush();
+assert(chromeDraft.active()[0].emitInterim("Welcome brothers") === "interim", "Android interim");
+await flush();
+assert(chromeDraftSpeech.finals.length === 0, "Android does not publish an interim as a caption");
+assert(chromeDraft.active()[0].emit("en-US", "Welcome brothers") === "final", "Android final still publishes");
+await flush();
+assert(chromeDraftSpeech.finals.join("|") === "Welcome brothers", "Android final is the only caption");
 
 assert(isWatchPref("all") && isWatchPref("es") && !isWatchPref("en-es") && !isWatchPref("fr"), "watch pref is all or one language");
 same(langsForWatch("all"), ["en", "es", "pt"], "Watch=all is three panes");
