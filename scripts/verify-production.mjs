@@ -283,6 +283,146 @@ async function openChrome() {
   };
 }
 
+async function waitForSince(inbox, start, type, match) {
+  for (let i = 0; i < 60; i += 1) {
+    const hit = inbox.slice(start).find((msg) => msg.type === type && (!match || match(msg)));
+    if (hit) return hit;
+    await delay(50);
+  }
+  throw new Error(`Timed out waiting for ${type}`);
+}
+
+function readCaptionLines(selector) {
+  return `(() => {
+    const board = document.querySelector(${JSON.stringify(selector)});
+    if (!board) return null;
+    const en = board.querySelector('.window[data-lang="en"]');
+    if (!en) return null;
+    const lines = [...en.querySelectorAll(".line")].map((line) => ({
+      speaker: line.querySelector("[data-speaker]")?.getAttribute("data-speaker") || "",
+      text: line.querySelector(".line-text")?.textContent || "",
+    }));
+    return { count: board.dataset.count || "", lines };
+  })()`;
+}
+
+async function assertNamedSpeakerRenders() {
+  const room = "MARI";
+  const watcher = await connect("tv", room);
+  await waitFor(watcher.inbox, "joined");
+  const chrome = await openChrome();
+  const waitForEval = async (sessionId, expression, match) => {
+    let last = null;
+    for (let i = 0; i < 60; i += 1) {
+      try {
+        last = await chrome.evaluate(sessionId, expression);
+        if (match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for speaker captions: ${JSON.stringify(last)}`);
+  };
+  const hasSpeaker = (snap, name, text) =>
+    Boolean(snap?.lines?.some((line) => line.speaker === name && line.text.includes(text)));
+
+  try {
+    const host = await chrome.open(`${base}/?view=phone&room=${room}`, { width: 390, height: 900, mobile: true });
+    const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const join = await chrome.open(`${base}/?view=join&room=${room}`, { width: 390, height: 844, mobile: true });
+    await chrome.waitForSnapshot(join, (snap) => snap.setupVisible && !snap.roomVisible);
+    await waitForEval(host, `Boolean(document.querySelector("[data-phone-board]"))`, (ready) => ready === true);
+    await chrome.evaluate(
+      join,
+      `const name = document.querySelector("[data-setup-name]");
+       name.value = "Maria";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    await chrome.waitForSnapshot(join, (snap) => snap.roomVisible && !snap.setupVisible);
+    await chrome.evaluate(
+      join,
+      `localStorage.setItem("ff-offline-local-meeting", "1");
+       const input = document.querySelector('[data-type] input[name="caption"]');
+       input.value = "Welcome brothers.";
+       document.querySelector("[data-type]").requestSubmit();`,
+    );
+
+    const hostMaria = await waitForEval(
+      host,
+      readCaptionLines("[data-phone-board]"),
+      (snap) => hasSpeaker(snap, "Maria", "Welcome brothers."),
+    );
+    const tvMaria = await waitForEval(
+      tv,
+      readCaptionLines("[data-board]"),
+      (snap) => hasSpeaker(snap, "Maria", "Welcome brothers."),
+    );
+    const joinMaria = await waitForEval(
+      join,
+      readCaptionLines("[data-board]"),
+      (snap) => hasSpeaker(snap, "Maria", "Welcome brothers."),
+    );
+    assert(hostMaria.count === "3" && tvMaria.count === "3" && joinMaria.count === "3", "Maria's caption stays on EN | ES | PT panes");
+    assert(hostMaria.lines[0].speaker === "Maria" && tvMaria.lines[0].speaker === "Maria", "host and TV caption boxes name Maria");
+    const published = await waitFor(
+      watcher.inbox,
+      "state",
+      (msg) => msg.state?.lines?.some((line) => line.speaker === "Maria" && String(line.text?.en || "").includes("Welcome brothers.")),
+    );
+    assert(published.state.lines.find((line) => line.speaker === "Maria"), "join client publishes Maria on the caption");
+    await chrome.evaluate(host, `document.querySelector("[data-phone-board]")?.scrollIntoView({ block: "center" })`);
+    await saveWatchShot(chrome, host, "speaker-maria-host.png", false);
+    await saveWatchShot(chrome, tv, "speaker-maria-tv.png", false);
+
+    const afterMaria = watcher.inbox.length;
+    await chrome.evaluate(join, `document.querySelector("[data-mic]").click()`);
+    await waitForSince(watcher.inbox, afterMaria, "floor", (msg) => msg.floor && msg.floor.holderId === null);
+
+    const luis = await chrome.open(`${base}/?view=join&room=${room}`, { width: 390, height: 844, mobile: true });
+    await chrome.waitForSnapshot(luis, (snap) => snap.setupVisible && !snap.roomVisible);
+    await chrome.evaluate(
+      luis,
+      `const name = document.querySelector("[data-setup-name]");
+       name.value = "Luis";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    await chrome.waitForSnapshot(luis, (snap) => snap.roomVisible && !snap.setupVisible);
+    await chrome.evaluate(
+      luis,
+      `localStorage.setItem("ff-offline-local-meeting", "1");
+       const input = document.querySelector('[data-type] input[name="caption"]');
+       input.value = "Peace";
+       document.querySelector("[data-type]").requestSubmit();`,
+    );
+
+    const tvBoth = await waitForEval(tv, readCaptionLines("[data-board]"), (snap) => {
+      const names = snap?.lines?.map((line) => line.speaker) || [];
+      return names.includes("Maria") && names.at(-1) === "Luis" && hasSpeaker(snap, "Luis", "Peace");
+    });
+    const hostBoth = await waitForEval(host, readCaptionLines("[data-phone-board]"), (snap) => {
+      const names = snap?.lines?.map((line) => line.speaker) || [];
+      return names.includes("Maria") && names.at(-1) === "Luis";
+    });
+    assert(tvBoth.lines[0].speaker === "Maria" && tvBoth.lines.at(-1).speaker === "Luis", "TV keeps Maria on the older line and shows Luis on the new one");
+    assert(hostBoth.lines[0].speaker === "Maria" && hostBoth.lines.at(-1).speaker === "Luis", "host panes keep each speaker's name");
+
+    await chrome.evaluate(host, `document.querySelector("[data-smart-view-mode]").click()`);
+    const smart = await waitForEval(host, readCaptionLines("[data-sv-board]"), (snap) => {
+      const names = snap?.lines?.map((line) => line.speaker) || [];
+      return names.includes("Maria") && names.at(-1) === "Luis";
+    });
+    assert(smart.lines[0].speaker === "Maria" && smart.lines.at(-1).speaker === "Luis", "Smart View caption boxes name the speaker");
+    await saveWatchShot(chrome, host, "speaker-maria-smart.png", false);
+    await saveWatchShot(chrome, tv, "speaker-maria-luis-tv.png", false);
+  } finally {
+    chrome.close();
+    watcher.ws.close();
+  }
+}
+
 async function assertJoinWatchIsDeviceLocal() {
   const room = "WACH";
   const host = await connect("phone", room, "Host");
@@ -669,6 +809,7 @@ async function main() {
   );
   assert(appJs.includes("Safari rejected"), "rejected speech locale is named");
   assert(appJs.includes("phone-live-board"), "host phone shows EN ES PT caption panes");
+  assert(appJs.includes("line-speaker"), "caption panes print the speaker name");
   assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
@@ -1212,8 +1353,9 @@ async function main() {
   guestB.ws.close();
   floorTv.ws.close();
   stayHost.ws.close();
+  await assertNamedSpeakerRenders();
   await assertJoinWatchIsDeviceLocal();
-  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
+  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, speaker names on captions, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()

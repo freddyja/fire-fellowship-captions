@@ -27,6 +27,8 @@ export type CaptionLine = {
   isFinal: boolean;
   text: Record<Lang, string>;
   at: number;
+  /** Display name of the person who said this line. Older lines keep theirs. */
+  speaker?: string;
 };
 
 export type RoomState = {
@@ -123,6 +125,11 @@ export function sanitizePeerName(value: unknown, fallback = "Brother"): string {
     .trim()
     .slice(0, 24);
   return name || fallback;
+}
+
+/** Name printed on a caption. A blank name is Host or Guest — never a made-up person. */
+export function captionSpeaker(value: unknown, role: "host" | "guest"): string {
+  return sanitizePeerName(value, role === "host" ? "Host" : "Guest");
 }
 
 export function isFloorHolder(floor: FloorState | null | undefined, peerId: string | null | undefined): boolean {

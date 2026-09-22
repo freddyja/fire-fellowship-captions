@@ -86,7 +86,7 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
           ws,
           room,
           role,
-          name: sanitizeName(msg.name, role === "phone" ? "Host" : "Brother"),
+          name: sanitizeName(msg.name, role === "phone" ? "Host" : role === "guest" ? "Guest" : "Brother"),
         };
         bucket.clients.add(client);
         const counts = peerCounts(bucket);
@@ -259,7 +259,9 @@ function applyPush(bucket: Room, client: Client, raw: unknown): void {
   }
 
   if (holding || hostOwnsIdle) {
-    if (Array.isArray(incoming.lines)) next.lines = incoming.lines;
+    if (Array.isArray(incoming.lines)) {
+      next.lines = stampNewSpeakers(base.lines, incoming.lines, bucket.floor.holderName, client.role);
+    }
     if (typeof incoming.sourceLang === "string" && LANGS.has(incoming.sourceLang)) {
       next.sourceLang = incoming.sourceLang;
     }
@@ -348,6 +350,30 @@ function sanitizeName(value: unknown, fallback: string): string {
     .trim()
     .slice(0, 24);
   return name || fallback;
+}
+
+/** Keep a name already stored on a line. New lines pick up the person who has the floor. */
+function stampNewSpeakers(previous: unknown, incoming: unknown[], holderName: string | null, role: Role): unknown[] {
+  const prevIds = new Set<string>();
+  if (Array.isArray(previous)) {
+    for (const line of previous) {
+      if (line && typeof line === "object" && typeof (line as { id?: unknown }).id === "string") {
+        prevIds.add((line as { id: string }).id);
+      }
+    }
+  }
+  const fallback = role === "phone" ? "Host" : role === "guest" ? "Guest" : "";
+  const active = sanitizeName(holderName, fallback);
+  return incoming.map((line) => {
+    if (!line || typeof line !== "object") return line;
+    const record = { ...(line as Record<string, unknown>) };
+    const named = sanitizeName(record.speaker, "");
+    const id = typeof record.id === "string" ? record.id : "";
+    if (named) record.speaker = named;
+    else if ((!id || !prevIds.has(id)) && active) record.speaker = active;
+    else delete record.speaker;
+    return record;
+  });
 }
 
 function asRecord(value: unknown): RoomState | null {

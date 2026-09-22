@@ -524,6 +524,33 @@ textarea {
   font-style: italic;
 }
 
+.line-speaker {
+  display: block;
+  margin: 0 0 0.16em;
+  color: var(--gold);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  font-size: 0.46em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line.faded .line-speaker {
+  color: var(--muted);
+}
+
+.line.interim .line-speaker {
+  color: var(--gold);
+  font-style: normal;
+}
+
+.tv-screen .tv-board .line-speaker {
+  font-size: clamp(1rem, 0.46em, 2rem);
+}
+
 .tv-board[data-count="1"] .line {
   font-size: clamp(2.7rem, 7vw, 8rem);
 }
@@ -881,6 +908,10 @@ textarea {
   font-size: clamp(1.65rem, 7.2vw, 2.8rem);
 }
 
+.join-screen .tv-board .line-speaker {
+  font-size: max(0.72rem, 0.42em);
+}
+
 .join-screen .tv-topic {
   flex: 0 1 auto;
   max-height: 12rem;
@@ -1141,8 +1172,8 @@ textarea {
 .phone-screen .phone-live-board .window {
   display: flex;
   flex: none;
-  height: 5.25rem;
-  max-height: 5.25rem;
+  height: 6.4rem;
+  max-height: 6.4rem;
   min-height: 0;
   overflow: hidden;
 }
@@ -1159,6 +1190,12 @@ textarea {
 .phone-screen .phone-live-board[data-count="2"] .line,
 .phone-screen .phone-live-board[data-count="3"] .line {
   font-size: 0.95rem;
+}
+
+.phone-live-board .line-speaker {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.12rem;
 }
 
 .row-actions {

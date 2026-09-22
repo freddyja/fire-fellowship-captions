@@ -13,6 +13,7 @@ import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } fro
 import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
+  captionSpeaker,
   emptyFloor,
   emptyState,
   floorHeldByOther,
@@ -377,8 +378,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     paintCaptionBoard(
       els.phoneBoard,
       els.phoneTopic,
-      { layout: state.layout, lines: finalizedLines(state.lines), topic: null },
-      liveInterim && holding ? { text: liveInterim, sourceLang: state.sourceLang } : null,
+      { layout: state.layout, lines: finalizedLines(state.lines), topic: null, floor },
+      liveInterim && holding ? { text: liveInterim, sourceLang: state.sourceLang, speaker: captionSpeaker(floor.holderName, "host") } : null,
     );
     els.phoneTopic.hidden = true;
     els.phoneTopic.innerHTML = "";
@@ -407,8 +408,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       paintCaptionBoard(
         svBoard,
         svTopic,
-        { ...state, lines: finalizedLines(state.lines) },
-        liveInterim ? { text: liveInterim, sourceLang: state.sourceLang } : null,
+        { ...state, lines: finalizedLines(state.lines), floor },
+        liveInterim ? { text: liveInterim, sourceLang: state.sourceLang, speaker: captionSpeaker(floor.holderName, "host") } : null,
       );
       if (captionsOnly) {
         svTopic.hidden = true;
@@ -452,6 +453,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   async function publishFinal(text: string, coalesce = true) {
     const spoken = text.trim();
     if (!spoken) return;
+    const speaker = captionSpeaker(floor.holderName, "host");
     liveInterim = "";
     renderDynamic();
     const epoch = publishEpoch;
@@ -463,6 +465,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const line: CaptionLine = {
       id: crypto.randomUUID(),
       isFinal: true,
+      speaker,
       text: translated,
       at: Date.now(),
     };
