@@ -15,9 +15,11 @@ import {
   keepsLocalCaptions,
   lostFloor,
   reconcileFloor,
+  isWatchPref,
   LANG_LABEL,
   LANG_SHORT,
   LANGS,
+  layoutForWatch,
   sanitizePeerName,
   someoneElseSpeaking,
   speechLocale,
@@ -26,6 +28,7 @@ import {
   type FloorState,
   type Lang,
   type PeerCounts,
+  type WatchPref,
 } from "../types";
 
 const micIcon = `
@@ -38,6 +41,7 @@ const micIcon = `
 
 const NAME_KEY = "ff-guest-name";
 const CAPTIONS_ONLY_KEY = "ff-join-captions-only";
+const WATCH_KEY = "ff-join-watch";
 
 export function mountJoin(root: HTMLElement, room: string): () => void {
   const translator = createTranslator();
@@ -55,6 +59,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   let peerId: string | null = null;
   let floor: FloorState = emptyFloor();
   let sourceLang: Lang = "en";
+  let watch: WatchPref = readWatchPref();
   let displayName = readGuestName();
   let captionsOnly = readCaptionsOnlyPref();
   let lastCaptionWasMock = false;
@@ -90,9 +95,16 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
           <span>Your name</span>
           <input data-name maxlength="24" autocomplete="name" placeholder="Brother" enterkeyhint="done" />
         </label>
-        <div>
-          <p class="control-label">Spoken language</p>
-          <div class="chips" data-source></div>
+        <div class="join-prefs">
+          <div class="join-pref">
+            <p class="control-label">Spoken</p>
+            <div class="chips" data-source role="group" aria-label="Spoken language"></div>
+          </div>
+          <div class="join-pref">
+            <p class="control-label">Watch</p>
+            <div class="chips" data-watch-choices role="group" aria-label="Watch"></div>
+            <p class="join-watch-note">This phone only</p>
+          </div>
         </div>
         <div class="smart-view-controls join-actions">
           <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="false">
@@ -117,6 +129,13 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   sourceBox.innerHTML = LANGS.map(
     (lang) => `<button class="chip" type="button" data-lang="${lang}">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
   ).join("");
+  const watchBox = root.querySelector("[data-watch-choices]") as HTMLElement;
+  watchBox.innerHTML = `
+    <button class="chip" type="button" data-watch="en" aria-pressed="false">EN only</button>
+    <button class="chip" type="button" data-watch="es" aria-pressed="false">ES only</button>
+    <button class="chip" type="button" data-watch="pt" aria-pressed="false">PT only</button>
+    <button class="chip" type="button" data-watch="all" aria-pressed="false">All three</button>
+  `;
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
   const typeInput = typeForm.elements.namedItem("caption") as HTMLInputElement;
@@ -201,10 +220,18 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       btn.classList.toggle("active", btn.dataset.lang === sourceLang);
     }
+    for (const btn of watchBox.querySelectorAll<HTMLButtonElement>("[data-watch]")) {
+      const on = btn.dataset.watch === watch;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    }
+    // Watch paints this phone only. Room layout stays on state and is what we push.
+    screenEl.dataset.watch = watch;
+    screenEl.dataset.roomLayout = state.layout;
     paintCaptionBoard(
       board,
       topicEl,
-      { ...state, lines: finalizedLines(state.lines) },
+      { ...state, layout: layoutForWatch(watch), lines: finalizedLines(state.lines) },
       liveInterim && holding ? { text: liveInterim, sourceLang } : null,
     );
     if (captionsOnly) {
@@ -356,6 +383,14 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     renderDynamic();
   };
 
+  const onWatch = (event: Event) => {
+    const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-watch]");
+    if (!btn?.dataset.watch || !isWatchPref(btn.dataset.watch)) return;
+    watch = btn.dataset.watch;
+    writeWatchPref(watch);
+    renderDynamic();
+  };
+
   const onSource = (event: Event) => {
     const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-lang]");
     if (!btn?.dataset.lang) return;
@@ -427,6 +462,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   els.mic.addEventListener("click", onMic);
   document.addEventListener("visibilitychange", onVisibility);
   sourceBox.addEventListener("click", onSource);
+  watchBox.addEventListener("click", onWatch);
   captionsOnlyBtn.addEventListener("click", onCaptionsOnly);
   nameInput.addEventListener("change", onName);
   root.querySelector("[data-home]")?.addEventListener("click", onHome);
@@ -494,6 +530,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     document.removeEventListener("visibilitychange", onVisibility);
     els.mic.removeEventListener("click", onMic);
     sourceBox.removeEventListener("click", onSource);
+    watchBox.removeEventListener("click", onWatch);
     captionsOnlyBtn.removeEventListener("click", onCaptionsOnly);
     nameInput.removeEventListener("change", onName);
     typeForm.removeEventListener("submit", onType);
@@ -534,6 +571,24 @@ function readCaptionsOnlyPref(): boolean {
 function writeCaptionsOnlyPref(value: boolean) {
   try {
     sessionStorage.setItem(CAPTIONS_ONLY_KEY, value ? "1" : "0");
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+function readWatchPref(): WatchPref {
+  try {
+    const stored = sessionStorage.getItem(WATCH_KEY);
+    if (isWatchPref(stored)) return stored;
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return "all";
+}
+
+function writeWatchPref(value: WatchPref) {
+  try {
+    sessionStorage.setItem(WATCH_KEY, value);
   } catch {
     /* private mode / blocked storage */
   }

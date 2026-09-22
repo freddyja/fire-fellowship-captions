@@ -13,7 +13,7 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 [Build playbook (lessons for the next bot)](docs/BUILD_PLAYBOOK.md) — what went right and wrong, translator stack, Render, Fold/TV, and a copy/paste brief.
 
 - **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold, and **Join on phones** so brothers can scan a QR and follow (or speak) from their own phones.
-- **Brothers’ phones (Android or iPhone):** join via QR (`/?view=join&room=ABCD`) in the mobile browser — no app store install. Same captions + optional topic. One mic at a time. Chrome on Android is best for live speech; iPhone can always watch and can type a caption if Web Speech is missing.
+- **Brothers’ phones (Android or iPhone):** join via QR (`/?view=join&room=ABCD`) in the mobile browser — no app store install. Same captions + optional topic. Each phone picks **Spoken** (the language that brother talks in) and **Watch** (EN only, ES only, PT only, or all three on that phone). Watch stays on that device. One mic at a time. Chrome on Android is best for live speech; iPhone can always watch and can type a caption if Web Speech is missing.
 - **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
 - **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
 - **Render host** (`fire-fellowship-captions.onrender.com`): one Node process serves the PWA, the WebSocket room relay, `POST /api/translate`, and the topic / handout API.
@@ -90,6 +90,8 @@ The join QR opens an **https://…/?view=join&room=ABCD** link (same public host
    - **iPhone:** Safari or Chrome. Captions + topic always work. Live mic is limited in iOS browsers (Chrome on iPhone uses the same engine as Safari). English can work and Spanish or Portuguese fail after the switch — the phone names the locale if Safari rejected it. If Start does not show words, **type a caption** and Send. That path does not use Web Speech and still reaches the host phone, the other phones, and the TV.
 4. They pick **Spoken language** EN / ES / PT. When the floor is free: **Start** if this browser supports live speech, or type a caption. Captions from that speaker appear on the Fold, the other phones, and the TV.
 5. **One speaker at a time.** If someone already has the mic, Start / Send wait and the phone says **Someone else is speaking**. The Fold can **Reclaim mic**.
+
+**Spoken vs Watch.** **Spoken** is the language that brother talks in (the EN / ES / PT chips). It sets the microphone and which language the caption is translated from. **Watch** is only the caption window on **this phone**: **EN only**, **ES only**, **PT only**, or **All three** (the default). Watch does not change the room layout, the host phone, Smart View, the TV, or any other guest. A brother can set Spoken **ES** and Watch **ES** so his phone shows one full Spanish caption window, while everyone else and the TV still show **EN | ES | PT**. The choice is saved for this browser session. The topic sheet on Join stays **EN | ES | PT** unless **Captions only** is on.
 
 Add to Home Screen is optional on both platforms (Chrome menu on Android; Share → Add to Home Screen on iPhone). It is not required.
 
@@ -224,6 +226,7 @@ The script checks:
 - Service worker registers a `fetch` handler and does not intercept `/caption-ws`
 - Two WebSocket clients in room `ABCD`: a phone **topic of the day** push arrives on the TV
 - Room relay: one speaker at a time (guest claim is rejected while the floor is held); guest captions reach the host and TV; guests cannot wipe the host topic
+- Guest **Watch = ES** paints only the Spanish caption pane on the join client; the TV in that room still has three panes (**EN | ES | PT**) for the same caption
 
 **Meeting-night dry run on the real URL**
 

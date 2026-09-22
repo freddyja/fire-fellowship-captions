@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { accessSync, constants, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket } from "ws";
 
@@ -55,6 +58,346 @@ async function waitFor(inbox, type, match) {
     await delay(50);
   }
   throw new Error(`Timed out waiting for ${type}`);
+}
+
+function findChrome() {
+  const candidates = [
+    process.env.CHROME_PATH,
+    "/usr/local/bin/google-chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+  ].filter(Boolean);
+  for (const bin of candidates) {
+    try {
+      accessSync(bin, constants.X_OK);
+      return bin;
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  throw new Error("Chrome is required to check that Join Watch=ES does not change the TV");
+}
+
+function cdpSocket(ws) {
+  let next = 0;
+  const pending = new Map();
+  ws.on("message", (raw) => {
+    const msg = JSON.parse(String(raw));
+    if (!msg.id || !pending.has(msg.id)) return;
+    const slot = pending.get(msg.id);
+    pending.delete(msg.id);
+    if (msg.error) slot.reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+    else slot.resolve(msg.result ?? {});
+  });
+  return {
+    send(method, params = {}, sessionId) {
+      const id = ++next;
+      const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error(`CDP timeout: ${method}`));
+        }, 10000);
+        pending.set(id, {
+          resolve: (value) => {
+            clearTimeout(timer);
+            resolve(value);
+          },
+          reject: (error) => {
+            clearTimeout(timer);
+            reject(error);
+          },
+        });
+        ws.send(JSON.stringify(payload));
+      });
+    },
+  };
+}
+
+const JOIN_SNAPSHOT = `(() => {
+  const board = document.querySelector("[data-board]");
+  const topic = document.querySelector("[data-topic]");
+  const screen = document.querySelector("[data-join-screen], .tv-screen");
+  if (!board || !screen) return null;
+  return {
+    langs: [...board.querySelectorAll(".window")].map((node) => node.getAttribute("data-lang")),
+    count: board.dataset.count || "",
+    layout: board.dataset.layout || "",
+    text: board.textContent || "",
+    watch: screen.dataset.watch || "",
+    roomLayout: screen.dataset.roomLayout || "",
+    stored: sessionStorage.getItem("ff-join-watch"),
+    topicHidden: Boolean(topic?.hidden),
+    topicCount: topic?.dataset.count || "",
+    topicText: topic?.textContent || "",
+    langLock: Boolean(document.querySelector(".is-lang-lock")),
+    mark: window.__ffWatchMark || "",
+  };
+})()`;
+
+async function openChrome() {
+  const bin = findChrome();
+  const port = 20000 + Math.floor(Math.random() * 20000);
+  const userData = mkdtempSync(join(tmpdir(), "ff-join-watch-"));
+  const child = spawn(
+    bin,
+    [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--ignore-certificate-errors",
+      `--remote-debugging-port=${port}`,
+      `--user-data-dir=${userData}`,
+      "about:blank",
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  );
+  started.push(child);
+  let stderr = "";
+  child.stderr.on("data", (buf) => {
+    stderr = `${stderr}${buf}`.slice(-2000);
+  });
+  let version = null;
+  for (let i = 0; i < 40; i += 1) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+      if (res.ok) {
+        version = await res.json();
+        break;
+      }
+    } catch {
+      /* chrome is still starting */
+    }
+    await delay(150);
+  }
+  if (!version?.webSocketDebuggerUrl) {
+    child.kill("SIGTERM");
+    throw new Error(`Chrome did not open a DevTools port. ${stderr}`);
+  }
+  const browserWs = new WebSocket(version.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    browserWs.once("open", resolve);
+    browserWs.once("error", reject);
+  });
+  const cdp = cdpSocket(browserWs);
+
+  async function evaluate(sessionId, expression) {
+    const result = await cdp.send(
+      "Runtime.evaluate",
+      { expression, returnByValue: true, awaitPromise: true },
+      sessionId,
+    );
+    if (result.exceptionDetails) {
+      const text = result.exceptionDetails.exception?.description || result.exceptionDetails.text;
+      throw new Error(text || "page evaluate failed");
+    }
+    return result.result?.value;
+  }
+
+  async function open(url, { width, height, mobile }) {
+    const created = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const attached = await cdp.send("Target.attachToTarget", { targetId: created.targetId, flatten: true });
+    const sessionId = attached.sessionId;
+    await cdp.send("Page.enable", {}, sessionId);
+    await cdp.send("Runtime.enable", {}, sessionId);
+    await cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { width, height, deviceScaleFactor: 1, mobile },
+      sessionId,
+    );
+    await cdp.send("Page.navigate", { url }, sessionId);
+    return sessionId;
+  }
+
+  async function waitForSnapshot(sessionId, match) {
+    let last = null;
+    for (let i = 0; i < 50; i += 1) {
+      try {
+        last = await evaluate(sessionId, JOIN_SNAPSHOT);
+        if (last && match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for Join/TV panes: ${JSON.stringify(last)}`);
+  }
+
+  return {
+    open,
+    evaluate,
+    waitForSnapshot,
+    send: cdp.send.bind(cdp),
+    close() {
+      try {
+        browserWs.close();
+      } catch {
+        /* already closed */
+      }
+      child.kill("SIGTERM");
+      try {
+        rmSync(userData, { recursive: true, force: true });
+      } catch {
+        /* profile may still be releasing */
+      }
+    },
+  };
+}
+
+async function assertJoinWatchIsDeviceLocal() {
+  const room = "WACH";
+  const host = await connect("phone", room, "Host");
+  const tvRelay = await connect("tv", room);
+  await waitFor(host.inbox, "joined");
+  await waitFor(tvRelay.inbox, "joined");
+  host.ws.send(
+    JSON.stringify({
+      type: "push",
+      state: {
+        room,
+        sourceLang: "es",
+        layout: "en-es-pt",
+        listening: false,
+        lines: [
+          {
+            id: "watch-line",
+            isFinal: true,
+            at: Date.now(),
+            text: {
+              en: "Welcome brothers.",
+              es: "Bienvenidos hermanos.",
+              pt: "Bem-vindos irmãos.",
+            },
+          },
+        ],
+        topic: {
+          id: "brotherhood",
+          title: { en: "Brotherhood", es: "Fraternidad", pt: "Irmandade" },
+          reference: "Proverbs 27:17",
+          verse: { en: "Iron sharpens iron.", es: "Hierro con hierro se aguza.", pt: "O ferro com o ferro se afia." },
+          hook: { en: "A dull man is usually a lonely man.", es: "Un hombre sin filo.", pt: "Um homem sem fio." },
+          body: { en: "Iron does not sharpen iron from across the room.", es: "El hierro no aguza desde lejos.", pt: "O ferro não afia de longe." },
+          discussionQuestions: [{ en: "Who is sharpening you?", es: "¿Quién te está aguzando?", pt: "Quem está te afiando?" }],
+          prompt: { en: "Talk.", es: "Hablen.", pt: "Falemos." },
+        },
+      },
+    }),
+  );
+  await waitFor(tvRelay.inbox, "state", (msg) => msg.state?.lines?.[0]?.id === "watch-line");
+
+  const chrome = await openChrome();
+  try {
+    const join = await chrome.open(`${base}/?view=join&room=${room}`, { width: 390, height: 844, mobile: true });
+    const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const joinAll = await chrome.waitForSnapshot(
+      join,
+      (snap) => snap.langs.length === 3 && snap.text.includes("Bienvenidos hermanos."),
+    );
+    assert(joinAll.watch === "all", "Join Watch defaults to all three");
+    assert(joinAll.roomLayout === "en-es-pt", "Join keeps the room layout while Watch is all");
+    assert(joinAll.langs.join(",") === "en,es,pt", "Watch=all shows EN, ES, and PT on the join client");
+    assert(joinAll.count === "3", "Watch=all paints three caption panes");
+    assert(!joinAll.topicHidden && joinAll.topicCount === "3", "Watch=all keeps the fellowship topic sheet");
+    assert(
+      joinAll.topicText.includes("ES · Español") && joinAll.topicText.includes("PT · Português"),
+      "Join topic sheet stays EN | ES | PT",
+    );
+    assert(joinAll.topicText.includes("Hierro con hierro"), "Join topic still includes the Spanish verse");
+    await saveWatchShot(chrome, join, "join-watch-all.png", true);
+
+    const tvAll = await chrome.waitForSnapshot(
+      tv,
+      (snap) => snap.langs.length === 3 && snap.text.includes("Bienvenidos hermanos."),
+    );
+    assert(tvAll.layout === "en-es-pt" && tvAll.langs.join(",") === "en,es,pt", "TV shows EN | ES | PT for the room");
+    assert(!tvAll.langLock, "combined TV is not a one-language monitor");
+    assert(tvAll.text.includes("Welcome brothers.") && tvAll.text.includes("Bem-vindos irmãos."), "TV has the full caption");
+
+    await chrome.evaluate(join, `document.querySelector('[data-watch="es"]').click()`);
+    const joinEs = await chrome.waitForSnapshot(
+      join,
+      (snap) => snap.watch === "es" && snap.langs.length === 1 && snap.langs[0] === "es",
+    );
+    assert(joinEs.count === "1", "Watch=ES shows only the ES pane on the join client");
+    assert(joinEs.layout === "es", "Watch=ES caption board is the Spanish pane");
+    assert(!joinEs.text.includes("Welcome brothers."), "Watch=ES does not show the English caption");
+    assert(joinEs.text.includes("Bienvenidos hermanos."), "Watch=ES shows the Spanish caption");
+    assert(!joinEs.langs.includes("en") && !joinEs.langs.includes("pt"), "Watch=ES hides EN and PT panes");
+    assert(joinEs.roomLayout === "en-es-pt", "Watch=ES does not change the room layout");
+    assert(!joinEs.topicHidden && joinEs.topicCount === "3", "Watch=ES keeps the EN | ES | PT topic sheet");
+    assert(
+      joinEs.topicText.includes("ES · Español") && joinEs.topicText.includes("PT · Português") && joinEs.topicText.includes("Hierro con hierro"),
+      "Watch=ES does not strip the Spanish or Portuguese topic columns",
+    );
+    assert(joinEs.stored === "es", "Watch=ES is saved for the guest session");
+    await saveWatchShot(chrome, join, "join-watch-es.png", true);
+
+    await delay(400);
+    const tvAfter = await chrome.evaluate(tv, JOIN_SNAPSHOT);
+    assert(tvAfter.langs.join(",") === "en,es,pt", "TV still has three panes after the guest sets Watch=ES");
+    assert(tvAfter.layout === "en-es-pt", "TV layout stayed EN | ES | PT");
+    assert(
+      tvAfter.text.includes("Welcome brothers.") && tvAfter.text.includes("Bienvenidos hermanos.") && tvAfter.text.includes("Bem-vindos irmãos."),
+      "TV still shows the same EN | ES | PT caption",
+    );
+    await saveWatchShot(chrome, tv, "tv-still-three-panes.png", false);
+    assert(
+      tvRelay.inbox.every((msg) => msg.type !== "state" || msg.state?.layout === "en-es-pt"),
+      "guest Watch did not push a layout change to the room",
+    );
+
+    await chrome.evaluate(join, `window.__ffWatchMark = "before"`);
+    await chrome.send("Page.reload", { ignoreCache: true }, join);
+    const joinKept = await chrome.waitForSnapshot(
+      join,
+      (snap) => snap.mark !== "before" && snap.watch === "es" && snap.langs.length === 1 && snap.text.includes("Bienvenidos hermanos."),
+    );
+    assert(joinKept.langs[0] === "es" && joinKept.stored === "es", "Watch=ES survives a reload of the join page");
+    assert(joinKept.roomLayout === "en-es-pt", "reloaded Join still does not own the room layout");
+
+    const tvStill = await chrome.waitForSnapshot(
+      tv,
+      (snap) => snap.langs.length === 3 && snap.layout === "en-es-pt" && snap.text.includes("Welcome brothers."),
+    );
+    assert(tvStill.langs.join(",") === "en,es,pt", "TV still has three panes for the same room caption");
+  } finally {
+    chrome.close();
+    host.ws.close();
+    tvRelay.ws.close();
+  }
+}
+
+async function saveWatchShot(chrome, sessionId, name, scrollBoard) {
+  const dir = "/opt/cursor/artifacts/screenshots";
+  try {
+    if (scrollBoard) {
+      await chrome.evaluate(
+        sessionId,
+        `document.querySelector("[data-board]")?.scrollIntoView({ block: "start", inline: "nearest" })`,
+      );
+    }
+    await delay(150);
+    let image = null;
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        image = await chrome.send("Page.captureScreenshot", { format: "png" }, sessionId);
+        break;
+      } catch (error) {
+        lastError = error;
+        await delay(300);
+      }
+    }
+    if (!image?.data) throw lastError || new Error("screenshot failed");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, name), Buffer.from(image.data, "base64"));
+  } catch (error) {
+    console.error(`screenshot ${name} failed: ${error}`);
+  }
 }
 
 async function maybeStartLocal() {
@@ -135,6 +478,11 @@ async function main() {
   assert(appJs.includes("Reclaim mic"), "host can reclaim the mic");
   assert(appJs.includes("view=join"), "brothers join query");
   assert(appJs.includes("Spoken language"), "spoken language chips");
+  assert(appJs.includes("EN only") && appJs.includes("ES only") && appJs.includes("PT only"), "join Watch language chips");
+  assert(appJs.includes("All three"), "join Watch defaults to all three panes");
+  assert(appJs.includes("This phone only"), "Watch is labeled as this phone only");
+  assert(appJs.includes("ff-join-watch"), "Watch preference is stored for the guest session");
+  assert(appJs.includes('data-watch="es"'), "Watch=ES chip");
   assert(appJs.includes("Type a caption"), "type-to-send caption fallback");
   assert(appJs.includes("Chrome on Android"), "Android Chrome is best for live speech");
   assert(appJs.includes("iPhone"), "iPhone join is documented in the UI");
@@ -171,6 +519,7 @@ async function main() {
   );
   assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
   assert(appCss.includes("join-screen"), "guest join screen class");
+  assert(appCss.includes("join-watch-note"), "Watch note style");
   assert(appCss.includes("phone-live-board"), "host caption panes are styled");
   assert(appCss.includes("100svh"), "iOS small viewport height");
   assert(appCss.includes("safe-area-inset-top") && appCss.includes("safe-area-inset-bottom"), "safe area insets");
@@ -674,7 +1023,8 @@ async function main() {
   guestB.ws.close();
   floorTv.ws.close();
   stayHost.ws.close();
-  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
+  await assertJoinWatchIsDeviceLocal();
+  console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }
 
 main()

@@ -1,7 +1,15 @@
 import { joinSearch, parseRoute, parseTvLang, tvSearch } from "../src/router.ts";
 import { detectSpeechCapability, isAppleMobile } from "../src/stt/capability.ts";
 import { createWebSpeechProvider } from "../src/stt/web-speech.ts";
-import { keepsLocalCaptions, lostFloor, reconcileFloor, speechLocale } from "../src/types.ts";
+import {
+  isWatchPref,
+  keepsLocalCaptions,
+  langsForWatch,
+  layoutForWatch,
+  lostFloor,
+  reconcileFloor,
+  speechLocale,
+} from "../src/types.ts";
 
 function assert(cond, message) {
   if (!cond) throw new Error(message);
@@ -308,4 +316,13 @@ assert(chrome.active()[0]?.engineLang === "pt-BR", "Chrome Portuguese session is
 assert(chrome.active()[0].emit("pt-BR", "Boa noite irmãos") === "final", "Chrome Portuguese final");
 assert(chromeSpeech.errors.length === 0, `Chrome switch raised ${chromeSpeech.errors.join(" | ")}`);
 
-console.log("OK route — lang= is TV-only, opt-in, and omitted from the combined TV link");
+assert(isWatchPref("all") && isWatchPref("es") && !isWatchPref("en-es") && !isWatchPref("fr"), "watch pref is all or one language");
+same(langsForWatch("all"), ["en", "es", "pt"], "Watch=all is three panes");
+same(langsForWatch("es"), ["es"], "Watch=ES is the Spanish pane only");
+same(langsForWatch("en"), ["en"], "Watch=EN is the English pane only");
+same(langsForWatch("pt"), ["pt"], "Watch=PT is the Portuguese pane only");
+assert(layoutForWatch("all") === "en-es-pt", "Watch=all paints the triple layout locally");
+assert(layoutForWatch("es") === "es", "Watch=ES paints a single Spanish layout locally");
+assert(layoutForWatch("es") !== "en-es-pt", "Watch=ES is not the room's three-pane layout");
+
+console.log("OK route — lang= is TV-only; Join Watch=ES is one local pane, not the room layout");
