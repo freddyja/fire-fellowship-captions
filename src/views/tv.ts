@@ -1,4 +1,4 @@
-import { brandBlock, creditFooter } from "../brand";
+import { brandBlock } from "../brand";
 import { finalizedLines } from "../caption-history";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
@@ -25,7 +25,6 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
       </div>
       <aside class="tv-topic" data-topic hidden></aside>
       <main class="tv-board" data-board></main>
-      ${creditFooter()}
     </section>
   `;
 

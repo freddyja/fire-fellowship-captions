@@ -12,12 +12,9 @@ export function brandBlock(compact = false): string {
       ${flame}
       <div class="brand-text">
         <h1><span>Fire</span> and Fellowship</h1>
-        <p>Men's Fellowship</p>
+        <p class="brand-credit">Design by Freddy Jara-Almonte</p>
+        <p class="brand-tagline">Men's Fellowship</p>
       </div>
     </div>
   `;
-}
-
-export function creditFooter(): string {
-  return `<footer class="credit-footer">Design by Freddy Jara-Almonte</footer>`;
 }
