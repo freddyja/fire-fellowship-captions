@@ -2,6 +2,7 @@ import { joinSearch, parseRoute, parseTvLang, tvSearch } from "../src/router.ts"
 import { detectSpeechCapability, isAppleMobile } from "../src/stt/capability.ts";
 import { createWebSpeechProvider } from "../src/stt/web-speech.ts";
 import {
+  captionSpeaker,
   isWatchPref,
   keepsLocalCaptions,
   langsForWatch,
@@ -121,6 +122,10 @@ assert(reconcileFloor(hostFloor, emptyFloor, "host").holderId === "host", "stale
 assert(lostFloor(guestFloor, hostFloor, "guest") === true, "another holder takes the floor");
 assert(lostFloor(guestFloor, emptyFloor, "guest") === false, "our own Stop is not someone else speaking");
 assert(lostFloor(emptyFloor, emptyFloor, "guest") === false, "watching a release is not losing the mic");
+
+assert(captionSpeaker("", "guest") === "Guest", "blank guest name is Guest");
+assert(captionSpeaker("   ", "host") === "Host", "blank host name is Host");
+assert(captionSpeaker("Maria", "guest") === "Maria", "typed name is the caption speaker");
 
 assert(speechLocale("en") === "en-US", "English recognizer locale");
 assert(speechLocale("es") === "es-ES", "Spanish recognizer locale");

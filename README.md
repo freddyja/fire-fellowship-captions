@@ -88,7 +88,7 @@ The join QR opens an **https://…/?view=join&room=ABCD** link (same public host
 3. Each brother opens the join URL. **Before the live caption board**, the phone asks two questions, then one **Join** button:
    - **What language are you speaking?** EN / ES / PT. That is **Spoken** — the microphone and Type + Send.
    - **What language do you want to watch?** EN only, ES only, PT only, or All three. That is **Watch** — captions on **this phone only**.
-   - An optional name sits on the same screen. **Join** enters the room with those choices already applied. Spoken and Watch can still be changed on the caption screen. There is no separate listen question.
+   - An optional name sits on the same screen. **Join** enters the room with those choices already applied. Spoken and Watch can still be changed on the caption screen. There is no separate listen question. That name is printed in small type above each caption line (**Maria**) on the host phone, the other phones, Smart View, and the TV, so the room can see who is speaking. A blank name shows as **Guest** (the Fold shows **Host**). When someone else takes the floor, new lines use their name; earlier lines keep the name of whoever said them.
    - **Android:** Chrome (not Samsung Internet). Live speech (Web Speech) works best here.
    - **iPhone:** Safari or Chrome. Captions + topic always work. Live mic is limited in iOS browsers (Chrome on iPhone uses the same engine as Safari). The phone keeps the first `webkitSpeechRecognition` and only changes `lang`. English can work and Spanish or Portuguese fail after the switch — the phone names the locale if Safari rejected it. If Start does not show words, **type a caption** and Send. That path does not use Web Speech and still reaches the host phone, the other phones, and the TV.
 4. When the floor is free: **Start** if this browser supports live speech, or type a caption. Captions from that speaker appear on the Fold, the other phones, and the TV.
@@ -230,6 +230,7 @@ The script checks:
 - Two WebSocket clients in room `ABCD`: a phone **topic of the day** push arrives on the TV
 - Room relay: one speaker at a time (guest claim is rejected while the floor is held); guest captions reach the host and TV; guests cannot wipe the host topic
 - Guest **Watch = ES** paints only the Spanish caption pane on the join client; the TV in that room still has three panes (**EN | ES | PT**) for the same caption
+- A joined phone named **Maria** can type a caption; the host panes, Smart View, and the TV render that caption with **Maria**
 
 **Meeting-night dry run on the real URL**
 

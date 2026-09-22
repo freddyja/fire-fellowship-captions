@@ -8,6 +8,7 @@ import {
   langsForLayout,
   TOPIC_SHEET_LANGS,
   type CaptionLine,
+  type FloorState,
   type Lang,
   type RoomState,
   type TopicContent,
@@ -16,6 +17,7 @@ import {
 export type LiveCaption = {
   text: string;
   sourceLang: Lang;
+  speaker?: string;
 };
 
 function lineClass(index: number, total: number, hasLive: boolean): string {
@@ -23,22 +25,35 @@ function lineClass(index: number, total: number, hasLive: boolean): string {
   return "line faded";
 }
 
-function renderWindow(lang: Lang, lines: CaptionLine[], live?: LiveCaption | null): string {
+function speakerMarkup(name: string): string {
+  const label = name.trim();
+  if (!label) return "";
+  return `<span class="line-speaker" data-speaker="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+}
+
+function renderWindow(
+  lang: Lang,
+  lines: CaptionLine[],
+  live: LiveCaption | null | undefined,
+  activeSpeaker: string,
+): string {
   const visible = finalizedLines(lines).filter((line) => line.text[lang]?.trim());
   const liveText = live?.text.trim() ?? "";
   const history =
     visible.length === 0
       ? ""
       : visible
-          .map(
-            (line, index) =>
-              `<p class="${lineClass(index, visible.length, Boolean(liveText))}">${escapeHtml(line.text[lang])}</p>`,
-          )
+          .map((line, index) => {
+            const latest = index === visible.length - 1;
+            const named = (line.speaker ?? "").trim() || (latest && !liveText ? activeSpeaker : "");
+            return `<p class="${lineClass(index, visible.length, Boolean(liveText))}">${speakerMarkup(named)}<span class="line-text">${escapeHtml(line.text[lang])}</span></p>`;
+          })
           .join("");
   let extra = "";
   if (liveText) {
     const draft = lang === live?.sourceLang ? liveText : "Listening…";
-    extra = `<p class="line interim">${escapeHtml(draft)}</p>`;
+    const named = (live?.speaker ?? "").trim() || activeSpeaker;
+    extra = `<p class="line interim">${speakerMarkup(named)}<span class="line-text">${escapeHtml(draft)}</span></p>`;
   } else if (visible.length === 0) {
     extra = `<p class="empty-caption">Waiting for live speech…</p>`;
   }
@@ -84,16 +99,21 @@ function renderTopic(topic: TopicContent): string {
   `;
 }
 
+function activeSpeakerName(floor: FloorState | null | undefined): string {
+  return floor?.holderName?.trim() ?? "";
+}
+
 export function paintCaptionBoard(
   board: HTMLElement,
   topicEl: HTMLElement,
-  state: Pick<RoomState, "layout" | "lines" | "topic">,
+  state: Pick<RoomState, "layout" | "lines" | "topic"> & { floor?: FloorState | null },
   live?: LiveCaption | null,
 ): Lang[] {
   const langs = langsForLayout(state.layout);
+  const activeSpeaker = activeSpeakerName(state.floor);
   board.dataset.count = String(langs.length);
   board.dataset.layout = state.layout;
-  board.innerHTML = langs.map((lang) => renderWindow(lang, state.lines, live)).join("");
+  board.innerHTML = langs.map((lang) => renderWindow(lang, state.lines, live, activeSpeaker)).join("");
 
   const topic = state.topic;
   if (hasTopicBody(topic) && topic) {

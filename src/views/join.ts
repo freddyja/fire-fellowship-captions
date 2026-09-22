@@ -7,6 +7,7 @@ import { createWebSpeechProvider, isSpeechFallbackMessage } from "../stt/web-spe
 import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
+  captionSpeaker,
   emptyFloor,
   emptyState,
   floorHeldByOther,
@@ -92,7 +93,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       <p class="hint">Spoken is for your mic and Type + Send. Watch is the caption language on this phone only.</p>
       <label class="join-name">
         <span>Your name</span>
-        <input data-setup-name maxlength="24" autocomplete="name" placeholder="Brother" enterkeyhint="done" />
+        <input data-setup-name maxlength="24" autocomplete="name" placeholder="Guest" enterkeyhint="done" />
       </label>
       <button class="primary join-setup-go" data-join-continue type="button">Join</button>
       <button class="ghost" data-setup-home type="button">Leave</button>
@@ -116,7 +117,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         <p class="smart-view-tip" data-stt-hint></p>
         <label class="join-name">
           <span>Your name</span>
-          <input data-name maxlength="24" autocomplete="name" placeholder="Brother" enterkeyhint="done" />
+          <input data-name maxlength="24" autocomplete="name" placeholder="Guest" enterkeyhint="done" />
         </label>
         <div class="join-prefs">
           <div class="join-pref">
@@ -176,7 +177,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   const sttHint = root.querySelector("[data-stt-hint]") as HTMLElement;
   const landscapeMq = window.matchMedia("(orientation: landscape)");
   nameInput.value = displayName;
-  setupName.value = displayName === "Brother" ? "" : displayName;
+  setupName.value = displayName === "Guest" ? "" : displayName;
   (root.querySelector("[data-setup-room]") as HTMLElement).textContent = room;
   setupSource.innerHTML = LANGS.map(
     (lang) =>
@@ -272,7 +273,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       board,
       topicEl,
       { ...state, layout: layoutForWatch(watch), lines: finalizedLines(state.lines) },
-      liveInterim && holding ? { text: liveInterim, sourceLang } : null,
+      liveInterim && holding ? { text: liveInterim, sourceLang, speaker: captionSpeaker(floor.holderName || displayName, "guest") } : null,
     );
     if (captionsOnly) {
       topicEl.hidden = true;
@@ -374,6 +375,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     }
     error = "";
     liveInterim = "";
+    const speaker = captionSpeaker(floor.holderName || displayName, "guest");
     renderDynamic();
     const epoch = publishEpoch;
     const from = detectLang(spoken, sourceLang);
@@ -383,6 +385,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     const line: CaptionLine = {
       id: crypto.randomUUID(),
       isFinal: true,
+      speaker,
       text: translated,
       at: Date.now(),
     };
@@ -453,9 +456,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   };
 
   const onName = () => {
-    displayName = sanitizePeerName(nameInput.value, "Brother");
+    displayName = sanitizePeerName(nameInput.value, "Guest");
     writeGuestName(displayName);
     nameInput.value = displayName;
+    if (isFloorHolder(floor, peerId)) void conn?.claimFloor(displayName);
   };
 
   const onHome = () => {
@@ -531,7 +535,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   };
 
   const onSetupName = () => {
-    displayName = sanitizePeerName(setupName.value, "Brother");
+    displayName = sanitizePeerName(setupName.value, "Guest");
     writeGuestName(displayName);
   };
 
@@ -640,9 +644,9 @@ function micFailed(message: string): boolean {
 
 function readGuestName(): string {
   try {
-    return sanitizePeerName(sessionStorage.getItem(NAME_KEY), "Brother");
+    return sanitizePeerName(sessionStorage.getItem(NAME_KEY), "Guest");
   } catch {
-    return "Brother";
+    return "Guest";
   }
 }
 
