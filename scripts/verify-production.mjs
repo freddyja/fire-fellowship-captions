@@ -116,11 +116,44 @@ function cdpSocket(ws) {
 }
 
 const JOIN_SNAPSHOT = `(() => {
+  const setup = document.querySelector("[data-join-setup]");
   const board = document.querySelector("[data-board]");
   const topic = document.querySelector("[data-topic]");
   const screen = document.querySelector("[data-join-screen], .tv-screen");
+  const tv = document.querySelector(".tv-screen");
+  const setupVisible = Boolean(setup && !setup.hidden);
+  const roomVisible = Boolean(screen && !screen.hidden);
+  if (!tv && !setup && !screen) return null;
+  if (!tv && setupVisible) {
+    return {
+      setupVisible: true,
+      roomVisible: false,
+      setupSpoken: document.querySelector("[data-setup-lang].active")?.dataset.setupLang || "",
+      setupWatch: document.querySelector("[data-setup-watch].active")?.dataset.setupWatch || "",
+      spoken: "",
+      langs: [],
+      count: "",
+      layout: "",
+      text: "",
+      watch: "",
+      roomLayout: "",
+      stored: sessionStorage.getItem("ff-join-watch"),
+      storedSpoken: sessionStorage.getItem("ff-join-spoken"),
+      topicHidden: true,
+      topicCount: "",
+      topicText: "",
+      langLock: false,
+      mark: window.__ffWatchMark || "",
+      continueLabel: document.querySelector("[data-join-continue]")?.textContent?.trim() || "",
+    };
+  }
   if (!board || !screen) return null;
   return {
+    setupVisible,
+    roomVisible: tv ? true : roomVisible,
+    setupSpoken: document.querySelector("[data-setup-lang].active")?.dataset.setupLang || "",
+    setupWatch: document.querySelector("[data-setup-watch].active")?.dataset.setupWatch || "",
+    spoken: document.querySelector("[data-source] [data-lang].active")?.dataset.lang || "",
     langs: [...board.querySelectorAll(".window")].map((node) => node.getAttribute("data-lang")),
     count: board.dataset.count || "",
     layout: board.dataset.layout || "",
@@ -128,11 +161,13 @@ const JOIN_SNAPSHOT = `(() => {
     watch: screen.dataset.watch || "",
     roomLayout: screen.dataset.roomLayout || "",
     stored: sessionStorage.getItem("ff-join-watch"),
+    storedSpoken: sessionStorage.getItem("ff-join-spoken"),
     topicHidden: Boolean(topic?.hidden),
     topicCount: topic?.dataset.count || "",
     topicText: topic?.textContent || "",
     langLock: Boolean(document.querySelector(".is-lang-lock")),
     mark: window.__ffWatchMark || "",
+    continueLabel: "",
   };
 })()`;
 
@@ -290,23 +325,150 @@ async function assertJoinWatchIsDeviceLocal() {
   await waitFor(tvRelay.inbox, "state", (msg) => msg.state?.lines?.[0]?.id === "watch-line");
 
   const chrome = await openChrome();
+  const waitForEval = async (sessionId, expression, match) => {
+    let last = null;
+    for (let i = 0; i < 50; i += 1) {
+      try {
+        last = await chrome.evaluate(sessionId, expression);
+        if (match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for page: ${JSON.stringify(last)}`);
+  };
   try {
+    const hostPage = await chrome.open(`${base}/`, { width: 390, height: 844, mobile: true });
+    await waitForEval(hostPage, `Boolean(document.querySelector("[data-create]"))`, (ready) => ready === true);
+    await chrome.evaluate(hostPage, `document.querySelector("[data-create]").click()`);
+    const hostMetrics = await waitForEval(
+      hostPage,
+      `(() => {
+        const screen = document.querySelector(".phone-screen");
+        if (!screen) return null;
+        const style = getComputedStyle(screen);
+        const joinBtn = document.querySelector("[data-join-phones]");
+        const spoken = document.querySelector("[data-source]");
+        const layout = document.querySelector("[data-layouts]");
+        const smart = document.querySelector("[data-smart-view-mode]");
+        const send = document.querySelector("[data-send-tv]");
+        if (!joinBtn || !spoken || !layout || !smart || !send) return null;
+        const box = (node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, height: rect.height, width: rect.width };
+        };
+        return {
+          overflow: style.overflow,
+          maxHeight: style.maxHeight,
+          screenHeight: screen.getBoundingClientRect().height,
+          scrollHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+          join: box(joinBtn),
+          spoken: box(spoken),
+          layout: box(layout),
+          smart: box(smart),
+          send: box(send),
+        };
+      })()`,
+      (metrics) => metrics && metrics.overflow,
+    );
+    assert(hostMetrics.overflow === "visible", "host Create room does not lock overflow");
+    assert(hostMetrics.maxHeight === "none", "host Create room is not pinned to a max height");
+    assert(hostMetrics.scrollHeight > hostMetrics.innerHeight, "host Create room is taller than the phone viewport");
+    for (const name of ["spoken", "layout", "smart", "send", "join"]) {
+      assert(hostMetrics[name].height >= 44 && hostMetrics[name].width >= 44, `host ${name} control is tappable`);
+    }
+    await chrome.evaluate(hostPage, `document.querySelector("[data-join-phones]").scrollIntoView({ block: "center" })`);
+    const joinHit = await chrome.evaluate(
+      hostPage,
+      `(() => {
+        const btn = document.querySelector("[data-join-phones]");
+        const rect = btn.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return Boolean(hit && (hit === btn || btn.contains(hit)));
+      })()`,
+    );
+    assert(joinHit, "Join on phones is the element under the tap");
+    await saveWatchShot(chrome, hostPage, "host-create-room.png", false);
+
     const join = await chrome.open(`${base}/?view=join&room=${room}`, { width: 390, height: 844, mobile: true });
     const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const setup = await chrome.waitForSnapshot(join, (snap) => snap.setupVisible && !snap.roomVisible);
+    assert(setup.continueLabel === "Join", "Join onboarding has one Join button");
+    assert(setup.setupSpoken === "en", "Join asks spoken language before the caption board");
+    assert(setup.setupWatch === "all", "Join Watch defaults to all three before entering");
+    assert(
+      setup.text === "" && setup.langs.length === 0,
+      "caption board stays hidden until Join",
+    );
+    await saveWatchShot(chrome, join, "join-setup.png", false);
+    await chrome.evaluate(
+      join,
+      `document.querySelector('[data-setup-lang="es"]').click();
+       document.querySelector('[data-setup-watch="pt"]').click();
+       const name = document.querySelector("[data-setup-name]");
+       name.value = "Ana";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    const joinPt = await chrome.waitForSnapshot(
+      join,
+      (snap) =>
+        snap.roomVisible &&
+        !snap.setupVisible &&
+        snap.watch === "pt" &&
+        snap.spoken === "es" &&
+        snap.langs.length === 1 &&
+        snap.text.includes("Bem-vindos irmãos."),
+    );
+    assert(joinPt.count === "1" && joinPt.langs[0] === "pt", "Watch chosen before Join paints only that pane");
+    assert(joinPt.roomLayout === "en-es-pt", "pre-room Watch does not change the room layout");
+    assert(!joinPt.topicHidden && joinPt.topicCount === "3", "Join keeps the fellowship topic sheet");
+    assert(
+      joinPt.topicText.includes("ES · Español") && joinPt.topicText.includes("PT · Português"),
+      "Join topic sheet stays EN | ES | PT",
+    );
+    assert(joinPt.topicText.includes("Hierro con hierro"), "Join topic still includes the Spanish verse");
+    assert(joinPt.stored === "pt" && joinPt.storedSpoken === "es", "Spoken and Watch are saved for this phone");
+    const dockHit = await chrome.evaluate(
+      join,
+      `(() => {
+        const spoken = document.querySelector('[data-source] [data-lang="es"]');
+        const watch = document.querySelector('[data-watch="pt"]');
+        const screen = document.querySelector("[data-join-screen]");
+        const style = getComputedStyle(screen);
+        spoken.scrollIntoView({ block: "center" });
+        const spokenRect = spoken.getBoundingClientRect();
+        const spokenHit = document.elementFromPoint(spokenRect.left + spokenRect.width / 2, spokenRect.top + Math.min(spokenRect.height / 2, 20));
+        watch.scrollIntoView({ block: "center" });
+        const watchRect = watch.getBoundingClientRect();
+        const watchHit = document.elementFromPoint(watchRect.left + watchRect.width / 2, watchRect.top + Math.min(watchRect.height / 2, 20));
+        return {
+          overflow: style.overflow,
+          maxHeight: style.maxHeight,
+          spoken: Boolean(spokenHit && (spokenHit === spoken || spoken.contains(spokenHit))),
+          watch: Boolean(watchHit && (watchHit === watch || watch.contains(watchHit))),
+          spokenH: spokenRect.height,
+          watchH: watchRect.height,
+        };
+      })()`,
+    );
+    assert(dockHit.overflow === "visible" && dockHit.maxHeight === "none", "Join room scrolls instead of locking the viewport");
+    assert(dockHit.spoken && dockHit.spokenH >= 44, "Spoken stays tappable on the join room");
+    assert(dockHit.watch && dockHit.watchH >= 44, "Watch stays tappable on the join room");
+    await saveWatchShot(chrome, join, "join-watch-pt.png", true);
+
+    await chrome.evaluate(join, `document.querySelector('[data-watch="all"]').click()`);
     const joinAll = await chrome.waitForSnapshot(
       join,
-      (snap) => snap.langs.length === 3 && snap.text.includes("Bienvenidos hermanos."),
+      (snap) => snap.roomVisible && snap.watch === "all" && snap.langs.length === 3 && snap.text.includes("Bienvenidos hermanos."),
     );
-    assert(joinAll.watch === "all", "Join Watch defaults to all three");
     assert(joinAll.roomLayout === "en-es-pt", "Join keeps the room layout while Watch is all");
     assert(joinAll.langs.join(",") === "en,es,pt", "Watch=all shows EN, ES, and PT on the join client");
     assert(joinAll.count === "3", "Watch=all paints three caption panes");
+    assert(joinAll.spoken === "es", "switching Watch does not change Spoken");
     assert(!joinAll.topicHidden && joinAll.topicCount === "3", "Watch=all keeps the fellowship topic sheet");
-    assert(
-      joinAll.topicText.includes("ES · Español") && joinAll.topicText.includes("PT · Português"),
-      "Join topic sheet stays EN | ES | PT",
-    );
-    assert(joinAll.topicText.includes("Hierro con hierro"), "Join topic still includes the Spanish verse");
     await saveWatchShot(chrome, join, "join-watch-all.png", true);
 
     const tvAll = await chrome.waitForSnapshot(
@@ -352,11 +514,17 @@ async function assertJoinWatchIsDeviceLocal() {
 
     await chrome.evaluate(join, `window.__ffWatchMark = "before"`);
     await chrome.send("Page.reload", { ignoreCache: true }, join);
+    const setupAgain = await chrome.waitForSnapshot(
+      join,
+      (snap) => snap.mark !== "before" && snap.setupVisible && !snap.roomVisible && snap.setupWatch === "es" && snap.setupSpoken === "es",
+    );
+    assert(setupAgain.stored === "es", "Watch=ES is still stored after reload, before Join");
+    await chrome.evaluate(join, `document.querySelector("[data-join-continue]").click()`);
     const joinKept = await chrome.waitForSnapshot(
       join,
-      (snap) => snap.mark !== "before" && snap.watch === "es" && snap.langs.length === 1 && snap.text.includes("Bienvenidos hermanos."),
+      (snap) => snap.roomVisible && snap.watch === "es" && snap.langs.length === 1 && snap.text.includes("Bienvenidos hermanos."),
     );
-    assert(joinKept.langs[0] === "es" && joinKept.stored === "es", "Watch=ES survives a reload of the join page");
+    assert(joinKept.langs[0] === "es" && joinKept.stored === "es" && joinKept.spoken === "es", "Watch=ES survives a reload of the join page");
     assert(joinKept.roomLayout === "en-es-pt", "reloaded Join still does not own the room layout");
 
     const tvStill = await chrome.waitForSnapshot(
@@ -478,6 +646,10 @@ async function main() {
   assert(appJs.includes("Reclaim mic"), "host can reclaim the mic");
   assert(appJs.includes("view=join"), "brothers join query");
   assert(appJs.includes("Spoken language"), "spoken language chips");
+  assert(appJs.includes("data-join-setup"), "join questions come before the caption board");
+  assert(appJs.includes("What language are you speaking?"), "join asks spoken language first");
+  assert(appJs.includes("What language do you want to watch?"), "join asks watch language first");
+  assert(appJs.includes("data-join-continue"), "join setup has one continue button");
   assert(appJs.includes("EN only") && appJs.includes("ES only") && appJs.includes("PT only"), "join Watch language chips");
   assert(appJs.includes("All three"), "join Watch defaults to all three panes");
   assert(appJs.includes("This phone only"), "Watch is labeled as this phone only");
@@ -519,7 +691,19 @@ async function main() {
   );
   assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
   assert(appCss.includes("join-screen"), "guest join screen class");
+  assert(appCss.includes("join-setup"), "join setup screen is styled");
   assert(appCss.includes("join-watch-note"), "Watch note style");
+  assert(
+    !/phone-screen:not\(\.is-smart-view\)\{[^}]*overflow:\s*hidden/.test(appCss.replace(/\s+/g, "")),
+    "host phone screen does not lock the viewport",
+  );
+  assert(
+    !/\.join-screen\{[^}]*overflow:\s*hidden/.test(appCss.replace(/\s+/g, "")),
+    "join caption screen does not lock the viewport",
+  );
+  assert(!appCss.includes("join-dock-pin"), "join dock is not a pinned layer");
+  assert(!appCss.includes("--join-vvh"), "join is not locked to a visual-viewport variable");
+  assert(!/position:\s*fixed/.test(appCss), "join does not use a fixed lock overlay");
   assert(appCss.includes("phone-live-board"), "host caption panes are styled");
   assert(appCss.includes("100svh"), "iOS small viewport height");
   assert(appCss.includes("safe-area-inset-top") && appCss.includes("safe-area-inset-bottom"), "safe area insets");
