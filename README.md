@@ -12,7 +12,7 @@ This is one caption app. The topic list is a small built-in seed in this repo �
 
 [Build playbook (lessons for the next bot)](docs/BUILD_PLAYBOOK.md) — what went right and wrong, translator stack, Render, Fold/TV, and a copy/paste brief.
 
-- **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold, and **Join on phones** so brothers can scan a QR and follow (or speak) from their own phones.
+- **Phone (Samsung Fold):** Chrome / the installed PWA captures the speaker with the mic (Web Speech), sets spoken language **EN / ES / PT**, picks the topic, and owns the controls — including **Smart View mode** when the TV will only mirror the Fold, and **Join on phones** so brothers can scan a QR and follow (or speak) from their own phones. On the host screen those controls scroll in the page. Start and the EN / ES / PT preview are not a fixed layer over Spoken language, TV layout, Send, or Smart View. **Smart View mode** is still the full caption layout used for mirroring.
 - **Brothers’ phones (Android or iPhone):** join via QR (`/?view=join&room=ABCD`) in the mobile browser — no app store install. Same captions + optional topic. Each phone picks **Spoken** (the language that brother talks in) and **Watch** (EN only, ES only, PT only, or all three on that phone). Watch stays on that device. One mic at a time. Chrome on Android is best for live speech; iPhone can always watch and can type a caption if Web Speech is missing.
 - **TV browser:** joins the same room and shows the big **EN | ES | PT** caption panes plus the topic sheet. **Send to TV** gives a QR / link so the TV’s own browser opens that room.
 - **Same-room WebSocket:** phone and TV stay in sync through the room relay on the public host (live captions, topic, layout). They must hit the **same** process.
@@ -270,9 +270,9 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 - **Send to TV** (QR / copy link) puts the caption page on the TV’s own browser and leaves the Fold on mic / controls. Optional EN / ES / PT links open one language per window; they do not change the room layout or Smart View.
 - **Smart View mode** is for system Smart View mirroring: the Fold becomes the caption display so My TV does not mirror the control UI. Open Smart View from the Fold quick panel; this app does not launch it. Use **Captions only** to hide the topic handout on that mirrored view. Switch spoken language from the Smart View bar (**EN / ES / PT**) without exiting.
 - Allow microphone access. Keep the app in the foreground. If the screen sleeps or you switch apps, tap **Start** again.
-- Unfolded: topic + mic on one side, language / TV layout / captions on the other.
-- Cover screen: same controls, stacked, with the mic docked in the thumb zone.
-- Flex / book-stand: columns follow the two screen segments when Chrome reports them.
+- Unfolded: topic on one side; spoken language, TV layout, Send, and Smart View on the other, then Start and a short caption strip.
+- Cover screen: those host controls come first and scroll with the page. Start is not docked over them, and the EN / ES / PT preview stays a short strip under Start instead of a locked full-screen board.
+- Flex / book-stand: columns follow the two screen segments when Chrome reports them. Start still scrolls with the controls.
 - Stand the Fold near the speaker.
 
 ## Mic tip

@@ -107,17 +107,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         </div>
 
         <div class="phone-side">
-          <div class="mic-wrap">
-            <button class="mic" data-mic type="button" aria-pressed="false">
-              ${micIcon}
-              <small data-mic-label>Start</small>
-            </button>
-            <p class="hint" data-error></p>
-            <p class="floor-banner" data-floor></p>
-            <button class="secondary floor-reclaim" data-reclaim type="button" hidden>Reclaim mic</button>
-            <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
-          </div>
-
           <div class="controls">
             <div class="meeting-mode">
               <p class="control-label">Meeting mode</p>
@@ -137,12 +126,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <p class="control-label">TV layout</p>
               <div class="chips" data-layouts></div>
             </div>
-            <div class="preview phone-caption-preview">
-              <p class="control-label">On this phone</p>
-              <p data-preview></p>
-              <div class="tv-board phone-live-board" data-phone-board></div>
-              <aside class="tv-topic" data-phone-topic hidden></aside>
-            </div>
             <div class="row-actions tv-path-actions">
               <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" aria-label="Send to TV — show QR and TV caption link">
                 Send to TV
@@ -154,6 +137,27 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
                 Join on phones
               </button>
             </div>
+          </div>
+
+          <div class="mic-wrap">
+            <button class="mic" data-mic type="button" aria-pressed="false">
+              ${micIcon}
+              <small data-mic-label>Start</small>
+            </button>
+            <p class="hint" data-error></p>
+            <p class="floor-banner" data-floor></p>
+            <button class="secondary floor-reclaim" data-reclaim type="button" hidden>Reclaim mic</button>
+            <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
+          </div>
+
+          <div class="preview phone-caption-preview">
+            <p class="control-label">On this phone</p>
+            <p data-preview></p>
+            <div class="tv-board phone-live-board" data-phone-board></div>
+            <aside class="tv-topic" data-phone-topic hidden></aside>
+          </div>
+
+          <div class="controls">
             <div class="row-actions">
               <button class="ghost" data-clear type="button">Clear windows</button>
               <button class="ghost" data-home type="button">Leave</button>

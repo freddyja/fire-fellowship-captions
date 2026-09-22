@@ -1016,10 +1016,20 @@ textarea {
   margin-bottom: 0.45rem;
 }
 
+/* Host caption panes stay in normal scroll. They must not inherit the
+   TV board's flex growth or become a pinned overlay on the controls. */
+.phone-screen .mic-wrap,
+.phone-screen .phone-caption-preview,
+.phone-screen .phone-live-board {
+  position: static;
+  z-index: auto;
+}
+
 .phone-live-board {
   flex: none;
   gap: 0.4rem;
   min-height: 0;
+  height: auto;
   margin-top: 0.7rem;
 }
 
@@ -1041,6 +1051,29 @@ textarea {
 
 .phone-live-board .line,
 .phone-live-board .empty-caption {
+  font-size: 0.95rem;
+}
+
+.phone-screen .phone-live-board .window {
+  display: flex;
+  flex: none;
+  height: 5.25rem;
+  max-height: 5.25rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.phone-screen .phone-live-board .lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.phone-screen .phone-live-board .line,
+.phone-screen .phone-live-board .empty-caption,
+.phone-screen .phone-live-board[data-count="1"] .line,
+.phone-screen .phone-live-board[data-count="2"] .line,
+.phone-screen .phone-live-board[data-count="3"] .line {
   font-size: 0.95rem;
 }
 
@@ -1248,6 +1281,12 @@ textarea {
 
 .smart-view-layer {
   display: none;
+}
+
+/* Fullscreen Smart View captions stay off the normal host controls.
+   Some mobile browsers let a later display rule beat [hidden]. */
+.smart-view-layer[hidden] {
+  display: none !important;
 }
 
 .phone-screen.is-smart-view .smart-view-layer {
@@ -1698,30 +1737,21 @@ textarea {
   }
 }
 
-/* Folded cover (~6.5" Galaxy Z Fold): keep the mic in the thumb zone. */
+/* Folded cover: stack controls in normal scroll. Do not pin Start or the
+   caption strip over Spoken language, TV layout, Send, or Smart View. */
 @media (max-width: 599px) {
-  .phone-screen {
-    padding-bottom: calc(12rem + env(safe-area-inset-bottom));
+  .phone-body {
+    display: flex;
+    flex-direction: column;
   }
 
-  .phone-screen.is-smart-view {
-    padding-bottom: 0;
+  .phone-side {
+    order: -1;
   }
 
   .phone-screen .topic-controls .chips {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .phone-screen .mic-wrap {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-    padding: 0.45rem 1rem calc(0.55rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, transparent, rgba(18, 12, 9, 0.94) 28%, var(--bg) 52%);
-    z-index: 5;
   }
 
   .phone-screen .mic {
@@ -1751,16 +1781,9 @@ textarea {
     margin-top: 0.35rem;
   }
 
-  .phone-screen .mic-wrap {
-    position: sticky;
-    top: 0.6rem;
-    margin: 0 0 1.1rem;
-    background: none;
-  }
-
   .phone-screen .mic {
-    width: 176px;
-    height: 176px;
+    width: 148px;
+    height: 148px;
   }
 }
 
@@ -1823,16 +1846,8 @@ textarea {
 
   .phone-main,
   .phone-side {
+    order: 0;
     min-width: 0;
     padding-inline: 0.35rem;
-  }
-
-  .phone-screen .mic-wrap {
-    position: sticky;
-    top: 0.75rem;
-    bottom: auto;
-    left: auto;
-    right: auto;
-    background: none;
   }
 }
