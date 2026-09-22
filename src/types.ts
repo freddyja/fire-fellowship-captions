@@ -82,6 +82,24 @@ export function langsForLayout(layout: Layout): Lang[] {
   return LAYOUTS.find((item) => item.id === layout)?.langs ?? ["en", "es", "pt"];
 }
 
+/** Caption panes on one guest phone. "all" is EN, ES, and PT together. */
+export type WatchPref = "all" | Lang;
+
+export function isWatchPref(value: unknown): value is WatchPref {
+  return value === "all" || isLang(value);
+}
+
+/** Languages that guest's phone paints. This is not the room layout. */
+export function langsForWatch(watch: WatchPref): Lang[] {
+  if (watch === "all") return ["en", "es", "pt"];
+  return [watch];
+}
+
+/** Display layout for that phone's caption board. Does not change the room. */
+export function layoutForWatch(watch: WatchPref): Layout {
+  return watch === "all" ? "en-es-pt" : watch;
+}
+
 export function emptyFloor(): FloorState {
   return { holderId: null, holderName: null };
 }

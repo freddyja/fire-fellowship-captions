@@ -635,7 +635,9 @@ textarea {
 
 .join-name {
   display: grid;
-  gap: 0.3rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
   color: var(--muted);
   font-size: 0.75rem;
   letter-spacing: 0.12em;
@@ -650,8 +652,54 @@ textarea {
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.7rem 0.85rem;
-  min-height: 48px;
+  padding: 0.45rem 0.75rem;
+  min-height: 40px;
+}
+
+.join-prefs {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.join-pref {
+  display: grid;
+  grid-template-columns: 4.4rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.35rem;
+}
+
+.join-pref .control-label {
+  margin: 0;
+}
+
+.join-dock .control-label {
+  margin-bottom: 0;
+}
+
+.join-dock .chips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0;
+}
+
+.join-dock .chip {
+  min-height: 40px;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.join-watch-note {
+  grid-column: 2;
+  margin: 0.12rem 0 0;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  font-weight: 500;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--gold);
 }
 
 .join-dock .chips {
@@ -678,8 +726,27 @@ textarea {
 
 .join-screen .tv-top {
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.join-screen .brand-compact .brand-text h1 {
+  font-size: 1.12rem;
+}
+
+.join-screen .brand-text p {
+  margin-top: 0.05rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+
+.join-screen .tv-meta {
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.join-screen .floor-banner {
+  font-size: 0.78rem;
 }
 
 .join-screen .tv-meta {
@@ -698,12 +765,42 @@ textarea {
 
 .join-screen .tv-board {
   flex: 1 1 auto;
-  min-height: 8rem;
+  min-height: 0;
+  overflow: hidden;
+  align-content: stretch;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.join-screen .tv-board .window {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.35rem 0.6rem 0.4rem;
+}
+
+.join-screen .tv-board .window-label {
+  margin-bottom: 0.12rem;
+  font-size: 0.68rem;
+}
+
+.join-screen .tv-board .lines {
+  min-height: 0;
+}
+
+.join-screen .tv-board .line,
+.join-screen .tv-board[data-count="1"] .line,
+.join-screen .tv-board[data-count="2"] .line,
+.join-screen .tv-board[data-count="3"] .line {
+  font-size: clamp(1.05rem, 4.6vw, 1.85rem);
+}
+
+.join-screen .tv-board[data-count="1"] .line {
+  font-size: clamp(1.65rem, 7.2vw, 2.8rem);
 }
 
 .join-screen .tv-topic {
-  max-height: none;
-  overflow: visible;
+  flex: 0 1 auto;
+  max-height: 4.6rem;
+  overflow: auto;
 }
 
 .join-screen.is-captions-only .tv-topic {
@@ -727,11 +824,16 @@ textarea {
   position: relative;
   z-index: 4;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.4rem;
   margin-top: 0;
-  padding: 0.55rem 0 max(0.85rem, env(safe-area-inset-bottom));
+  padding: 0.4rem 0 max(0.7rem, env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: 1px solid var(--line);
+}
+
+.join-dock .typed-caption,
+.join-dock .credit-footer {
+  margin-top: 0;
 }
 
 .join-actions .smart-view-mic,
