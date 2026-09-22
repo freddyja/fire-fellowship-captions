@@ -846,9 +846,11 @@ async function assertSpokenEsReachesEnglish() {
     const sendCaption = async (text) => {
       await chrome.evaluate(
         guest,
-        `const input = document.querySelector('[data-type] input[name="caption"]');
-         input.value = ${JSON.stringify(text)};
-         document.querySelector("[data-type]").requestSubmit();`,
+        `(() => {
+          const input = document.querySelector('[data-type] input[name="caption"]');
+          input.value = ${JSON.stringify(text)};
+          document.querySelector("[data-type]").requestSubmit();
+        })()`,
       );
     };
     const wireLine = (msg) => msg.state?.lines?.at(-1)?.text || {};
