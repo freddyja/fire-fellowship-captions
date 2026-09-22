@@ -87,7 +87,7 @@ The join QR opens an **https://…/?view=join&room=ABCD** link (same public host
 2. Show the QR (or **Copy join link**). Short reminder on that sheet: **Brothers scan to watch & speak**.
 3. Each brother opens the join URL:
    - **Android:** Chrome (not Samsung Internet). Live speech (Web Speech) works best here.
-   - **iPhone:** Safari or Chrome. Captions + topic always work. Live mic is limited in iOS browsers (Chrome on iPhone uses the same engine as Safari). If Start does not show words, the phone says so — **type a caption** and Send. That path does not use Web Speech and still reaches the host phone, the other phones, and the TV.
+   - **iPhone:** Safari or Chrome. Captions + topic always work. Live mic is limited in iOS browsers (Chrome on iPhone uses the same engine as Safari). English can work and Spanish or Portuguese fail after the switch — the phone names the locale if Safari rejected it. If Start does not show words, **type a caption** and Send. That path does not use Web Speech and still reaches the host phone, the other phones, and the TV.
 4. They pick **Spoken language** EN / ES / PT. When the floor is free: **Start** if this browser supports live speech, or type a caption. Captions from that speaker appear on the Fold, the other phones, and the TV.
 5. **One speaker at a time.** If someone already has the mic, Start / Send wait and the phone says **Someone else is speaking**. The Fold can **Reclaim mic**.
 
@@ -275,7 +275,7 @@ Seeded talk sheets (head of the household and the rest of the built-in list) inc
 ## Mic tip
 
 - Use **Chrome** or the Chrome-installed PWA on Android / the Fold. Do not use Samsung Internet for the mic.
-- **iPhone:** Safari (or Chrome) can always show captions. Live speech often fails (the mic button can look on and still produce no words). When that happens, type the caption and tap **Send** — that is the reliable path to the host phone and the TV.
+- **iPhone:** Safari (or Chrome) can always show captions. Live speech often fails (the mic button can look on and still produce no words). Switching from English to Spanish or Portuguese reuses the same recognizer — if Safari rejects that locale, the phone names it (`es-ES` or `pt-BR`). Either way, type the caption and tap **Send**. That path does not use Web Speech and still reaches the host phone and the TV.
 - Allow microphone permission when prompted. The join QR must open an **https** link.
 - Stand close; continuous recognition pauses in silence and then resumes.
 - If the mic is blocked or unavailable, type a caption instead.

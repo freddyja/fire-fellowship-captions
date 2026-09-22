@@ -3,7 +3,7 @@ import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-hist
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
 import { detectSpeechCapability } from "../stt/capability";
-import { createWebSpeechProvider } from "../stt/web-speech";
+import { createWebSpeechProvider, isSpeechFallbackMessage } from "../stt/web-speech";
 import { createTranslator, detectLang, translateAll } from "../translate";
 import { paintCaptionBoard } from "./caption-board";
 import {
@@ -501,12 +501,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
 }
 
 function micFailed(message: string): boolean {
-  return (
-    message.includes("Type a caption") ||
-    message.includes("Microphone blocked") ||
-    message.includes("no Web Speech") ||
-    message.includes("microphone stopped")
-  );
+  return isSpeechFallbackMessage(message);
 }
 
 function readGuestName(): string {
