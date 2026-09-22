@@ -1,4 +1,4 @@
-import { brandBlock, creditFooter } from "../brand";
+import { brandBlock } from "../brand";
 import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
@@ -97,7 +97,6 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       </label>
       <button class="primary join-setup-go" data-join-continue type="button">Join</button>
       <button class="ghost" data-setup-home type="button">Leave</button>
-      ${creditFooter()}
     </section>
     <section class="screen join-screen" data-join-screen hidden>
       <div class="tv-top">
@@ -144,7 +143,6 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
           <input name="caption" autocomplete="off" autocorrect="on" autocapitalize="sentences" enterkeyhint="send" placeholder="Type a caption" />
           <button class="primary" type="submit">Send</button>
         </form>
-        ${creditFooter()}
       </div>
     </section>
   `;

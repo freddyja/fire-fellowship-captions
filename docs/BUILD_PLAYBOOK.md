@@ -16,7 +16,7 @@
 - Topic of the day sheets (verse, italic Scripture, bold hook, teaching, Discussion Questions) in EN|ES|PT.
 - Ask-for-topic generator; Captions-only toggle; Offline/Local meeting mode.
 - Translators: **DeepL Free → MyMemory → MinT → mock**.
-- Footer: Design by Freddy Jara-Almonte.
+- Under the title: Design by Freddy Jara-Almonte.
 - README architecture diagram (`docs/architecture.png`).
 
 ---

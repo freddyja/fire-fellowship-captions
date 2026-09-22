@@ -1364,7 +1364,7 @@ async function main() {
   assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
   assert(appJs.includes("npm run build"), "laptop setup npm run build");
   assert(appJs.includes("http://LAPTOP-LAN-IP:PORT"), "laptop LAN URL");
-  assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit footer");
+  assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit under the title");
   assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
     "Smart View mode tip",

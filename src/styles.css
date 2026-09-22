@@ -102,8 +102,27 @@ textarea {
   color: var(--ember);
 }
 
-.brand-text p {
-  margin: 0.15rem 0 0;
+.brand-credit {
+  margin: 0.28rem 0 0;
+  color: #d7cbb8;
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.brand-compact .brand-credit {
+  margin-top: 0.12rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.2;
+  opacity: 0.85;
+}
+
+.brand-tagline {
+  margin: 0.18rem 0 0;
   color: var(--gold);
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -111,35 +130,10 @@ textarea {
   font-weight: 500;
 }
 
-.credit-footer {
-  margin-top: auto;
-  flex: none;
-  width: 100%;
-  padding: 0.65rem 0 0.15rem;
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  line-height: 1.3;
-  opacity: 0.62;
-  pointer-events: none;
-  user-select: none;
-}
-
-.tv-screen > .credit-footer {
-  padding: 0.2rem 0 0;
-  font-size: 0.65rem;
-}
-
-.smart-view-dock .credit-footer {
-  margin-top: 0;
-  padding: 0.15rem 0 0;
-  opacity: 0.55;
-}
-
-.phone-screen.is-smart-view > .credit-footer {
-  display: none;
+.brand-compact .brand-tagline {
+  margin-top: 0.08rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
 }
 
 .lede {
@@ -845,9 +839,14 @@ textarea {
   font-size: 1.12rem;
 }
 
-.join-screen .brand-text p {
-  margin-top: 0.05rem;
+.join-screen .brand-credit {
+  margin-top: 0.04rem;
   font-size: 0.62rem;
+}
+
+.join-screen .brand-tagline {
+  margin-top: 0.04rem;
+  font-size: 0.58rem;
   letter-spacing: 0.12em;
 }
 
@@ -946,8 +945,7 @@ textarea {
   border-top: 1px solid var(--line);
 }
 
-.join-dock .typed-caption,
-.join-dock .credit-footer {
+.join-dock .typed-caption {
   margin-top: 0;
 }
 
