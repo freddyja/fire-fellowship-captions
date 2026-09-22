@@ -633,6 +633,87 @@ textarea {
   width: 100%;
 }
 
+/* Guest entry. Questions fill the page; the caption board stays hidden until Join. */
+.join-setup {
+  width: min(100%, 32rem);
+  margin-inline: auto;
+  min-height: 100svh;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  gap: 1rem;
+}
+
+.join-setup-lead {
+  margin: 0.35rem 0 0.15rem;
+  max-width: none;
+}
+
+.join-setup-lead strong {
+  letter-spacing: 0.14em;
+  color: var(--gold);
+}
+
+.join-setup-q {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.join-setup-q legend {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--cream);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.join-setup .chips {
+  flex-wrap: wrap;
+}
+
+.join-setup-watch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.join-setup-watch .chip {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 16px;
+  padding: 0.55rem 0.7rem;
+}
+
+.join-setup .join-watch-note {
+  grid-column: auto;
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+}
+
+.join-setup .join-name {
+  grid-template-columns: 1fr;
+}
+
+.join-setup-go {
+  width: 100%;
+  min-height: 52px;
+}
+
+.join-setup .ghost {
+  justify-self: start;
+}
+
+.join-screen[hidden],
+.join-setup[hidden] {
+  display: none !important;
+}
+
 .join-name {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -678,17 +759,15 @@ textarea {
 
 .join-dock .chips {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr));
+  gap: 0.4rem;
   margin-bottom: 0;
 }
 
 .join-dock .chip {
-  min-height: 40px;
-  padding: 0.3rem 0.35rem;
-  font-size: 0.78rem;
-  white-space: nowrap;
+  min-height: 48px;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.82rem;
 }
 
 .join-watch-note {
@@ -706,21 +785,26 @@ textarea {
   margin-bottom: 0.35rem;
 }
 
+/* Join is a normal page. Captions sit above Spoken and Watch in document
+   flow. The screen grows past the small viewport and the page scrolls —
+   nothing is fixed over the dock, and the caption panes are not pinned
+   to 100svh with overflow hidden. */
 .join-screen {
-  width: 100%;
-  max-width: 52rem;
-  margin: 0 auto;
-  height: 100dvh;
-  height: 100svh;
+  position: relative;
+  width: min(100%, 52rem);
+  margin-inline: auto;
+  min-height: 100svh;
+  height: auto;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  overflow: hidden;
+  overflow: visible;
   overscroll-behavior: contain;
   padding:
     max(0.75rem, env(safe-area-inset-top))
     max(0.9rem, env(safe-area-inset-right))
-    0
+    max(0.7rem, env(safe-area-inset-bottom))
     max(0.9rem, env(safe-area-inset-left));
 }
 
@@ -754,27 +838,27 @@ textarea {
 }
 
 .join-main {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
 .join-screen .tv-board {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  align-content: stretch;
-  grid-auto-rows: minmax(0, 1fr);
+  flex: 1 0 auto;
+  min-height: 8rem;
+  height: auto;
+  overflow: visible;
+  align-content: start;
+  grid-auto-rows: minmax(4.5rem, auto);
 }
 
 .join-screen .tv-board .window {
-  min-height: 0;
+  min-height: 4.5rem;
   overflow: hidden;
-  padding: 0.35rem 0.6rem 0.4rem;
+  padding: 0.55rem 0.7rem 0.65rem;
 }
 
 .join-screen .tv-board .window-label {
@@ -799,7 +883,7 @@ textarea {
 
 .join-screen .tv-topic {
   flex: 0 1 auto;
-  max-height: 4.6rem;
+  max-height: 12rem;
   overflow: auto;
 }
 
@@ -820,14 +904,14 @@ textarea {
 }
 
 .join-dock {
-  flex: none;
+  flex: 0 0 auto;
   position: relative;
-  z-index: 4;
+  z-index: auto;
   display: grid;
-  gap: 0.4rem;
-  margin-top: 0;
-  padding: 0.4rem 0 max(0.7rem, env(safe-area-inset-bottom));
-  background: var(--bg);
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0 0;
+  background: transparent;
   border-top: 1px solid var(--line);
 }
 
@@ -1737,9 +1821,32 @@ textarea {
   }
 }
 
-/* Folded cover: stack controls in normal scroll. Do not pin Start or the
-   caption strip over Spoken language, TV layout, Send, or Smart View. */
+/* Phone portrait (iPhone Safari and Fold cover): controls sit in normal
+   document flow. The page scrolls. Spoken language, TV layout, Smart View,
+   and Join on phones are not trapped in a locked viewport. */
 @media (max-width: 599px) {
+  .phone-screen:not(.is-smart-view) {
+    height: auto;
+    max-height: none;
+    min-height: 100svh;
+    overflow: visible;
+  }
+
+  .phone-screen:not(.is-smart-view) .phone-body,
+  .phone-screen:not(.is-smart-view) .phone-main,
+  .phone-screen:not(.is-smart-view) .phone-side {
+    flex: none;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .phone-screen:not(.is-smart-view) .mic-wrap {
+    position: static;
+    top: auto;
+    z-index: auto;
+  }
+
   .phone-body {
     display: flex;
     flex-direction: column;
@@ -1829,6 +1936,36 @@ textarea {
 
 .install-card[data-state="standalone"] h2 {
   color: var(--gold);
+}
+
+/* Short landscape (iPhone sideways, Fold cover): the page scrolls.
+   The viewport is not locked, so Spoken, Send, and Join stay tappable. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .phone-screen:not(.is-smart-view) {
+    height: auto;
+    max-height: none;
+    min-height: 100svh;
+    overflow: visible;
+  }
+
+  .phone-screen:not(.is-smart-view) .phone-body,
+  .phone-screen:not(.is-smart-view) .phone-main,
+  .phone-screen:not(.is-smart-view) .phone-side {
+    flex: none;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .phone-screen:not(.is-smart-view) .mic-wrap {
+    position: static;
+    margin: 0.35rem 0;
+  }
+
+  .phone-screen:not(.is-smart-view) .mic {
+    width: 88px;
+    height: 88px;
+  }
 }
 
 /* Flex / book-stand: map columns onto the two hinge segments. */
