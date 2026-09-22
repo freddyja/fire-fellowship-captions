@@ -435,22 +435,27 @@ async function assertJoinWatchIsDeviceLocal() {
       join,
       `(() => {
         const spoken = document.querySelector('[data-source] [data-lang="es"]');
-        const watch = document.querySelector('[data-watch="pt"]');
+        const watch = document.querySelector('button[data-watch="pt"]');
         const screen = document.querySelector("[data-join-screen]");
         const style = getComputedStyle(screen);
-        spoken.scrollIntoView({ block: "center" });
-        const spokenRect = spoken.getBoundingClientRect();
-        const spokenHit = document.elementFromPoint(spokenRect.left + spokenRect.width / 2, spokenRect.top + Math.min(spokenRect.height / 2, 20));
-        watch.scrollIntoView({ block: "center" });
-        const watchRect = watch.getBoundingClientRect();
-        const watchHit = document.elementFromPoint(watchRect.left + watchRect.width / 2, watchRect.top + Math.min(watchRect.height / 2, 20));
+        const hit = (node) => {
+          node.scrollIntoView({ block: "center" });
+          const rect = node.getBoundingClientRect();
+          const found = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return {
+            ok: Boolean(found && (found === node || node.contains(found))),
+            height: rect.height,
+          };
+        };
+        const spokenHit = hit(spoken);
+        const watchHit = hit(watch);
         return {
           overflow: style.overflow,
           maxHeight: style.maxHeight,
-          spoken: Boolean(spokenHit && (spokenHit === spoken || spoken.contains(spokenHit))),
-          watch: Boolean(watchHit && (watchHit === watch || watch.contains(watchHit))),
-          spokenH: spokenRect.height,
-          watchH: watchRect.height,
+          spoken: spokenHit.ok,
+          watch: watchHit.ok,
+          spokenH: spokenHit.height,
+          watchH: watchHit.height,
         };
       })()`,
     );
@@ -459,7 +464,7 @@ async function assertJoinWatchIsDeviceLocal() {
     assert(dockHit.watch && dockHit.watchH >= 44, "Watch stays tappable on the join room");
     await saveWatchShot(chrome, join, "join-watch-pt.png", true);
 
-    await chrome.evaluate(join, `document.querySelector('[data-watch="all"]').click()`);
+    await chrome.evaluate(join, `document.querySelector('button[data-watch="all"]').click()`);
     const joinAll = await chrome.waitForSnapshot(
       join,
       (snap) => snap.roomVisible && snap.watch === "all" && snap.langs.length === 3 && snap.text.includes("Bienvenidos hermanos."),
@@ -479,7 +484,7 @@ async function assertJoinWatchIsDeviceLocal() {
     assert(!tvAll.langLock, "combined TV is not a one-language monitor");
     assert(tvAll.text.includes("Welcome brothers.") && tvAll.text.includes("Bem-vindos irmãos."), "TV has the full caption");
 
-    await chrome.evaluate(join, `document.querySelector('[data-watch="es"]').click()`);
+    await chrome.evaluate(join, `document.querySelector('button[data-watch="es"]').click()`);
     const joinEs = await chrome.waitForSnapshot(
       join,
       (snap) => snap.watch === "es" && snap.langs.length === 1 && snap.langs[0] === "es",
