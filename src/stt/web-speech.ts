@@ -9,7 +9,12 @@ export type SpeechProvider = {
   readonly supported: boolean;
   start(): void;
   stop(): void;
-  setLang(locale: string): void;
+  /**
+   * `prime` creates the single iOS recognizer and writes `lang` now.
+   * WebKit keeps the first object's language, and an idle `setLang` that only
+   * stores a string leaves that object (or `<html lang>`) on English until start.
+   */
+  setLang(locale: string, prime?: boolean): void;
   onResult: ((result: SpeechResult) => void) | null;
   onError: ((message: string) => void) | null;
 };
@@ -132,11 +137,19 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     supported: Boolean(Ctor),
     onResult: null,
     onError: null,
-    setLang(next) {
+    setLang(next, prime = false) {
       const localeNext = next.trim() || locale;
-      if (localeNext === locale) return;
+      const changed = localeNext !== locale;
       locale = localeNext;
-      if (!wantListening) return;
+      // WebKit uses the document language when SpeechRecognition.lang is still empty.
+      syncDocumentLang();
+      // Spoken is chosen before Start, and again while the mic is idle.
+      // Stamp es-ES / pt-BR on the one iOS object now — not only inside start().
+      if (apple && Ctor && (prime || rec)) {
+        if (!rec) rec = new Ctor();
+        rec.lang = locale;
+      }
+      if (!changed || !wantListening) return;
       // Chrome ignores lang on a live recognizer, so rebuild in this tap.
       // iOS ignores lang on every object after the first. Keep that object.
       if (apple) reviveApple();
@@ -166,6 +179,13 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
       detachAndAbort(mine);
     },
   };
+
+  function syncDocumentLang() {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (!root || root.lang === locale) return;
+    root.lang = locale;
+  }
 
   function cancelCommit() {
     commitToken += 1;
@@ -202,8 +222,10 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
   function begin(surfaceStartFailure: boolean) {
     if (!Ctor) return;
     const gen = ++generation;
+    syncDocumentLang();
     if (apple) {
       if (!rec) rec = new Ctor();
+      rec.lang = locale;
       kick(rec, gen, surfaceStartFailure);
       return;
     }

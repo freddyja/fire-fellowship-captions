@@ -737,6 +737,240 @@ async function assertIphoneSpeechPublishes() {
   }
 }
 
+async function assertSpokenEsReachesEnglish() {
+  const room = "ESPA";
+  const watcher = await connect("tv", room);
+  const hostRelay = await connect("phone", room, "Host");
+  await waitFor(watcher.inbox, "joined");
+  await waitFor(hostRelay.inbox, "joined");
+  const chrome = await openChrome();
+  const waitForEval = async (sessionId, expression, match) => {
+    let last = null;
+    for (let i = 0; i < 60; i += 1) {
+      try {
+        last = await chrome.evaluate(sessionId, expression);
+        if (match(last)) return last;
+      } catch (error) {
+        last = { error: String(error) };
+      }
+      await delay(200);
+    }
+    throw new Error(`Timed out waiting for Spoken translation: ${JSON.stringify(last)}`);
+  };
+  const readPanes = (selector) => `(() => {
+    const board = document.querySelector(${JSON.stringify(selector)});
+    if (!board) return null;
+    const pane = (lang) => [...board.querySelectorAll('.window[data-lang="' + lang + '"] .line-text')].map((node) => node.textContent || "");
+    return { en: pane("en"), es: pane("es"), pt: pane("pt") };
+  })()`;
+  const clean = (text) => String(text || "").replace(/\s+/g, " ").trim().replace(/[.!?…]+$/u, "");
+  const lastOf = (snap, lang) => clean(snap?.[lang]?.at(-1));
+  const spanishLeftInEnglish = (text) => /^mi esposa$/i.test(clean(text)) || /^minha esposa$/i.test(clean(text)) || /^mi esposo$/i.test(clean(text)) || /^meu esposo$/i.test(clean(text));
+  const primeSpoken = async (sessionId, lang, locale) => {
+    const primed = await chrome.evaluate(
+      sessionId,
+      `(() => {
+        document.querySelector('[data-setup-lang="${lang}"]').click();
+        const recs = (window.__ffRecs || []).map((item) => ({ lang: item.lang, running: item.running, engineLang: item.engineLang }));
+        return {
+          spoken: document.querySelector("[data-setup-lang].active")?.dataset.setupLang || "",
+          htmlLang: document.documentElement.lang,
+          stored: sessionStorage.getItem("ff-join-spoken"),
+          recs,
+        };
+      })()`,
+    );
+    assert(primed.spoken === lang && primed.stored === lang, `Join onboarding Spoken=${lang.toUpperCase()} is selected`);
+    assert(primed.recs.length === 1, `Spoken=${lang.toUpperCase()} uses the single iOS recognizer`);
+    assert(
+      primed.recs[0].lang === locale && primed.recs[0].running === false,
+      `Spoken=${lang.toUpperCase()} sets ${locale} on that recognizer before start, got ${primed.recs[0]?.lang}`,
+    );
+    assert(primed.htmlLang === locale, `Spoken=${lang.toUpperCase()} points the document language at ${locale}, got ${primed.htmlLang}`);
+    return primed;
+  };
+
+  try {
+    const host = await chrome.open(`${base}/?view=phone&room=${room}`, { width: 390, height: 900, mobile: true });
+    const tv = await chrome.open(`${base}/?view=tv&room=${room}`, { width: 1280, height: 800, mobile: false });
+    const guest = await chrome.open(`${base}/?view=join&room=${room}`, {
+      width: 390,
+      height: 844,
+      mobile: true,
+      userAgent: IPHONE_UA,
+      prelude: WEBKIT_SPEECH_MOCK,
+    });
+    await waitForEval(host, `Boolean(document.querySelector("[data-phone-board]"))`, (ready) => ready === true);
+    await chrome.waitForSnapshot(tv, (snap) => snap.langs.length === 3);
+    await chrome.waitForSnapshot(guest, (snap) => snap.setupVisible && !snap.roomVisible);
+    await primeSpoken(guest, "pt", "pt-BR");
+    await primeSpoken(guest, "es", "es-ES");
+
+    await chrome.evaluate(
+      guest,
+      `const name = document.querySelector("[data-setup-name]");
+       name.value = "Ana";
+       name.dispatchEvent(new Event("change", { bubbles: true }));
+       document.querySelector("[data-join-continue]").click();`,
+    );
+    await chrome.waitForSnapshot(guest, (snap) => snap.roomVisible && snap.spoken === "es");
+    const stillPrimed = await chrome.evaluate(
+      guest,
+      `({
+        spoken: document.querySelector("[data-source] [data-lang].active")?.dataset.lang || "",
+        recs: (window.__ffRecs || []).map((item) => ({ lang: item.lang, running: item.running })),
+      })`,
+    );
+    assert(stillPrimed.spoken === "es" && stillPrimed.recs.length === 1 && stillPrimed.recs[0].lang === "es-ES", "Join keeps Spoken=ES on the same recognizer");
+
+    await waitForEval(
+      guest,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.length > 0 && !text.includes("Connecting"),
+    );
+    const armed = await chrome.evaluate(
+      guest,
+      `(() => { document.querySelector("[data-mic]").click(); return window.__ffSpeechSnap(); })()`,
+    );
+    assert(armed.instances === 1 && armed.lang === "es-ES" && armed.engineLang === "es-ES", "Start uses the primed es-ES recognizer, not en-US");
+    await waitForEval(
+      guest,
+      `document.querySelector("[data-status]")?.textContent || ""`,
+      (text) => typeof text === "string" && text.includes("Listening"),
+    );
+    const heard = await chrome.evaluate(guest, `window.__ffSpeak("mi esposa", "es-ES")`);
+    assert(heard?.ok === true, `Spanish speech must match es-ES, not an English engine: ${JSON.stringify(heard)}`);
+
+    const hostPanes = () => readPanes("[data-phone-board]");
+    const tvPanes = () => readPanes("[data-board]");
+    const sendCaption = async (text) => {
+      await chrome.evaluate(
+        guest,
+        `(() => {
+          const input = document.querySelector('[data-type] input[name="caption"]');
+          input.value = ${JSON.stringify(text)};
+          document.querySelector("[data-type]").requestSubmit();
+        })()`,
+      );
+    };
+    const wireLine = (msg) => msg.state?.lines?.at(-1)?.text || {};
+
+    const hostEs = await waitForEval(host, hostPanes(), (snap) => /^my wife$/i.test(lastOf(snap, "en")) && /^minha esposa$/i.test(lastOf(snap, "pt")));
+    const tvEs = await waitForEval(tv, tvPanes(), (snap) => /^my wife$/i.test(lastOf(snap, "en")) && /^mi esposa$/i.test(lastOf(snap, "es")));
+    const guestEs = await waitForEval(guest, tvPanes(), (snap) => /^mi esposa$/i.test(lastOf(snap, "es")));
+    assert(/^my wife$/i.test(lastOf(hostEs, "en")) && !spanishLeftInEnglish(lastOf(hostEs, "en")), `Spoken=ES EN pane: ${lastOf(hostEs, "en")}`);
+    assert(/^mi esposa$/i.test(lastOf(hostEs, "es")), `Spoken=ES pane should keep the Spanish source, got ${lastOf(hostEs, "es")}`);
+    assert(/^minha esposa$/i.test(lastOf(hostEs, "pt")) && !/^mi esposa$/i.test(lastOf(hostEs, "pt")), `Spoken=ES PT pane: ${lastOf(hostEs, "pt")}`);
+    assert(/^my wife$/i.test(lastOf(tvEs, "en")) && /^mi esposa$/i.test(lastOf(guestEs, "es")), "TV and the speaker both get the Spanish caption");
+    const wireEs = await waitFor(hostRelay.inbox, "state", (msg) => {
+      const line = wireLine(msg);
+      return msg.state?.sourceLang === "es" && /^my wife$/i.test(clean(line.en)) && /^mi esposa$/i.test(clean(line.es)) && /^minha esposa$/i.test(clean(line.pt));
+    });
+    assert(wireEs.state?.sourceLang === "es", "published sourceLang is Spoken ES, not en");
+    await chrome.evaluate(host, `document.querySelector("[data-phone-board]")?.scrollIntoView({ block: "center" })`);
+    await saveWatchShot(chrome, host, "host-en-my-wife.png", false);
+    await saveWatchShot(chrome, guest, "guest-spoken-es-mi-esposa.png", true);
+
+    await sendCaption("mi esposo");
+    const hostTyped = await waitForEval(
+      host,
+      hostPanes(),
+      (snap) => (snap?.en?.length || 0) >= 2 && /^my husband$/i.test(lastOf(snap, "en")) && /meu marido/i.test(lastOf(snap, "pt")),
+    );
+    assert(/^my husband$/i.test(lastOf(hostTyped, "en")) && !spanishLeftInEnglish(lastOf(hostTyped, "en")), `Type+Send ES EN pane: ${lastOf(hostTyped, "en")}`);
+    assert(/^mi esposo$/i.test(lastOf(hostTyped, "es")), `Type+Send ES pane should keep mi esposo, got ${lastOf(hostTyped, "es")}`);
+    assert(/meu marido/i.test(lastOf(hostTyped, "pt")) && !/^mi esposo$/i.test(lastOf(hostTyped, "pt")), `Type+Send ES PT pane: ${lastOf(hostTyped, "pt")}`);
+    const wireTyped = await waitFor(hostRelay.inbox, "state", (msg) => {
+      const line = wireLine(msg);
+      return msg.state?.sourceLang === "es" && /^my husband$/i.test(clean(line.en)) && /^mi esposo$/i.test(clean(line.es)) && /meu marido/i.test(clean(line.pt));
+    });
+    assert(wireTyped.state?.sourceLang === "es", "Type+Send with Spoken=ES still publishes sourceLang es");
+
+    await chrome.evaluate(guest, `document.querySelector('[data-source] [data-lang="pt"]').click()`);
+    const switchedPt = await waitForEval(
+      guest,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "pt-BR" && snap.lang === "pt-BR",
+    );
+    assert(switchedPt.instances === 1, "Spoken=PT keeps the single iOS recognizer");
+    const heardPt = await chrome.evaluate(guest, `window.__ffSpeak("minha esposa", "pt-BR")`);
+    assert(heardPt?.ok === true, `Portuguese speech must match pt-BR: ${JSON.stringify(heardPt)}`);
+    const spanishForWife = (text) => /^mi (esposa|mujer)$/i.test(clean(text));
+    const hostPt = await waitForEval(
+      host,
+      hostPanes(),
+      (snap) => (snap?.en?.length || 0) >= 3 && /^my wife$/i.test(lastOf(snap, "en")) && spanishForWife(lastOf(snap, "es")) && /^minha esposa$/i.test(lastOf(snap, "pt")),
+    );
+    const tvPt = await waitForEval(
+      tv,
+      tvPanes(),
+      (snap) => spanishForWife(lastOf(snap, "es")) && /^minha esposa$/i.test(lastOf(snap, "pt")),
+    );
+    assert(/^my wife$/i.test(lastOf(hostPt, "en")) && !spanishLeftInEnglish(lastOf(hostPt, "en")), `Spoken=PT EN pane: ${lastOf(hostPt, "en")}`);
+    assert(spanishForWife(lastOf(hostPt, "es")) && !/minha/i.test(lastOf(hostPt, "es")), `Spoken=PT ES pane should be Spanish, got ${lastOf(hostPt, "es")}`);
+    assert(/^minha esposa$/i.test(lastOf(hostPt, "pt")), `Spoken=PT pane should keep the Portuguese source, got ${lastOf(hostPt, "pt")}`);
+    assert(spanishForWife(lastOf(tvPt, "es")), `TV ES pane for Spoken=PT: ${lastOf(tvPt, "es")}`);
+    const wirePt = await waitFor(hostRelay.inbox, "state", (msg) => {
+      const line = wireLine(msg);
+      return msg.state?.sourceLang === "pt" && /^my wife$/i.test(clean(line.en)) && spanishForWife(line.es) && /^minha esposa$/i.test(clean(line.pt));
+    });
+    assert(wirePt.state?.sourceLang === "pt", "published sourceLang is Spoken PT");
+    await saveWatchShot(chrome, host, "host-en-from-portuguese.png", false);
+
+    await sendCaption("meu esposo");
+    const hostTypedPt = await waitForEval(
+      host,
+      hostPanes(),
+      (snap) => (snap?.en?.length || 0) >= 4 && /^my husband$/i.test(lastOf(snap, "en")) && /^meu esposo$/i.test(lastOf(snap, "pt")) && /mi marido/i.test(lastOf(snap, "es")),
+    );
+    assert(/^my husband$/i.test(lastOf(hostTypedPt, "en")) && !spanishLeftInEnglish(lastOf(hostTypedPt, "en")), `Type+Send PT EN pane: ${lastOf(hostTypedPt, "en")}`);
+    assert(/mi marido/i.test(lastOf(hostTypedPt, "es")) && !/meu/i.test(lastOf(hostTypedPt, "es")), `Type+Send PT ES pane: ${lastOf(hostTypedPt, "es")}`);
+    assert(/^meu esposo$/i.test(lastOf(hostTypedPt, "pt")), `Type+Send PT pane should keep meu esposo, got ${lastOf(hostTypedPt, "pt")}`);
+    const wireTypedPt = await waitFor(hostRelay.inbox, "state", (msg) => {
+      const line = wireLine(msg);
+      return msg.state?.sourceLang === "pt" && /^my husband$/i.test(clean(line.en)) && /mi marido/i.test(clean(line.es)) && /^meu esposo$/i.test(clean(line.pt));
+    });
+    assert(wireTypedPt.state?.sourceLang === "pt", "Type+Send with Spoken=PT publishes sourceLang pt");
+
+    await chrome.evaluate(guest, `document.querySelector('[data-source] [data-lang="en"]').click()`);
+    await waitForEval(
+      guest,
+      `window.__ffSpeechSnap()`,
+      (snap) => snap && snap.instances === 1 && snap.running === 1 && snap.engineLang === "en-US",
+    );
+    const heardEn = await chrome.evaluate(guest, `window.__ffSpeak("Welcome brothers.", "en-US")`);
+    assert(heardEn?.ok === true, `Spoken=EN speech: ${JSON.stringify(heardEn)}`);
+    const hostEn = await waitForEval(
+      host,
+      hostPanes(),
+      (snap) =>
+        (snap?.en?.length || 0) >= 5 &&
+        /welcome brothers/i.test(lastOf(snap, "en")) &&
+        /bienvenidos/i.test(lastOf(snap, "es")) &&
+        /hermanos/i.test(lastOf(snap, "es")) &&
+        /bem-vindos|bem vindos/i.test(lastOf(snap, "pt")) &&
+        /irmãos|irmaos/i.test(lastOf(snap, "pt")),
+    );
+    assert(/welcome brothers/i.test(lastOf(hostEn, "en")), `Spoken=EN pane: ${lastOf(hostEn, "en")}`);
+    assert(/bienvenidos/i.test(lastOf(hostEn, "es")) && /hermanos/i.test(lastOf(hostEn, "es")), `Spoken=EN ES pane: ${lastOf(hostEn, "es")}`);
+    assert(/bem-vindos|bem vindos/i.test(lastOf(hostEn, "pt")) && /irmãos|irmaos/i.test(lastOf(hostEn, "pt")), `Spoken=EN PT pane: ${lastOf(hostEn, "pt")}`);
+    const wireEn = await waitFor(watcher.inbox, "state", (msg) => {
+      const line = wireLine(msg);
+      return (
+        msg.state?.sourceLang === "en" &&
+        /welcome brothers/i.test(clean(line.en)) &&
+        /hermanos/i.test(clean(line.es)) &&
+        /bem-vindos|bem vindos|irmãos|irmaos/i.test(clean(line.pt))
+      );
+    });
+    assert(wireEn.state?.sourceLang === "en", "Spoken=EN publishes sourceLang en");
+  } finally {
+    chrome.close();
+    watcher.ws.close();
+    hostRelay.ws.close();
+  }
+}
+
 async function assertJoinWatchIsDeviceLocal() {
   const room = "WACH";
   const host = await connect("phone", room, "Host");
@@ -1670,6 +1904,7 @@ async function main() {
   stayHost.ws.close();
   await assertNamedSpeakerRenders();
   await assertIphoneSpeechPublishes();
+  await assertSpokenEsReachesEnglish();
   await assertJoinWatchIsDeviceLocal();
   console.log(`OK ${base} — PWA shell, phone/TV/join routes, Send to TV + Smart View mode, brothers join + floor control, speaker names on captions, iPhone speech publish, Join Watch is device-local, relay, topic of the day, ask-for-topic, translate=${health.translate}, topic=${health.topic}`);
 }

@@ -327,7 +327,8 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     }
     // iOS Safari only runs SpeechRecognition.start() on the click stack.
     // An await (floor claim) before start() makes the mic a silent no-op.
-    speech.setLang(speechLocale(sourceLang));
+    // Prime es-ES / pt-BR on the reused iOS recognizer before start().
+    speech.setLang(speechLocale(sourceLang), true);
     speech.start();
     void (async () => {
       const ok = (await conn?.claimFloor(displayName)) ?? false;
@@ -359,6 +360,9 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   async function publishFinal(text: string, coalesce = true) {
     const spoken = text.trim();
     if (!spoken) return;
+    // Spoken at the moment this line was heard. A later chip tap must not
+    // relabel it, and short Spanish ("mi esposa") has no detectLang hints.
+    const spokenAs = sourceLang;
     if (floorHeldByOther(floor, peerId)) {
       error = someoneElseSpeaking(floor);
       renderDynamic();
@@ -379,7 +383,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     const speaker = captionSpeaker(floor.holderName || displayName, "guest");
     renderDynamic();
     const epoch = publishEpoch;
-    const from = detectLang(spoken, sourceLang);
+    const from = detectLang(spoken, spokenAs);
     const translated = await translateAll(translator, spoken, from);
     if (epoch !== publishEpoch) return;
     lastCaptionWasMock = translator.id === "mock";
@@ -393,7 +397,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     const lines = coalesce
       ? applyFinalLine(state.lines, line, from)
       : appendFinalLine(state.lines, line);
-    state = { ...state, lines, sourceLang, floor, listening: true };
+    state = { ...state, lines, sourceLang: spokenAs, floor, listening: true };
     renderDynamic();
     push();
   }
@@ -452,7 +456,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     if (!isLang(next)) return;
     sourceLang = next;
     writeSpokenPref(sourceLang);
-    speech.setLang(speechLocale(sourceLang));
+    speech.setLang(speechLocale(sourceLang), true);
     if (isFloorHolder(floor, peerId)) {
       state = { ...state, sourceLang };
       push();
@@ -533,7 +537,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     if (!btn?.dataset.setupLang || !isLang(btn.dataset.setupLang)) return;
     sourceLang = btn.dataset.setupLang;
     writeSpokenPref(sourceLang);
-    speech.setLang(speechLocale(sourceLang));
+    speech.setLang(speechLocale(sourceLang), true);
     paintSetup();
   };
 
@@ -559,7 +563,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     onSetupName();
     writeSpokenPref(sourceLang);
     writeWatchPref(watch);
-    speech.setLang(speechLocale(sourceLang));
+    speech.setLang(speechLocale(sourceLang), true);
     nameInput.value = displayName;
     entered = true;
     setupEl.hidden = true;

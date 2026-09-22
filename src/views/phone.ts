@@ -453,11 +453,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   async function publishFinal(text: string, coalesce = true) {
     const spoken = text.trim();
     if (!spoken || floorHeldByOther(floor, peerId)) return;
+    const spokenAs = state.sourceLang;
     const speaker = captionSpeaker(floor.holderName, "host");
     liveInterim = "";
     renderDynamic();
     const epoch = publishEpoch;
-    const from = detectLang(spoken, state.sourceLang);
+    const from = detectLang(spoken, spokenAs);
     const translated = await translateAll(translator, spoken, from);
     if (epoch !== publishEpoch) return;
     lastCaptionWasMock = translator.id === "mock";
@@ -517,7 +518,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       return;
     }
     // Start on the click stack. iOS rejects recognition.start() after an await.
-    speech.setLang(speechLocale(state.sourceLang));
+    // Prime the reused recognizer's lang before start(), including es-ES / pt-BR.
+    speech.setLang(speechLocale(state.sourceLang), true);
     speech.start();
     void (async () => {
       const ok = (await conn?.claimFloor("Host")) ?? false;
@@ -547,7 +549,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onReclaim = () => {
     error = "";
     // start() in this tap. iOS rejects recognition.start() after an await.
-    speech.setLang(speechLocale(state.sourceLang));
+    speech.setLang(speechLocale(state.sourceLang), true);
     speech.start();
     void (async () => {
       const freed = (await conn?.forceRelease()) ?? false;
@@ -623,7 +625,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     if (sourceLang !== state.sourceLang) liveInterim = "";
     // While listening, setLang retargets the recognizer in this tap.
     // Chrome rebuilds it. iOS reuses the original object so the locale sticks.
-    speech.setLang(speechLocale(sourceLang));
+    speech.setLang(speechLocale(sourceLang), true);
     setState({ ...state, sourceLang });
   };
 
