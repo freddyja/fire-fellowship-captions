@@ -6,7 +6,7 @@ import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
 import { tvQrSvg } from "../qr";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto, joinUrl, tvUrl } from "../router";
-import { createWebSpeechProvider } from "../stt/web-speech";
+import { createWebSpeechProvider, isSpeechFallbackMessage } from "../stt/web-speech";
 import { requestTopicHandout } from "../topic-ask";
 import { renderTopicHandout } from "../topic-layout";
 import { hasTopicBody, localized, normalizeTopic, resolveTopic, TOPIC_LIST } from "../topics";
@@ -513,6 +513,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
+      if (isSpeechFallbackMessage(error)) {
+        speech.stop();
+        releaseWake();
+        typeForm.hidden = false;
+        pendingFinal = "";
+        setState({ ...state, listening: false });
+        return;
+      }
       void requestWake();
       setState({ ...state, listening: true });
       const queued = pendingFinal.trim();
@@ -524,20 +532,29 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const onReclaim = () => {
     void (async () => {
       error = "";
+      // start() in this tap. iOS rejects recognition.start() after an await.
+      speech.setLang(speechLocale(state.sourceLang));
+      speech.start();
       const freed = (await conn?.forceRelease()) ?? false;
       if (!freed) {
+        speech.stop();
         error = "Could not reclaim the mic.";
         renderDynamic();
         return;
       }
       const ok = (await conn?.claimFloor("Host")) ?? false;
       if (!ok) {
+        speech.stop();
         error = someoneElseSpeaking(floor);
         renderDynamic();
         return;
       }
-      speech.setLang(speechLocale(state.sourceLang));
-      speech.start();
+      if (isSpeechFallbackMessage(error)) {
+        speech.stop();
+        typeForm.hidden = false;
+        setState({ ...state, listening: false });
+        return;
+      }
       void requestWake();
       setState({ ...state, listening: true });
     })();
@@ -563,12 +580,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   };
   speech.onError = (message) => {
     error = message;
-    if (message.includes("Microphone blocked") || message.includes("no Web Speech")) {
+    if (isSpeechFallbackMessage(message)) {
       speech.stop();
       releaseWake();
       typeForm.hidden = false;
       liveInterim = "";
-      void conn?.releaseFloor();
+      if (message.includes("Microphone blocked") || message.includes("no Web Speech")) {
+        void conn?.releaseFloor();
+      }
       setState({ ...state, listening: false });
       return;
     }
@@ -582,7 +601,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     if (!isLang(sourceLang)) return;
     sourceTouched = true;
     if (sourceLang !== state.sourceLang) liveInterim = "";
-    // setLang rebuilds the recognizer while listening — Chrome ignores mid-session lang.
+    // While listening, setLang retargets the recognizer in this tap.
+    // Chrome rebuilds it. iOS reuses the original object so the locale sticks.
     speech.setLang(speechLocale(sourceLang));
     setState({ ...state, sourceLang });
   };

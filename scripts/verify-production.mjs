@@ -142,6 +142,7 @@ async function main() {
     appJs.includes("Type a caption — Send still reaches every phone and the TV."),
     "iPhone mic failure tells you to type",
   );
+  assert(appJs.includes("Safari rejected"), "rejected speech locale is named");
   assert(appJs.includes("phone-live-board"), "host phone shows EN ES PT caption panes");
   assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
   assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
@@ -606,40 +607,51 @@ async function main() {
   const guestBClaim = await waitFor(guestB.inbox, "floor", (msg) => msg.ok === true);
   assert(guestBClaim.floor?.holderName === "Luis", "floor is free after host release");
 
-  guestB.ws.send(
-    JSON.stringify({
-      type: "push",
-      state: {
-        room: floorRoom,
-        sourceLang: "es",
-        listening: true,
-        lines: [
-          {
-            id: "guest-es-after-host",
-            isFinal: true,
-            at: Date.now(),
-            text: { en: "Peace to you brothers.", es: "Paz a ustedes hermanos.", pt: "Paz a vocês irmãos." },
-          },
-        ],
-      },
-    }),
-  );
-  const hostSeesGuestEs = await waitFor(
-    hostWs.inbox,
-    "state",
-    (msg) => msg.state?.lines?.some((line) => line.id === "guest-es-after-host"),
-  );
-  assert(hostSeesGuestEs.state?.sourceLang === "es", "host receives guest Spanish sourceLang after releasing the floor");
+  const guestSpoken = [];
+  async function guestPublishes(id, sourceLang, text) {
+    guestSpoken.push({ id, isFinal: true, at: Date.now(), text });
+    guestB.ws.send(
+      JSON.stringify({
+        type: "push",
+        state: {
+          room: floorRoom,
+          sourceLang,
+          listening: true,
+          lines: guestSpoken,
+        },
+      }),
+    );
+    const hostMsg = await waitFor(hostWs.inbox, "state", (msg) => msg.state?.lines?.some((line) => line.id === id));
+    assert(hostMsg.state?.sourceLang === sourceLang, `host receives guest ${sourceLang} after releasing the floor`);
+    const tvMsg = await waitFor(floorTv.inbox, "state", (msg) => msg.state?.lines?.some((line) => line.id === id));
+    assert(tvMsg.state?.sourceLang === sourceLang, `TV receives guest ${sourceLang} after the host released`);
+    return hostMsg;
+  }
+  await guestPublishes("guest-en-after-host", "en", {
+    en: "Welcome brothers.",
+    es: "Bienvenidos hermanos.",
+    pt: "Bem-vindos irmãos.",
+  });
+  const hostSeesGuestEs = await guestPublishes("guest-es-after-host", "es", {
+    en: "Peace to you brothers.",
+    es: "Paz a ustedes hermanos.",
+    pt: "Paz a vocês irmãos.",
+  });
   assert(
     hostSeesGuestEs.state?.lines?.find((line) => line.id === "guest-es-after-host")?.text?.es === "Paz a ustedes hermanos.",
     "join-role caption is on the host",
   );
-  const tvSeesGuestEs = await waitFor(
-    floorTv.inbox,
-    "state",
-    (msg) => msg.state?.lines?.some((line) => line.id === "guest-es-after-host"),
+  const hostSeesGuestPt = await guestPublishes("guest-pt-after-host", "pt", {
+    en: "Good night brothers.",
+    es: "Buenas noches hermanos.",
+    pt: "Boa noite irmãos.",
+  });
+  assert(
+    ["guest-en-after-host", "guest-es-after-host", "guest-pt-after-host"].every((id) =>
+      hostSeesGuestPt.state?.lines?.some((line) => line.id === id),
+    ),
+    "host keeps the guest EN → ES → PT captions",
   );
-  assert(tvSeesGuestEs.state?.sourceLang === "es", "TV receives guest Spanish after the host released");
 
   const dropRoom = "FLRB";
   const stayHost = await connect("phone", dropRoom);
