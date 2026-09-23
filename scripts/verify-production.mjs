@@ -1366,6 +1366,12 @@ async function main() {
   assert(appJs.includes("http://LAPTOP-LAN-IP:PORT"), "laptop LAN URL");
   assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit under the title");
   assert(
+    /Men's Fellowship<\/p>\s*<p class="brand-subline">Break language barriers in your small groups\. No equipment needed - works on any device\./.test(
+      appJs,
+    ),
+    "subline sits under Men's Fellowship",
+  );
+  assert(
     appJs.includes("Now open system Smart View → My TV. TV will mirror these captions."),
     "Smart View mode tip",
   );
@@ -1386,6 +1392,7 @@ async function main() {
   );
   assert(appCss.includes("smart-view-source-chip"), "Smart View spoken language chip style");
   assert(appCss.includes("join-screen"), "guest join screen class");
+  assert(appCss.includes("brand-subline"), "brand subline style");
   assert(appCss.includes("join-setup"), "join setup screen is styled");
   assert(appCss.includes("join-watch-note"), "Watch note style");
   assert(
