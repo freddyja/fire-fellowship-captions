@@ -85,6 +85,10 @@ textarea {
   height: 32px;
 }
 
+.brand-text {
+  min-width: 0;
+}
+
 .brand-text h1 {
   margin: 0;
   font-family: var(--font-display);
@@ -134,6 +138,42 @@ textarea {
   margin-top: 0.08rem;
   font-size: 0.62rem;
   letter-spacing: 0.16em;
+}
+
+/* Supporting line under the gold tagline. Muted and a step smaller so it
+   stays readable on home and host without competing with controls. */
+.brand-subline {
+  margin: 0.22rem 0 0;
+  max-width: 28rem;
+  color: #b7a898;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.brand-compact .brand-subline {
+  margin-top: 0.12rem;
+  max-width: 22rem;
+  font-size: 0.64rem;
+  line-height: 1.3;
+}
+
+/* TV and Smart View share the compact brand. Keep the line when the
+   screen is tall enough; drop it on short mirrored layouts so captions
+   stay primary. */
+.tv-screen .brand-subline {
+  margin-top: 0.08rem;
+  max-width: 24rem;
+  font-size: 0.58rem;
+  line-height: 1.25;
+  opacity: 0.9;
+}
+
+@media (max-height: 640px) {
+  .tv-screen .brand-subline {
+    display: none;
+  }
 }
 
 .lede {
@@ -405,6 +445,11 @@ textarea {
   gap: 1rem;
 }
 
+.tv-top .brand {
+  flex: 1;
+  min-width: 0;
+}
+
 .tv-meta {
   display: flex;
   align-items: center;
@@ -580,6 +625,31 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+}
+
+/* Cover-width host: the gold tagline and the sentence need the row.
+   Room status drops under the brand instead of squeezing it. */
+@media (max-width: 599px) {
+  .phone-screen:not(.is-smart-view) .phone-top {
+    flex-wrap: wrap;
+    row-gap: 0.55rem;
+  }
+
+  .phone-screen:not(.is-smart-view) .phone-top .brand {
+    flex: 1 0 100%;
+    max-width: 100%;
+  }
+
+  .phone-screen:not(.is-smart-view) .phone-top .brand-text {
+    flex: 1;
+  }
+
+  .phone-screen:not(.is-smart-view) .phone-status {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
 }
 
 .phone-status {
@@ -848,6 +918,13 @@ textarea {
   margin-top: 0.04rem;
   font-size: 0.58rem;
   letter-spacing: 0.12em;
+}
+
+.join-screen .brand-subline {
+  margin-top: 0.08rem;
+  max-width: 18rem;
+  font-size: 0.62rem;
+  line-height: 1.3;
 }
 
 .join-screen .tv-meta {

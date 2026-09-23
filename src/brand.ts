@@ -14,6 +14,7 @@ export function brandBlock(compact = false): string {
         <h1><span>Fire</span> and Fellowship</h1>
         <p class="brand-credit">Design by Freddy Jara-Almonte</p>
         <p class="brand-tagline">Men's Fellowship</p>
+        <p class="brand-subline">Break language barriers in your small groups. No equipment needed - works on any device.</p>
       </div>
     </div>
   `;
