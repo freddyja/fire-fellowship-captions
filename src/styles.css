@@ -1445,12 +1445,32 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   gap: 0.75rem;
 }
 
-.send-tv-head h2 {
+.send-tv-head h2,
+.setup-head .fold-summary h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.7rem;
   font-weight: 700;
   line-height: 1.05;
+}
+
+.setup-head {
+  display: grid;
+}
+
+.setup-head > [data-local-setup],
+.setup-head > .send-tv-close {
+  grid-area: 1 / 1;
+}
+
+.setup-head > .send-tv-close {
+  justify-self: end;
+  align-self: start;
+  z-index: 1;
+}
+
+.setup-head .fold-summary {
+  padding-right: 5.5rem;
 }
 
 .send-tv-close {
@@ -2166,6 +2186,67 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
 
 .install-card[data-state="standalone"] h2 {
   color: var(--gold);
+}
+
+/* Collapsed help: laptop / LAN / hotspot, install, and Open TV windows.
+   Native details keeps the copy in the page; the summary is the tap target. */
+.fold-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+.fold-summary::-webkit-details-marker,
+.fold-summary::marker {
+  display: none;
+  content: "";
+}
+
+.fold-summary h2,
+.fold-summary h3 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.fold-summary::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--gold);
+  border-bottom: 2px solid var(--gold);
+  transform: rotate(45deg);
+  flex: none;
+}
+
+.fold[open] > .fold-summary::after {
+  transform: rotate(-135deg);
+}
+
+.fold-summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.fold-body {
+  padding-top: 0.75rem;
+}
+
+.send-tv-fold .fold-body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.send-tv-fold .fold-summary h3 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 /* Short landscape (iPhone sideways, Fold cover): the page scrolls.

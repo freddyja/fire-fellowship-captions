@@ -181,19 +181,26 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <div class="send-tv-qr" data-send-tv-qr></div>
           <p class="send-tv-url" data-send-tv-url></p>
           <button class="primary send-tv-copy" data-copy type="button" data-i18n="host.copyTv">Copy TV link</button>
-          <ol class="send-tv-steps">
-            <li data-i18n="host.sendStep1">On the TV browser, open this link or scan the QR.</li>
-            <li data-i18n="host.sendStep2">Keep the Fold on the mic page.</li>
-            <li data-i18n="host.sendStep3">Optional: three Chrome windows, one language per monitor — use the EN / ES / PT links below. That does not change other TVs in this room.</li>
-          </ol>
-          <button class="ghost send-tv-open" data-open-tv type="button" data-i18n="host.openTv" data-i18n-aria="host.openTvAria" aria-label="Open TV view on this device for testing">
-            Open TV view
-          </button>
-          <section class="send-tv-langs" data-send-tv-langs>
-            <h3 data-i18n="host.oneLanguage">One language per monitor</h3>
-            <p class="hint" data-i18n="host.oneLanguageHint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
-            <div class="send-tv-lang-list" data-send-tv-lang-list></div>
-          </section>
+          <details class="fold send-tv-fold">
+            <summary class="fold-summary">
+              <h3 data-i18n="home.openTv">Open TV windows</h3>
+            </summary>
+            <div class="fold-body">
+              <ol class="send-tv-steps">
+                <li data-i18n="host.sendStep1">On the TV browser, open this link or scan the QR.</li>
+                <li data-i18n="host.sendStep2">Keep the Fold on the mic page.</li>
+                <li data-i18n="host.sendStep3">Optional: three Chrome windows, one language per monitor — use the EN / ES / PT links below. That does not change other TVs in this room.</li>
+              </ol>
+              <button class="ghost send-tv-open" data-open-tv type="button" data-i18n="host.openTv" data-i18n-aria="host.openTvAria" aria-label="Open TV view on this device for testing">
+                Open TV view
+              </button>
+              <section class="send-tv-langs" data-send-tv-langs>
+                <h3 data-i18n="host.oneLanguage">One language per monitor</h3>
+                <p class="hint" data-i18n="host.oneLanguageHint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
+                <div class="send-tv-lang-list" data-send-tv-lang-list></div>
+              </section>
+            </div>
+          </details>
         </div>
       </dialog>
 
@@ -217,12 +224,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
       <dialog class="setup-dialog" id="local-setup-dialog" data-local-setup-dialog aria-labelledby="local-setup-title">
         <div class="send-tv-sheet">
-          <header class="send-tv-head">
-            <h2 id="local-setup-title" data-i18n="setup.title">Laptop LAN / hotspot</h2>
-            <button class="ghost send-tv-close" data-local-setup-close type="button">Close</button>
-          </header>
-          <div data-local-setup>
-            ${localSetupInnerHtml({ heading: false })}
+          <div class="setup-head">
+            <div data-local-setup>
+              ${localSetupInnerHtml()}
+            </div>
+            <button class="ghost send-tv-close" data-local-setup-close type="button" data-i18n="chrome.close">Close</button>
           </div>
         </div>
       </dialog>
