@@ -53,7 +53,7 @@ The TV opens the caption page in **its own browser**. The Fold stays on topic + 
 
 **Three Chrome windows (optional).** Same host, same room, one language each. This is an opt-in display override for that browser window only — it does **not** change the Fold’s TV layout chips, Smart View, or other TVs in the room.
 
-1. Create the room on the Fold as usual. Leave the layout chips on **EN | ES | PT** (or whatever the meeting needs on the combined TV).
+1. Create the room on the Fold as usual. Leave the layout chips on **EN/ES/PT** (or one language, if that meeting needs a single pane on the combined TV).
 2. Open three Chrome windows (or tabs you then drag into windows) on the same public URL:
    - `/?view=tv&room=ABCD&lang=es`
    - `/?view=tv&room=ABCD&lang=pt`
@@ -71,7 +71,7 @@ Samsung Smart View (quick panel → **Smart View** → **My TV**) can **only mir
 
 1. Create a room, pick today’s topic, and start the mic if you want (or start it after you enter the mode).
 2. Tap **Smart View mode**. The Fold leaves the control UI and shows the caption windows.
-3. A small always-visible bar keeps **spoken language** (**EN / ES / PT**), **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. Tap **EN / ES / PT** to switch the speaker’s language mid-meeting without leaving Smart View — same as the control page Spoken language picker. Speech recognition picks up the new locale even if the mic is already on. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session. Rotate the Fold: landscape keeps **EN | ES | PT** in a row; portrait keeps all three panes on screen as stacked rows. A 1-language or 2-language TV layout still follows the picker.
+3. A small always-visible bar keeps **spoken language** (**EN / ES / PT**), **Captions only**, **Start / Stop** (mic), and **Exit Smart View mode**. Tap **EN / ES / PT** to switch the speaker’s language mid-meeting without leaving Smart View — same as the control page Spoken language picker. Speech recognition picks up the new locale even if the mic is already on. **Captions only** is on by default so the mirror is just the three language windows; turn it off to show the topic handout again. The choice is remembered for this browser session. Rotate the Fold: landscape keeps **EN | ES | PT** in a row; portrait keeps all three panes on screen as stacked rows. A one-language TV layout still follows the picker. A room already set to a two-language layout still shows those two panes.
 4. The tip on screen: “Now open system Smart View → My TV. TV will mirror these captions.” Use the Fold **quick panel Smart View tile** — do not expect the app to launch it.
 5. Tap **Exit Smart View mode** to return to the normal phone controls. The mic does **not** stop just because you entered or left this mode.
 
@@ -109,9 +109,8 @@ Home also has **Join on this phone** next to **Open TV windows** if a brother ty
 3. Enter the room code and tap **Open TV windows**, or paste the copied TV link.
 4. On the Fold, pick **Topic of the day** (try **Contentment** or **Brotherhood**) or type a topic / verse and tap **Set**. The TV should show the talk sheet in three columns (**EN | ES | PT**) — verse, hook, teaching, and discussion questions — above the caption windows.
 5. Tap the mic on the Fold and speak (or type a caption). Captions should appear on the TV in the layout you chose:
-   - One language, full-screen
-   - Dual columns (`EN | ES`, `EN | PT`, or `ES | PT`)
-   - Triple columns (`EN | ES | PT`)
+   - One language, full-screen (**English**, **Spanish**, or **Portuguese**)
+   - All three (**EN/ES/PT**)
 
 Those chips are still the **room** layout. Every TV without `lang=` follows them, including Smart View. A `lang=es` (or `en` / `pt`) window is a local override for that client only.
 
@@ -376,7 +375,7 @@ Speech-to-text is the Web Speech API on the phone (`src/stt/web-speech.ts`).
 
 ## Layouts (phone control → TV)
 
-The Fold owns the caption layout. The TV only displays it. Caption windows follow those chips (one, two, or three languages). The topic / talk sheet is always three columns — **EN | ES | PT** — on the TV page and in Smart View when the topic is visible.
+The Fold owns the caption layout. The TV only displays it. The host chips are **English**, **Spanish**, **Portuguese**, and **EN/ES/PT**. A room already using a two-language layout still shows those two panes. The topic / talk sheet is always three columns — **EN | ES | PT** — on the TV page and in Smart View when the topic is visible.
 
 **`lang=` is opt-in and local.** `/?view=tv&room=ABCD` (no `lang`) is unchanged. Adding `&lang=en|es|pt` makes **that** browser show one language full-screen (captions only). Other TVs in the room, the phone preview, and Smart View still follow the chips. Use this when you have three monitors and want one Chrome window per language.
 

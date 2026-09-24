@@ -3,8 +3,10 @@ import { detectSpeechCapability, isAppleMobile } from "../src/stt/capability.ts"
 import { createWebSpeechProvider } from "../src/stt/web-speech.ts";
 import {
   captionSpeaker,
+  HOST_LAYOUT_IDS,
   isWatchPref,
   keepsLocalCaptions,
+  langsForLayout,
   langsForWatch,
   layoutForWatch,
   lostFloor,
@@ -474,5 +476,13 @@ same(langsForWatch("pt"), ["pt"], "Watch=PT is the Portuguese pane only");
 assert(layoutForWatch("all") === "en-es-pt", "Watch=all paints the triple layout locally");
 assert(layoutForWatch("es") === "es", "Watch=ES paints a single Spanish layout locally");
 assert(layoutForWatch("es") !== "en-es-pt", "Watch=ES is not the room's three-pane layout");
+same(HOST_LAYOUT_IDS, ["en", "es", "pt", "en-es-pt"], "host TV layout chips are one language or all three");
+same(langsForLayout("en"), ["en"], "English layout is one pane");
+same(langsForLayout("es"), ["es"], "Spanish layout is one pane");
+same(langsForLayout("pt"), ["pt"], "Portuguese layout is one pane");
+same(langsForLayout("en-es-pt"), ["en", "es", "pt"], "EN/ES/PT layout is three panes");
+same(langsForLayout("en-es"), ["en", "es"], "saved EN|ES layout still paints two panes");
+same(langsForLayout("en-pt"), ["en", "pt"], "saved EN|PT layout still paints two panes");
+same(langsForLayout("es-pt"), ["es", "pt"], "saved ES|PT layout still paints two panes");
 
 console.log("OK route — lang= is TV-only; Join Watch=ES is one local pane, not the room layout");

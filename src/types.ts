@@ -70,13 +70,19 @@ export const LANG_SHORT: Record<Lang, string> = {
 
 export const LAYOUTS: { id: Layout; label: string; langs: Lang[] }[] = [
   { id: "en", label: "English", langs: ["en"] },
-  { id: "es", label: "Español", langs: ["es"] },
-  { id: "pt", label: "Português", langs: ["pt"] },
+  { id: "es", label: "Spanish", langs: ["es"] },
+  { id: "pt", label: "Portuguese", langs: ["pt"] },
   { id: "en-es", label: "EN | ES", langs: ["en", "es"] },
   { id: "en-pt", label: "EN | PT", langs: ["en", "pt"] },
   { id: "es-pt", label: "ES | PT", langs: ["es", "pt"] },
-  { id: "en-es-pt", label: "EN | ES | PT", langs: ["en", "es", "pt"] },
+  { id: "en-es-pt", label: "EN/ES/PT", langs: ["en", "es", "pt"] },
 ];
+
+/**
+ * Chips on the host TV layout row. Dual layouts stay in LAYOUTS so a room
+ * already set to EN|ES, EN|PT, or ES|PT still paints those panes.
+ */
+export const HOST_LAYOUT_IDS = ["en", "es", "pt", "en-es-pt"] as const satisfies readonly Layout[];
 
 export const MAX_LINES = 8;
 

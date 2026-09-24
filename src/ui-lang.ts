@@ -335,6 +335,10 @@ const STRINGS = {
   },
   "host.spokenLanguage": { en: "Spoken language", es: "Idioma hablado", pt: "Idioma falado" },
   "host.tvLayout": { en: "TV layout", es: "Dise\u00f1o de la TV", pt: "Layout da TV" },
+  "host.layoutEn": { en: "English", es: "Ingl\u00e9s", pt: "Ingl\u00eas" },
+  "host.layoutEs": { en: "Spanish", es: "Espa\u00f1ol", pt: "Espanhol" },
+  "host.layoutPt": { en: "Portuguese", es: "Portugu\u00e9s", pt: "Portugu\u00eas" },
+  "host.layoutAll": { en: "EN/ES/PT", es: "EN/ES/PT", pt: "EN/ES/PT" },
   "host.sendToTv": { en: "Send to TV", es: "Enviar a la TV", pt: "Enviar para a TV" },
   "host.sendToTvAria": {
     en: "Send to TV \u2014 show QR and TV caption link",

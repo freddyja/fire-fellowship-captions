@@ -1,5 +1,5 @@
 import { brandBlock } from "../brand";
-import { applyI18n, readUiLang, subscribeUiLang, t } from "../ui-lang";
+import { applyI18n, readUiLang, subscribeUiLang, t, type UiStringKey } from "../ui-lang";
 import { appendFinalLine, applyFinalLine, finalizedLines, previewCaption } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
@@ -25,8 +25,8 @@ import {
   reconcileFloor,
   LANG_LABEL,
   LANG_SHORT,
+  HOST_LAYOUT_IDS,
   LANGS,
-  LAYOUTS,
   someoneElseSpeaking,
   speechLocale,
   type CaptionLine,
@@ -129,14 +129,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <div class="chips" data-layouts></div>
             </div>
             <div class="row-actions tv-path-actions">
-              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" data-i18n="host.sendToTv" data-i18n-aria="host.sendToTvAria" aria-label="Send to TV — show QR and TV caption link">
-                Send to TV
+              <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" data-i18n="host.joinPhones" data-i18n-aria="host.joinPhonesAria" aria-label="Join on phones — show QR so brothers can watch and speak">
+                Join on phones
               </button>
               <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" data-i18n="host.smartView" data-i18n-aria="host.smartViewAria" aria-label="Smart View mode — show caption layout for system mirroring">
                 Smart View mode
               </button>
-              <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" data-i18n="host.joinPhones" data-i18n-aria="host.joinPhonesAria" aria-label="Join on phones — show QR so brothers can watch and speak">
-                Join on phones
+              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" data-i18n="host.sendToTv" data-i18n-aria="host.sendToTvAria" aria-label="Send to TV — show QR and TV caption link">
+                Send to TV
               </button>
             </div>
           </div>
@@ -282,9 +282,16 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     (lang) =>
       `<button class="chip smart-view-source-chip" type="button" data-lang="${lang}" aria-label="Spoken language: ${LANG_LABEL[lang]}" aria-pressed="false">${LANG_SHORT[lang]}</button>`,
   ).join("");
-  layoutBox.innerHTML = LAYOUTS.map(
-    (item) => `<button class="chip" type="button" data-layout="${item.id}">${item.label}</button>`,
-  ).join("");
+  const layoutChipKey: Record<(typeof HOST_LAYOUT_IDS)[number], UiStringKey> = {
+    en: "host.layoutEn",
+    es: "host.layoutEs",
+    pt: "host.layoutPt",
+    "en-es-pt": "host.layoutAll",
+  };
+  layoutBox.innerHTML = HOST_LAYOUT_IDS.map((id) => {
+    const key = layoutChipKey[id];
+    return `<button class="chip" type="button" data-layout="${id}" data-i18n="${key}">${escapeHtml(t(key))}</button>`;
+  }).join("");
   const paintTopicChips = () => {
     topicBox.innerHTML = TOPIC_LIST.map(
       (topic) =>
