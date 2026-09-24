@@ -55,10 +55,16 @@ export function mountHome(root: HTMLElement): () => void {
         ${localSetupInnerHtml()}
       </aside>
       <aside class="install-card" data-install>
-        <h2 data-i18n="home.installTitle">Install on this phone</h2>
-        <p class="install-copy" data-install-copy></p>
-        <button class="primary" data-install-btn type="button" data-i18n="home.installBtn" hidden>Install app</button>
-        <ol class="install-steps" data-install-steps></ol>
+        <details class="fold">
+          <summary class="fold-summary">
+            <h2 data-i18n="home.installTitle">Install on this phone</h2>
+          </summary>
+          <div class="fold-body">
+            <p class="install-copy" data-install-copy></p>
+            <button class="primary" data-install-btn type="button" data-i18n="home.installBtn" hidden>Install app</button>
+            <ol class="install-steps" data-install-steps></ol>
+          </div>
+        </details>
       </aside>
     </section>
   `;
@@ -130,6 +136,13 @@ export function mountHome(root: HTMLElement): () => void {
   const unbindOffline = bindOfflineModeToggle(offlineBtn, { banner: offlineBanner });
   const unbindSetup = bindLocalSetup(localSetup);
   const unbindLang = bindUiLangBar(root, paintInstall);
+  const laptopLink = root.querySelector<HTMLAnchorElement>('a[href="#local-setup"]');
+  const openLaptopSteps = () => {
+    const fold = localSetup.querySelector("details");
+    if (fold instanceof HTMLDetailsElement) fold.open = true;
+  };
+  laptopLink?.addEventListener("click", openLaptopSteps);
+  if (location.hash === "#local-setup") openLaptopSteps();
 
   return () => {
     create?.removeEventListener("click", onCreate);
@@ -137,6 +150,7 @@ export function mountHome(root: HTMLElement): () => void {
     form?.removeEventListener("submit", onJoin);
     joinPhone?.removeEventListener("click", onJoinPhone);
     installBtn.removeEventListener("click", onInstall);
+    laptopLink?.removeEventListener("click", openLaptopSteps);
     unsubscribe();
     unbindOffline();
     unbindSetup();
