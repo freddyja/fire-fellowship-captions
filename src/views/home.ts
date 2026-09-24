@@ -10,44 +10,46 @@ import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle } from "../offline-mode";
 import { generateRoomCode, isRoomCode, normalizeRoomCode } from "../room";
 import { goto } from "../router";
+import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
 
 export function mountHome(root: HTMLElement): () => void {
   root.innerHTML = `
     <section class="screen">
       ${brandBlock()}
-      <p class="lede">
+      ${uiLangBarHtml("home-ui-lang-label")}
+      <p class="lede" data-i18n="home.lede">
         Phone captures live speech. Pick today’s Bible topic on the phone; the TV shows the verse, a short handout, and English, Spanish, and Portuguese caption windows.
       </p>
       <div class="stack">
-        <button class="primary" data-create type="button">Create room on this phone</button>
+        <button class="primary" data-create type="button" data-i18n="home.create">Create room on this phone</button>
         <form class="stack" data-join>
           <label class="field">
-            <span>Room code</span>
+            <span data-i18n="home.roomCode">Room code</span>
             <input name="room" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD" />
           </label>
-          <button class="secondary" type="submit">Open TV windows</button>
-          <button class="secondary" data-join-phone type="button">Join on this phone</button>
+          <button class="secondary" type="submit" data-i18n="home.openTv">Open TV windows</button>
+          <button class="secondary" data-join-phone type="button" data-i18n="home.joinPhone">Join on this phone</button>
         </form>
-        <p class="hint">Host: <strong>Chrome</strong> on the Galaxy Z Fold (not Samsung Internet). Brothers: scan <strong>Join on phones</strong> in <strong>Chrome on Android</strong> or <strong>Safari / Chrome on iPhone</strong> — no app store install. <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> is Fold-only mirroring.</p>
+        <p class="hint" data-i18n="home.hostHint" data-i18n-mode="html">Host: <strong>Chrome</strong> on the Galaxy Z Fold (not Samsung Internet). Brothers: scan <strong>Join on phones</strong> in <strong>Chrome on Android</strong> or <strong>Safari / Chrome on iPhone</strong> — no app store install. <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> is Fold-only mirroring.</p>
         <div class="meeting-mode">
-          <p class="control-label">Meeting mode</p>
-          <button class="chip" data-offline-mode type="button" aria-pressed="false" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
+          <p class="control-label" data-i18n="home.meetingMode">Meeting mode</p>
+          <button class="chip" data-offline-mode type="button" aria-pressed="false" data-i18n="home.offline" data-i18n-aria="home.offlineAria" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
             Offline / Local meeting
           </button>
           <p class="offline-banner" data-offline-banner hidden>
-            Offline translate (limited phrases). For full local setup see
-            <a href="#local-setup">laptop steps</a>.
+            <span data-i18n="home.offlineLead">Offline translate (limited phrases). For full local setup see</span>
+            <a href="#local-setup" data-i18n="home.laptopSteps">laptop steps</a>.
           </p>
-          <p class="hint">On: built-in dictionary (no MyMemory). Off: hosted default (MyMemory, then MinT if the daily quota is gone).</p>
+          <p class="hint" data-i18n="home.offlineHint">On: built-in dictionary (no MyMemory). Off: hosted default (MyMemory, then MinT if the daily quota is gone).</p>
         </div>
       </div>
       <aside class="install-card" id="local-setup" data-local-setup>
         ${localSetupInnerHtml()}
       </aside>
       <aside class="install-card" data-install>
-        <h2>Install on this phone</h2>
+        <h2 data-i18n="home.installTitle">Install on this phone</h2>
         <p class="install-copy" data-install-copy></p>
-        <button class="primary" data-install-btn type="button" hidden>Install app</button>
+        <button class="primary" data-install-btn type="button" data-i18n="home.installBtn" hidden>Install app</button>
         <ol class="install-steps" data-install-steps></ol>
       </aside>
     </section>
@@ -71,39 +73,19 @@ export function mountHome(root: HTMLElement): () => void {
     installBtn.hidden = standalone || !canPromptInstall();
 
     if (standalone) {
-      installCopy.textContent =
-        "This is the installed Fire and Fellowship app. Create a room here, then open the TV link on the meeting TV.";
-      installSteps.innerHTML = `
-        <li>Tap <strong>Create room on this phone</strong>.</li>
-        <li>Pick the topic of the day. Use <strong>Send to TV</strong> (QR / TV browser) or <strong>Smart View mode</strong> (mirror captions from the Fold quick panel).</li>
-        <li>Keep the Fold on this app while you speak. Exit Smart View mode to return to mic controls.</li>
-      `;
+      installCopy.textContent = t("home.installStandalone");
+      installSteps.innerHTML = t("home.installStandaloneSteps");
       return;
     }
 
     if (wasJustInstalled()) {
-      installCopy.textContent = "Installed. Open Fire and Fellowship from your home screen for meeting night.";
-      installSteps.innerHTML = `
-        <li>Find the <strong>Fire and Fellowship</strong> icon on the Fold home screen.</li>
-        <li>Launch it — you should see this app without the Chrome address bar.</li>
-        <li>Create a room, then open the TV link on the TV.</li>
-      `;
+      installCopy.textContent = t("home.installJust");
+      installSteps.innerHTML = t("home.installJustSteps");
       return;
     }
 
-    installCopy.textContent =
-      "Add Fire and Fellowship to the Fold home screen like a normal app. Meeting night is then a tap — no git or npm.";
-    installSteps.innerHTML = canPromptInstall()
-      ? `
-        <li>Tap <strong>Install app</strong> above and confirm.</li>
-        <li>Open <strong>Fire and Fellowship</strong> from the home screen (standalone, no address bar).</li>
-        <li>Create the room on the Fold, then open the TV link on the TV.</li>
-      `
-      : `
-        <li>Stay in <strong>Chrome</strong> (not Samsung Internet).</li>
-        <li>Tap Chrome’s menu (⋮) → <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-        <li>Open <strong>Fire and Fellowship</strong> from the home screen, then create a room.</li>
-      `;
+    installCopy.textContent = t("home.installGuide");
+    installSteps.innerHTML = canPromptInstall() ? t("home.installReadySteps") : t("home.installManualSteps");
   };
 
   const onCreate = () => goto("phone", generateRoomCode());
@@ -139,7 +121,7 @@ export function mountHome(root: HTMLElement): () => void {
   const unsubscribe = subscribeInstall(paintInstall);
   const unbindOffline = bindOfflineModeToggle(offlineBtn, { banner: offlineBanner });
   const unbindSetup = bindLocalSetup(localSetup);
-  paintInstall();
+  const unbindLang = bindUiLangBar(root, paintInstall);
 
   return () => {
     create?.removeEventListener("click", onCreate);
@@ -150,5 +132,6 @@ export function mountHome(root: HTMLElement): () => void {
     unsubscribe();
     unbindOffline();
     unbindSetup();
+    unbindLang();
   };
 }

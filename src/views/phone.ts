@@ -1,4 +1,5 @@
 import { brandBlock } from "../brand";
+import { applyI18n, readUiLang, subscribeUiLang, t } from "../ui-lang";
 import { appendFinalLine, applyFinalLine, finalizedLines, previewCaption } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
@@ -85,7 +86,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       <div class="phone-top">
         ${brandBlock()}
         <div class="phone-status">
-          <div class="room-pill">Room <strong data-room></strong></div>
+          <div class="room-pill"><span data-i18n="chrome.room">Room</span> <strong data-room></strong></div>
           <div class="status-pill"><span class="dot" data-dot></span><span data-status></span></div>
         </div>
       </div>
@@ -94,12 +95,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         <div class="phone-main">
           <div class="controls topic-controls">
             <div>
-              <p class="control-label">Topic of the day <button class="ghost topic-clear" data-clear-topic type="button">Clear</button></p>
+              <p class="control-label"><span data-i18n="host.topic">Topic of the day</span> <button class="ghost topic-clear" data-clear-topic type="button" data-i18n="host.clear">Clear</button></p>
               <div class="chips" data-topics></div>
               <form class="topic-insert" data-topic-form>
-                <input name="topic" autocomplete="off" enterkeyhint="go" placeholder="head of household, contentment, forgiveness…" />
-                <button class="primary topic-ask" data-ask type="submit">Ask for topic</button>
-                <button class="secondary" data-set-topic type="button">Set</button>
+                <input name="topic" autocomplete="off" enterkeyhint="go" data-i18n-placeholder="host.askPlaceholder" placeholder="head of household, contentment, forgiveness…" />
+                <button class="primary topic-ask" data-ask type="submit" data-i18n="host.ask">Ask for topic</button>
+                <button class="secondary" data-set-topic type="button" data-i18n="host.set">Set</button>
               </form>
               <p class="hint topic-ask-status" data-ask-status>Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.</p>
               <div class="topic-preview" data-topic-preview></div>
@@ -110,31 +111,31 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         <div class="phone-side">
           <div class="controls">
             <div class="meeting-mode">
-              <p class="control-label">Meeting mode</p>
-              <button class="chip" data-offline-mode type="button" aria-pressed="false" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
+              <p class="control-label" data-i18n="home.meetingMode">Meeting mode</p>
+              <button class="chip" data-offline-mode type="button" aria-pressed="false" data-i18n="home.offline" data-i18n-aria="home.offlineAria" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
                 Offline / Local meeting
               </button>
               <p class="offline-banner" data-offline-banner hidden>
-                Offline translate (limited phrases). For full local setup see
-                <button class="ghost setup-link" data-local-setup-open type="button" aria-haspopup="dialog" aria-controls="local-setup-dialog">laptop steps</button>.
+                <span data-i18n="home.offlineLead">Offline translate (limited phrases). For full local setup see</span>
+                <button class="ghost setup-link" data-local-setup-open type="button" aria-haspopup="dialog" aria-controls="local-setup-dialog" data-i18n="home.laptopSteps">laptop steps</button>.
               </p>
             </div>
             <div>
-              <p class="control-label">Spoken language</p>
+              <p class="control-label" data-i18n="host.spokenLanguage">Spoken language</p>
               <div class="chips" data-source></div>
             </div>
             <div>
-              <p class="control-label">TV layout</p>
+              <p class="control-label" data-i18n="host.tvLayout">TV layout</p>
               <div class="chips" data-layouts></div>
             </div>
             <div class="row-actions tv-path-actions">
-              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" aria-label="Send to TV — show QR and TV caption link">
+              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" data-i18n="host.sendToTv" data-i18n-aria="host.sendToTvAria" aria-label="Send to TV — show QR and TV caption link">
                 Send to TV
               </button>
-              <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" aria-label="Smart View mode — show caption layout for system mirroring">
+              <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" data-i18n="host.smartView" data-i18n-aria="host.smartViewAria" aria-label="Smart View mode — show caption layout for system mirroring">
                 Smart View mode
               </button>
-              <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" aria-label="Join on phones — show QR so brothers can watch and speak">
+              <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" data-i18n="host.joinPhones" data-i18n-aria="host.joinPhonesAria" aria-label="Join on phones — show QR so brothers can watch and speak">
                 Join on phones
               </button>
             </div>
@@ -147,12 +148,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
             </button>
             <p class="hint" data-error></p>
             <p class="floor-banner" data-floor></p>
-            <button class="secondary floor-reclaim" data-reclaim type="button" hidden>Reclaim mic</button>
-            <p class="hint mic-chrome-hint">Keep Chrome in the foreground while you speak.</p>
+            <button class="secondary floor-reclaim" data-reclaim type="button" data-i18n="host.reclaim" hidden>Reclaim mic</button>
+            <p class="hint mic-chrome-hint" data-i18n="host.micHint">Keep Chrome in the foreground while you speak.</p>
           </div>
 
           <div class="preview phone-caption-preview">
-            <p class="control-label">On this phone</p>
+            <p class="control-label" data-i18n="host.onThisPhone">On this phone</p>
             <p data-preview></p>
             <div class="tv-board phone-live-board" data-phone-board></div>
             <aside class="tv-topic" data-phone-topic hidden></aside>
@@ -160,12 +161,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
           <div class="controls">
             <div class="row-actions">
-              <button class="ghost" data-clear type="button">Clear windows</button>
-              <button class="ghost" data-home type="button">Leave</button>
+              <button class="ghost" data-clear type="button" data-i18n="host.clearWindows">Clear windows</button>
+              <button class="ghost" data-home type="button" data-i18n="chrome.leave">Leave</button>
             </div>
             <form class="typed-caption" data-type>
-              <input name="caption" autocomplete="off" enterkeyhint="send" placeholder="Or type a caption" />
-              <button class="primary" type="submit">Send</button>
+              <input name="caption" autocomplete="off" enterkeyhint="send" data-i18n-placeholder="join.orTypeCaption" placeholder="Or type a caption" />
+              <button class="primary" type="submit" data-i18n="chrome.send">Send</button>
             </form>
           </div>
         </div>
@@ -174,23 +175,23 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       <dialog class="send-tv-dialog" id="send-tv-dialog" data-send-tv-dialog aria-labelledby="send-tv-title">
         <div class="send-tv-sheet">
           <header class="send-tv-head">
-            <h2 id="send-tv-title">Send to TV</h2>
-            <button class="ghost send-tv-close" data-send-tv-close type="button">Close</button>
+            <h2 id="send-tv-title" data-i18n="host.sendTitle">Send to TV</h2>
+            <button class="ghost send-tv-close" data-send-tv-close type="button" data-i18n="chrome.close">Close</button>
           </header>
           <div class="send-tv-qr" data-send-tv-qr></div>
           <p class="send-tv-url" data-send-tv-url></p>
-          <button class="primary send-tv-copy" data-copy type="button">Copy TV link</button>
+          <button class="primary send-tv-copy" data-copy type="button" data-i18n="host.copyTv">Copy TV link</button>
           <ol class="send-tv-steps">
-            <li>On the TV browser, open this link or scan the QR.</li>
-            <li>Keep the Fold on the mic page.</li>
-            <li>Optional: three Chrome windows, one language per monitor — use the EN / ES / PT links below. That does not change other TVs in this room.</li>
+            <li data-i18n="host.sendStep1">On the TV browser, open this link or scan the QR.</li>
+            <li data-i18n="host.sendStep2">Keep the Fold on the mic page.</li>
+            <li data-i18n="host.sendStep3">Optional: three Chrome windows, one language per monitor — use the EN / ES / PT links below. That does not change other TVs in this room.</li>
           </ol>
-          <button class="ghost send-tv-open" data-open-tv type="button" aria-label="Open TV view on this device for testing">
+          <button class="ghost send-tv-open" data-open-tv type="button" data-i18n="host.openTv" data-i18n-aria="host.openTvAria" aria-label="Open TV view on this device for testing">
             Open TV view
           </button>
           <section class="send-tv-langs" data-send-tv-langs>
-            <h3>One language per monitor</h3>
-            <p class="hint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
+            <h3 data-i18n="host.oneLanguage">One language per monitor</h3>
+            <p class="hint" data-i18n="host.oneLanguageHint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
             <div class="send-tv-lang-list" data-send-tv-lang-list></div>
           </section>
         </div>
@@ -199,17 +200,17 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       <dialog class="send-tv-dialog" id="join-phones-dialog" data-join-phones-dialog aria-labelledby="join-phones-title">
         <div class="send-tv-sheet">
           <header class="send-tv-head">
-            <h2 id="join-phones-title">Join on phones</h2>
-            <button class="ghost send-tv-close" data-join-phones-close type="button">Close</button>
+            <h2 id="join-phones-title" data-i18n="host.joinTitle">Join on phones</h2>
+            <button class="ghost send-tv-close" data-join-phones-close type="button" data-i18n="chrome.close">Close</button>
           </header>
-          <p class="hint">Brothers scan to watch &amp; speak</p>
+          <p class="hint" data-i18n="host.brothersScan">Brothers scan to watch &amp; speak</p>
           <div class="send-tv-qr" data-join-phones-qr></div>
           <p class="send-tv-url" data-join-phones-url></p>
-          <button class="primary send-tv-copy" data-copy-join type="button">Copy join link</button>
+          <button class="primary send-tv-copy" data-copy-join type="button" data-i18n="host.copyJoin">Copy join link</button>
           <ol class="send-tv-steps">
-            <li>Each brother scans this QR (camera app or Chrome) — Android or iPhone.</li>
-            <li>Before the captions, they answer what language they are speaking and what language they want to watch, then tap Join. Watch stays on that phone. The TV still follows this room’s layout.</li>
-            <li>One speaker at a time. Chrome on Android is best for live speech; iPhone can always watch, and type a caption if the mic is not available.</li>
+            <li data-i18n="host.joinStep1">Each brother scans this QR (camera app or Chrome) — Android or iPhone.</li>
+            <li data-i18n="host.joinStep2">Before the captions, they answer what language they are speaking and what language they want to watch, then tap Join. Watch stays on that phone. The TV still follows this room’s layout.</li>
+            <li data-i18n="host.joinStep3">One speaker at a time. Chrome on Android is best for live speech; iPhone can always watch, and type a caption if the mic is not available.</li>
           </ol>
         </div>
       </dialog>
@@ -217,7 +218,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       <dialog class="setup-dialog" id="local-setup-dialog" data-local-setup-dialog aria-labelledby="local-setup-title">
         <div class="send-tv-sheet">
           <header class="send-tv-head">
-            <h2 id="local-setup-title">Laptop LAN / hotspot</h2>
+            <h2 id="local-setup-title" data-i18n="setup.title">Laptop LAN / hotspot</h2>
             <button class="ghost send-tv-close" data-local-setup-close type="button">Close</button>
           </header>
           <div data-local-setup>
@@ -231,27 +232,27 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <div class="tv-top">
             ${brandBlock(true)}
             <div class="tv-meta">
-              <div class="room-pill">Room <strong data-sv-room></strong></div>
+              <div class="room-pill"><span data-i18n="chrome.room">Room</span> <strong data-sv-room></strong></div>
               <div class="status-pill"><span class="dot" data-sv-dot></span><span data-sv-status></span></div>
             </div>
           </div>
           <aside class="tv-topic" data-sv-topic hidden></aside>
           <main class="tv-board" data-sv-board></main>
           <div class="smart-view-dock">
-            <p class="smart-view-tip">Now open system Smart View → My TV. TV will mirror these captions.</p>
+            <p class="smart-view-tip" data-i18n="host.smartTip">Now open system Smart View → My TV. TV will mirror these captions.</p>
             <div class="smart-view-controls">
               <div class="smart-view-source" role="group" aria-label="Spoken language">
-                <span class="smart-view-source-label">Spoken</span>
+                <span class="smart-view-source-label" data-i18n="join.spoken">Spoken</span>
                 <div class="chips smart-view-source-chips" data-smart-source></div>
               </div>
-              <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="true" aria-label="Captions only — hide the topic handout on this mirrored view">
+              <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="true" data-i18n="join.captionsOnly" data-i18n-aria="join.captionsOnlyAria" aria-label="Captions only — hide the topic handout on this mirrored view">
                 Captions only
               </button>
               <button class="smart-view-mic" data-smart-mic type="button" aria-pressed="false">
                 ${micIcon}
                 <small data-smart-mic-label>Start</small>
               </button>
-              <button class="secondary" data-exit-smart-view type="button">Exit Smart View mode</button>
+              <button class="secondary" data-exit-smart-view type="button" data-i18n="host.exitSmart">Exit Smart View mode</button>
             </div>
           </div>
         </section>
@@ -278,10 +279,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   layoutBox.innerHTML = LAYOUTS.map(
     (item) => `<button class="chip" type="button" data-layout="${item.id}">${item.label}</button>`,
   ).join("");
-  topicBox.innerHTML = TOPIC_LIST.map(
-    (topic) =>
-      `<button class="chip" type="button" data-topic="${topic.id}">${escapeHtml(topic.title.en)}</button>`,
-  ).join("");
+  const paintTopicChips = () => {
+    topicBox.innerHTML = TOPIC_LIST.map(
+      (topic) =>
+        `<button class="chip" type="button" data-topic="${topic.id}">${escapeHtml(localized(topic.title, readUiLang()))}</button>`,
+    ).join("");
+  };
+  paintTopicChips();
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
   const sendBtn = root.querySelector("[data-send-tv]") as HTMLButtonElement;
@@ -340,21 +344,22 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     els.room.textContent = state.room;
     const blocked = floorHeldByOther(floor, peerId);
     const holding = isFloorHolder(floor, peerId);
-    const tvNote = peers.tvs > 0 ? `TV connected (${peers.tvs})` : "Waiting for TV";
-    const guestNote = peers.guests > 0 ? ` · ${peers.guests} on phones` : "";
-    const connNote = connStatus === "live" ? `${tvNote}${guestNote}` : connStatus === "connecting" ? "Connecting…" : "Reconnecting…";
-    els.status.textContent = state.listening ? `Listening · ${connNote}` : connNote;
+    const tvNote = peers.tvs > 0 ? `${t("host.tvConnected")} (${peers.tvs})` : t("host.waitingForTv");
+    const guestNote = peers.guests > 0 ? ` · ${peers.guests} ${t("host.onPhones")}` : "";
+    const connNote =
+      connStatus === "live" ? `${tvNote}${guestNote}` : connStatus === "connecting" ? t("chrome.connecting") : t("chrome.reconnecting");
+    els.status.textContent = state.listening ? `${t("chrome.listening")} · ${connNote}` : connNote;
     els.dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     els.mic.classList.toggle("hot", holding && state.listening);
     els.mic.disabled = blocked;
     els.mic.setAttribute("aria-pressed", String(holding && state.listening));
-    els.micLabel.textContent = holding && state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    els.micLabel.textContent = holding && state.listening ? t("chrome.stop") : blocked ? t("chrome.wait") : t("chrome.start");
     if (blocked) {
       els.floor.textContent = someoneElseSpeaking(floor);
     } else if (holding && state.listening) {
-      els.floor.textContent = "You're speaking";
+      els.floor.textContent = t("host.youSpeaking");
     } else if (peers.guests > 0) {
-      els.floor.textContent = "Mic is free. Brothers can take a turn from their phones.";
+      els.floor.textContent = t("host.micFree");
     } else {
       els.floor.textContent = "";
     }
@@ -367,9 +372,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     } else if (spoken) {
       els.preview.textContent = spoken;
     } else if (holding && state.listening) {
-      els.preview.textContent = "Listening…";
+      els.preview.textContent = t("chrome.listeningEllipsis");
     } else {
-      els.preview.textContent = "Captions will appear here and on the TV.";
+      els.preview.textContent = t("host.captionsHere");
     }
     els.preview.classList.toggle("interim", Boolean(liveInterim && holding) || (holding && state.listening && !lastFinal));
     paintCaptionBoard(
@@ -391,14 +396,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     smartMic.classList.toggle("hot", holding && state.listening);
     smartMic.disabled = blocked;
     smartMic.setAttribute("aria-pressed", String(holding && state.listening));
-    els.smartMicLabel.textContent = holding && state.listening ? "Stop" : blocked ? "Wait" : "Start";
+    els.smartMicLabel.textContent = holding && state.listening ? t("chrome.stop") : blocked ? t("chrome.wait") : t("chrome.start");
     els.svRoom.textContent = state.room;
     const speaker =
       blocked && floor.holderName
         ? someoneElseSpeaking(floor)
         : state.listening
-          ? "Listening · Smart View mode"
-          : "Smart View mode";
+          ? `${t("chrome.listening")} · ${t("host.smartView")}`
+          : t("host.smartView");
     els.svStatus.textContent = speaker;
     els.svDot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     if (smartViewMode) {
@@ -428,14 +433,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       btn.classList.toggle("active", state.topic?.id === btn.dataset.topic);
     }
     askBtn.disabled = askBusy;
-    askBtn.textContent = askBusy ? "Writing…" : "Ask for topic";
+    askBtn.textContent = askBusy ? t("host.writing") : t("host.ask");
     els.topicInput.disabled = askBusy;
     setBtn.disabled = askBusy;
     if (askBusy) {
-      askStatus.innerHTML = `Writing a handout for “${escapeHtml(askQuery)}”… <button class="ghost topic-ask-cancel" data-cancel-ask type="button">Cancel</button>`;
-      topicPreview.innerHTML = `<p class="hint">Hang on — verse, hook, teaching, and discussion questions are coming.</p>`;
+      askStatus.innerHTML = `${escapeHtml(t("host.writingFor", { query: askQuery }))} <button class="ghost topic-ask-cancel" data-cancel-ask type="button">${escapeHtml(t("chrome.cancel"))}</button>`;
+      topicPreview.innerHTML = `<p class="hint">${escapeHtml(t("host.hangOn"))}</p>`;
     } else {
-      askStatus.innerHTML = `Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.`;
+      askStatus.innerHTML = t("host.askStatus");
       topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
     }
   }
@@ -698,7 +703,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         if (signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
         askBusy = false;
         askQuery = "";
-        error = err instanceof Error ? err.message : "Could not write that handout.";
+        error = err instanceof Error ? err.message : t("host.couldNotWrite");
         renderDynamic();
       });
   };
@@ -724,8 +729,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
             <p class="control-label">${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</p>
             <p class="send-tv-lang-url">${escapeHtml(langUrl)}</p>
             <div class="send-tv-lang-actions">
-              <button class="secondary" data-copy-lang="${lang}" type="button">Copy ${LANG_SHORT[lang]} link</button>
-              <button class="ghost" data-open-lang="${lang}" type="button">Open</button>
+              <button class="secondary" data-copy-lang="${lang}" type="button">${escapeHtml(t("host.copyLangLink", { lang: LANG_SHORT[lang] }))}</button>
+              <button class="ghost" data-open-lang="${lang}" type="button">${escapeHtml(t("host.open"))}</button>
             </div>
           </div>
         </article>
@@ -741,7 +746,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const onJoinPhones = () => {
     paintJoinPhones();
-    copyJoinBtn.textContent = "Copy join link";
+    copyJoinBtn.textContent = t("host.copyJoin");
     joinBtn.setAttribute("aria-expanded", "true");
     if (typeof joinDialog.showModal === "function") joinDialog.showModal();
     else joinDialog.setAttribute("open", "");
@@ -765,16 +770,16 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const url = joinUrl(room);
     try {
       await navigator.clipboard.writeText(url);
-      error = "Join link copied.";
-      copyJoinBtn.textContent = "Copied";
+      error = t("host.joinCopied");
+      copyJoinBtn.textContent = t("chrome.copied");
       window.clearTimeout(copyJoinTimer);
       copyJoinTimer = window.setTimeout(() => {
-        copyJoinBtn.textContent = "Copy join link";
+        copyJoinBtn.textContent = t("host.copyJoin");
       }, 1600);
       renderDynamic();
     } catch {
       error = url;
-      copyJoinBtn.textContent = "Copy join link";
+      copyJoinBtn.textContent = t("host.copyJoin");
       renderDynamic();
     }
   };
@@ -810,7 +815,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const onSendTv = () => {
     paintSendTv();
-    copyBtn.textContent = "Copy TV link";
+    copyBtn.textContent = t("host.copyTv");
     sendBtn.setAttribute("aria-expanded", "true");
     if (typeof sendDialog.showModal === "function") sendDialog.showModal();
     else sendDialog.setAttribute("open", "");
@@ -844,11 +849,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     }
     if (!copyLangBtn) return;
     void (async () => {
-      const restore = `Copy ${LANG_SHORT[langValue]} link`;
+      const restore = t("host.copyLangLink", { lang: LANG_SHORT[langValue] });
       try {
         await navigator.clipboard.writeText(url);
-        error = `${LANG_SHORT[langValue]} TV link copied.`;
-        copyLangBtn.textContent = "Copied";
+        error = t("host.langCopied", { lang: LANG_SHORT[langValue] });
+        copyLangBtn.textContent = t("chrome.copied");
         window.clearTimeout(copyLangTimers[langValue]);
         copyLangTimers[langValue] = window.setTimeout(() => {
           copyLangBtn.textContent = restore;
@@ -865,16 +870,16 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const url = tvUrl(room);
     try {
       await navigator.clipboard.writeText(url);
-      error = "TV link copied.";
-      copyBtn.textContent = "Copied";
+      error = t("host.tvCopied");
+      copyBtn.textContent = t("chrome.copied");
       window.clearTimeout(copyLabelTimer);
       copyLabelTimer = window.setTimeout(() => {
-        copyBtn.textContent = "Copy TV link";
+        copyBtn.textContent = t("host.copyTv");
       }, 1600);
       renderDynamic();
     } catch {
       error = url;
-      copyBtn.textContent = "Copy TV link";
+      copyBtn.textContent = t("host.copyTv");
       renderDynamic();
     }
   };
@@ -1031,6 +1036,12 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   });
 
   renderDynamic();
+  applyI18n(root);
+  const unsubUiLang = subscribeUiLang(() => {
+    paintTopicChips();
+    applyI18n(root);
+    renderDynamic();
+  });
 
   return () => {
     speech.stop();
@@ -1074,6 +1085,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     copyJoinBtn.removeEventListener("click", onCopyJoin);
     onCloseJoinPhones();
     onCloseSendTv();
+    unsubUiLang();
   };
 }
 
@@ -1100,13 +1112,13 @@ function writeCaptionsOnlyPref(value: boolean) {
 
 function renderTopicPreview(topic: TopicContent | null, lang: Lang): string {
   if (!hasTopicBody(topic) || !topic) {
-    return `<p class="hint">Tap a chip, or type a theme and Ask for topic. The verse and teaching go to the TV.</p>`;
+    return `<p class="hint">${escapeHtml(t("host.topicEmpty"))}</p>`;
   }
   const title = localized(topic.title, lang);
   const verse = localized(topic.verse, lang);
   return `
     ${title ? `<p class="topic-preview-kicker">${escapeHtml(title)}</p>` : ""}
     ${renderTopicHandout(topic, lang)}
-    ${!verse && topic.id === "custom" ? `<p class="hint">No built-in verse for this custom topic.</p>` : ""}
+    ${!verse && topic.id === "custom" ? `<p class="hint">${escapeHtml(t("host.noVerse"))}</p>` : ""}
   `;
 }
