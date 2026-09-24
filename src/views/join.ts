@@ -79,7 +79,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     });
 
   root.innerHTML = `
-    <section class="screen join-setup" data-join-setup>
+    <section class="screen join-setup entry-scene scene-bg" data-join-setup>
       ${brandBlock(true)}
       ${uiLangBarHtml("join-ui-lang-label")}
       <p class="lede join-setup-lead"><span data-i18n="join.roomWord">Room</span> <strong data-setup-room></strong><span data-i18n="join.leadTail">. Answer two questions, then join.</span></p>

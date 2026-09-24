@@ -14,7 +14,7 @@ import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
 
 export function mountHome(root: HTMLElement): () => void {
   root.innerHTML = `
-    <section class="screen home-screen">
+    <section class="screen home-screen entry-scene scene-bg">
       ${uiLangBarHtml("home-ui-lang-label")}
       ${brandBlock()}
       <div class="stack home-actions">
