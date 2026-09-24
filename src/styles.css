@@ -132,12 +132,114 @@ textarea {
   text-transform: uppercase;
   font-size: 0.72rem;
   font-weight: 500;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+html[data-app-lang="es"] .brand-tagline,
+html[data-app-lang="pt"] .brand-tagline {
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
 }
 
 .brand-compact .brand-tagline {
   margin-top: 0.08rem;
   font-size: 0.62rem;
   letter-spacing: 0.16em;
+}
+
+html[data-app-lang="es"] .brand-compact .brand-tagline,
+html[data-app-lang="pt"] .brand-compact .brand-tagline {
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+}
+
+/* Home and join-setup language bar. Same chips as Spoken / Watch, but this
+   chooses the app UI language and is stored apart from those caption prefs. */
+.ui-lang-bar {
+  margin: 1.15rem 0 0.15rem;
+  width: min(100%, 28rem);
+}
+
+/* Home puts this bar first, before the brand, so a guest can switch
+   language before reading anything else. */
+.home-screen .ui-lang-bar {
+  margin: 0 0 1.15rem;
+}
+
+.home-screen .ui-lang-bar .control-label {
+  color: var(--cream);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.home-screen .ui-lang-bar .chip {
+  min-height: 52px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cream);
+  border-color: #6a5748;
+  background: var(--bg-elev);
+}
+
+.home-screen .ui-lang-bar .chip.active {
+  background: linear-gradient(180deg, #f07a3d, var(--ember));
+  border-color: transparent;
+  color: #fff8f2;
+}
+
+.home-actions {
+  margin-top: 1.2rem;
+}
+
+.home-action {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.home-action-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.home-screen .lede {
+  margin-top: 1.35rem;
+}
+
+.ui-lang-bar .control-label {
+  margin-bottom: 0.45rem;
+}
+
+.ui-lang-bar .chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.ui-lang-bar .chip {
+  width: 100%;
+  padding: 0.65rem 0.3rem;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.ui-lang-bar + .lede {
+  margin-top: 1.05rem;
+}
+
+.join-setup .ui-lang-bar {
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 380px) {
+  .ui-lang-bar .chip {
+    font-size: 0.82rem;
+    padding-inline: 0.15rem;
+  }
 }
 
 /* Supporting line under the gold tagline. Muted and a step smaller so it
@@ -835,7 +937,7 @@ textarea {
 
 .join-pref {
   display: grid;
-  grid-template-columns: 4.4rem minmax(0, 1fr);
+  grid-template-columns: 5.6rem minmax(0, 1fr);
   align-items: center;
   column-gap: 0.35rem;
 }

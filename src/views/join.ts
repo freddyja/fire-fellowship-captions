@@ -1,4 +1,5 @@
 import { brandBlock } from "../brand";
+import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
 import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
 import { connectRoom, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
@@ -80,31 +81,32 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   root.innerHTML = `
     <section class="screen join-setup" data-join-setup>
       ${brandBlock(true)}
-      <p class="lede join-setup-lead">Room <strong data-setup-room></strong>. Answer two questions, then join.</p>
+      ${uiLangBarHtml("join-ui-lang-label")}
+      <p class="lede join-setup-lead"><span data-i18n="join.roomWord">Room</span> <strong data-setup-room></strong><span data-i18n="join.leadTail">. Answer two questions, then join.</span></p>
       <fieldset class="join-setup-q">
-        <legend id="join-spoken-q">What language are you speaking?</legend>
+        <legend id="join-spoken-q" data-i18n="join.spokenQ">What language are you speaking?</legend>
         <div class="chips" data-setup-source role="group" aria-labelledby="join-spoken-q"></div>
       </fieldset>
       <fieldset class="join-setup-q">
-        <legend id="join-watch-q">What language do you want to watch?</legend>
+        <legend id="join-watch-q" data-i18n="join.watchQ">What language do you want to watch?</legend>
         <div class="chips join-setup-watch" data-setup-watch role="group" aria-labelledby="join-watch-q"></div>
-        <p class="join-watch-note">This phone only. It does not change the host, the TV, or other phones.</p>
+        <p class="join-watch-note" data-i18n="join.watchNoteLong">This phone only. It does not change the host, the TV, or other phones.</p>
       </fieldset>
-      <p class="hint">Spoken is for your mic and Type + Send. Watch is the caption language on this phone only.</p>
+      <p class="hint" data-i18n="join.hint">Spoken is for your mic and Type + Send. Watch is the caption language on this phone only.</p>
       <label class="join-name">
-        <span>Your name</span>
-        <input data-setup-name maxlength="24" autocomplete="name" placeholder="Guest" enterkeyhint="done" />
+        <span data-i18n="join.yourName">Your name</span>
+        <input data-setup-name maxlength="24" autocomplete="name" data-i18n-placeholder="join.guestPlaceholder" placeholder="Guest" enterkeyhint="done" />
       </label>
-      <button class="primary join-setup-go" data-join-continue type="button">Join</button>
-      <button class="ghost" data-setup-home type="button">Leave</button>
+      <button class="primary join-setup-go" data-join-continue type="button" data-i18n="join.join">Join</button>
+      <button class="ghost" data-setup-home type="button" data-i18n="chrome.leave">Leave</button>
     </section>
     <section class="screen join-screen" data-join-screen hidden>
       <div class="tv-top">
         ${brandBlock(true)}
         <div class="tv-meta">
-          <div class="room-pill">Room <strong data-room></strong></div>
+          <div class="room-pill"><span data-i18n="chrome.room">Room</span> <strong data-room></strong></div>
           <div class="status-pill"><span class="dot" data-dot></span><span data-status></span></div>
-          <button class="ghost" data-home type="button">Leave</button>
+          <button class="ghost" data-home type="button" data-i18n="chrome.leave">Leave</button>
         </div>
       </div>
       <p class="floor-banner" data-floor></p>
@@ -115,22 +117,22 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       <div class="join-dock">
         <p class="smart-view-tip" data-stt-hint></p>
         <label class="join-name">
-          <span>Your name</span>
-          <input data-name maxlength="24" autocomplete="name" placeholder="Guest" enterkeyhint="done" />
+          <span data-i18n="join.yourName">Your name</span>
+          <input data-name maxlength="24" autocomplete="name" data-i18n-placeholder="join.guestPlaceholder" placeholder="Guest" enterkeyhint="done" />
         </label>
         <div class="join-prefs">
           <div class="join-pref">
-            <p class="control-label">Spoken</p>
-            <div class="chips" data-source role="group" aria-label="Spoken language"></div>
+            <p class="control-label" data-i18n="join.spoken">Spoken</p>
+            <div class="chips" data-source role="group" data-i18n-aria="join.spokenAria" aria-label="Spoken language"></div>
           </div>
           <div class="join-pref">
-            <p class="control-label">Watch</p>
-            <div class="chips" data-watch-choices role="group" aria-label="Watch"></div>
-            <p class="join-watch-note">This phone only</p>
+            <p class="control-label" data-i18n="join.watch">Watch</p>
+            <div class="chips" data-watch-choices role="group" data-i18n-aria="join.watchAria" aria-label="Watch"></div>
+            <p class="join-watch-note" data-i18n="join.phoneOnly">This phone only</p>
           </div>
         </div>
         <div class="smart-view-controls join-actions">
-          <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="false">
+          <button class="chip smart-view-captions-only" data-captions-only type="button" aria-pressed="false" data-i18n="join.captionsOnly">
             Captions only
           </button>
           <button class="smart-view-mic" data-mic type="button" aria-pressed="false">
@@ -140,8 +142,8 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         </div>
         <p class="hint" data-error></p>
         <form class="typed-caption join-type" data-type>
-          <input name="caption" autocomplete="off" autocorrect="on" autocapitalize="sentences" enterkeyhint="send" placeholder="Type a caption" />
-          <button class="primary" type="submit">Send</button>
+          <input name="caption" autocomplete="off" autocorrect="on" autocapitalize="sentences" enterkeyhint="send" data-i18n-placeholder="join.typeCaption" placeholder="Type a caption" />
+          <button class="primary" type="submit" data-i18n="chrome.send">Send</button>
         </form>
       </div>
     </section>
@@ -153,10 +155,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   ).join("");
   const watchBox = root.querySelector("[data-watch-choices]") as HTMLElement;
   watchBox.innerHTML = `
-    <button class="chip" type="button" data-watch="en" aria-pressed="false">EN only</button>
-    <button class="chip" type="button" data-watch="es" aria-pressed="false">ES only</button>
-    <button class="chip" type="button" data-watch="pt" aria-pressed="false">PT only</button>
-    <button class="chip" type="button" data-watch="all" aria-pressed="false">All three</button>
+    <button class="chip" type="button" data-watch="en" aria-pressed="false" data-i18n="join.enOnly">EN only</button>
+    <button class="chip" type="button" data-watch="es" aria-pressed="false" data-i18n="join.esOnly">ES only</button>
+    <button class="chip" type="button" data-watch="pt" aria-pressed="false" data-i18n="join.ptOnly">PT only</button>
+    <button class="chip" type="button" data-watch="all" aria-pressed="false" data-i18n="join.allThree">All three</button>
   `;
 
   const typeForm = root.querySelector("[data-type]") as HTMLFormElement;
@@ -182,10 +184,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       `<button class="chip" type="button" data-setup-lang="${lang}" aria-pressed="false">${LANG_SHORT[lang]} ${LANG_LABEL[lang]}</button>`,
   ).join("");
   setupWatch.innerHTML = `
-    <button class="chip" type="button" data-setup-watch="en" aria-pressed="false">EN only</button>
-    <button class="chip" type="button" data-setup-watch="es" aria-pressed="false">ES only</button>
-    <button class="chip" type="button" data-setup-watch="pt" aria-pressed="false">PT only</button>
-    <button class="chip" type="button" data-setup-watch="all" aria-pressed="false">All three</button>
+    <button class="chip" type="button" data-setup-watch="en" aria-pressed="false" data-i18n="join.enOnly">EN only</button>
+    <button class="chip" type="button" data-setup-watch="es" aria-pressed="false" data-i18n="join.esOnly">ES only</button>
+    <button class="chip" type="button" data-setup-watch="pt" aria-pressed="false" data-i18n="join.ptOnly">PT only</button>
+    <button class="chip" type="button" data-setup-watch="all" aria-pressed="false" data-i18n="join.allThree">All three</button>
   `;
 
   const els = {
@@ -204,16 +206,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   };
 
   function sttHintText(): string {
-    if (stt.insecure) {
-      return "This join link must be HTTPS for the microphone. You can still watch captions and type to send.";
-    }
-    if (!stt.canListen) {
-      return "Live mic needs Chrome on Android. On iPhone you can always watch — type a caption to speak.";
-    }
-    if (stt.preferType) {
-      return "If the mic does not start (common on iPhone Safari), type a caption instead. One brother at a time.";
-    }
-    return "Same meeting as the host phone and the TV. One brother speaks at a time.";
+    if (stt.insecure) return t("join.httpsHint");
+    if (!stt.canListen) return t("join.chromeAndroidHint");
+    if (stt.preferType) return t("join.iphoneTypeHint");
+    return t("join.sameMeetingHint");
   }
 
   function renderDynamic() {
@@ -221,33 +217,31 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     const blocked = floorHeldByOther(floor, peerId);
     const showMic = stt.canListen;
     els.room.textContent = state.room;
-    const guestNote = peers.guests > 0 ? `${peers.guests} on phones` : "Joined";
-    const tvNote = peers.tvs > 0 ? ` · TV connected (${peers.tvs})` : "";
+    const guestNote = peers.guests > 0 ? `${peers.guests} ${t("host.onPhones")}` : t("join.joined");
+    const tvNote = peers.tvs > 0 ? ` · ${t("host.tvConnected")} (${peers.tvs})` : "";
     const connNote =
-      connStatus === "live" ? `${guestNote}${tvNote}` : connStatus === "connecting" ? "Connecting…" : "Reconnecting…";
-    els.status.textContent = holding && state.listening ? `Listening · ${connNote}` : connNote;
+      connStatus === "live" ? `${guestNote}${tvNote}` : connStatus === "connecting" ? t("chrome.connecting") : t("chrome.reconnecting");
+    els.status.textContent = holding && state.listening ? `${t("chrome.listening")} · ${connNote}` : connNote;
     els.dot.className = `dot ${holding && state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     els.mic.hidden = !showMic;
     els.mic.classList.toggle("hot", holding && state.listening);
     els.mic.disabled = blocked;
     els.mic.setAttribute("aria-pressed", String(holding && state.listening));
-    els.micLabel.textContent = holding ? "Stop" : blocked ? "Wait" : "Start";
+    els.micLabel.textContent = holding ? t("chrome.stop") : blocked ? t("chrome.wait") : t("chrome.start");
     if (blocked) {
       els.floor.textContent = someoneElseSpeaking(floor);
     } else if (holding && state.listening) {
-      els.floor.textContent = typeFallback
-        ? "You have the floor — speak if the mic works, or type a caption."
-        : "You're speaking — captions go to every phone and the TV.";
+      els.floor.textContent = typeFallback ? t("join.floorType") : t("join.floorSpeaking");
     } else if (holding) {
-      els.floor.textContent = "You have the mic. Type a caption, or Stop to free the floor.";
+      els.floor.textContent = t("join.floorHolding");
     } else if (!showMic) {
-      els.floor.textContent = "Mic is free. Type a caption to send it to every phone and the TV.";
+      els.floor.textContent = t("join.floorTypeOnly");
     } else {
-      els.floor.textContent = "Mic is free. Pick a spoken language, then Start — or type a caption.";
+      els.floor.textContent = t("join.floorFree");
     }
     els.floor.hidden = false;
     sttHint.textContent = sttHintText();
-    const extra = lastCaptionWasMock ? "Offline translate (limited phrases)." : "";
+    const extra = lastCaptionWasMock ? t("chrome.offlineLimited") : "";
     els.error.textContent = [error, extra].filter(Boolean).join(" ");
     screenEl.classList.toggle("is-captions-only", captionsOnly);
     captionsOnlyBtn.classList.toggle("active", captionsOnly);
@@ -255,7 +249,11 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     typeForm.classList.toggle("is-primary", typeFallback || !showMic);
     typeInput.disabled = blocked;
     typeSend.disabled = blocked;
-    typeInput.placeholder = blocked ? "Wait — someone else is speaking" : typeFallback || !showMic ? "Type a caption" : "Or type a caption";
+    typeInput.placeholder = blocked
+      ? t("join.waitPlaceholder")
+      : typeFallback || !showMic
+        ? t("join.typeCaption")
+        : t("join.orTypeCaption");
     for (const btn of sourceBox.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       btn.classList.toggle("active", btn.dataset.lang === sourceLang);
     }
@@ -629,6 +627,10 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   setupContinue.addEventListener("click", enterRoom);
   root.querySelector("[data-setup-home]")?.addEventListener("click", onSetupHome);
   paintSetup();
+  const unbindLang = bindUiLangBar(root, () => {
+    paintSetup();
+    renderDynamic();
+  });
 
   return () => {
     speech.stop();
@@ -648,6 +650,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     setupWatch.removeEventListener("click", onSetupWatch);
     setupName.removeEventListener("change", onSetupName);
     setupContinue.removeEventListener("click", enterRoom);
+    unbindLang();
   };
 }
 

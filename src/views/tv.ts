@@ -1,4 +1,5 @@
 import { brandBlock } from "../brand";
+import { applyI18n, t } from "../ui-lang";
 import { finalizedLines } from "../caption-history";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
@@ -17,10 +18,10 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
       <div class="tv-top">
         ${brandBlock(true)}
         <div class="tv-meta">
-          <div class="room-pill">Room <strong data-room></strong></div>
+          <div class="room-pill"><span data-i18n="chrome.room">Room</span> <strong data-room></strong></div>
           <div class="room-pill" data-lang-pill hidden></div>
           <div class="status-pill"><span class="dot" data-dot></span><span data-status></span></div>
-          <button class="ghost" data-home type="button">Leave</button>
+          <button class="ghost" data-home type="button" data-i18n="chrome.leave">Leave</button>
         </div>
       </div>
       <aside class="tv-topic" data-topic hidden></aside>
@@ -50,13 +51,13 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
     }
     const phoneNote =
       state.listening && state.floor?.holderName
-        ? `${state.floor.holderName} speaking`
+        ? `${state.floor.holderName} ${t("tv.speaking")}`
         : peers.phones > 0
           ? peers.guests > 0
-            ? `Phones connected (${peers.phones})`
-            : "Phone connected"
-          : "Waiting for phone";
-    statusEl.textContent = state.listening ? `Live · ${phoneNote}` : phoneNote;
+            ? `${t("tv.phonesConnected")} (${peers.phones})`
+            : t("tv.phoneConnected")
+          : t("tv.waiting");
+    statusEl.textContent = state.listening ? `${t("tv.live")} · ${phoneNote}` : phoneNote;
     dot.className = `dot ${state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
     paintCaptionBoard(
       board,
@@ -87,6 +88,7 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
   });
 
   render();
+  applyI18n(root);
 
   return () => {
     conn.close();
