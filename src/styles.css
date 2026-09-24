@@ -2218,3 +2218,225 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
     padding-inline: 0.35rem;
   }
 }
+
+/* Conference-room photo: home, join setup, and the host phone.
+   The TV browser page and the live join caption page stay on the solid theme.
+   Send to TV is a solid dialog, not this photo. */
+.scene-bg {
+  --scene-scrim: linear-gradient(
+    180deg,
+    rgba(5, 12, 16, 0.84) 0%,
+    rgba(5, 12, 16, 0.72) 30%,
+    rgba(5, 12, 16, 0.5) 64%,
+    rgba(5, 12, 16, 0.58) 100%
+  );
+  --scene-photo: url("/bg-office-mics.webp");
+  background-color: #071014;
+  background-image: var(--scene-scrim), var(--scene-photo);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  background-size: cover, cover;
+}
+
+/* Host, home, and join setup scroll. Pin both layers to the viewport so the
+   photo is not stretched down the page. */
+.home-screen.scene-bg,
+.phone-screen.scene-bg,
+.join-setup.scene-bg {
+  background-attachment: fixed, fixed;
+}
+
+/* Smart View mirrors big caption panes. Drop the photo so those cards sit
+   on the same solid high-contrast ground as the TV browser. */
+.phone-screen.is-smart-view.scene-bg {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(1200px 620px at 50% -12%, rgba(226, 88, 34, 0.2), transparent 55%),
+    radial-gradient(700px 380px at 100% 100%, rgba(232, 184, 109, 0.08), transparent 45%);
+  background-attachment: scroll;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: auto;
+}
+
+.screen.tv-screen,
+.screen.join-screen {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(1200px 620px at 50% -12%, rgba(226, 88, 34, 0.2), transparent 55%),
+    radial-gradient(700px 380px at 100% 100%, rgba(232, 184, 109, 0.08), transparent 45%);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: auto;
+}
+
+.screen.entry-scene {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  align-items: center;
+}
+
+.entry-scene > * {
+  width: min(100%, 28rem);
+}
+
+.entry-scene .brand-text h1,
+.entry-scene .brand-tagline,
+.entry-scene .brand-subline,
+.entry-scene .brand-credit,
+.entry-scene .lede,
+.entry-scene .home-action-help,
+.entry-scene .hint,
+.entry-scene .control-label,
+.entry-scene .field span,
+.entry-scene .join-setup-q legend,
+.entry-scene .join-setup-lead,
+.entry-scene .join-name,
+.entry-scene .join-watch-note,
+.entry-scene .ghost {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 16px rgba(0, 0, 0, 0.55);
+}
+
+.entry-scene .brand-credit,
+.entry-scene .brand-subline,
+.entry-scene .lede,
+.entry-scene .home-action-help,
+.entry-scene .hint,
+.entry-scene .control-label,
+.entry-scene .field span,
+.entry-scene .join-setup-lead,
+.entry-scene .join-name,
+.entry-scene .ghost {
+  color: #efe4d4;
+}
+
+.entry-scene .chip,
+.home-screen.scene-bg .ui-lang-bar .chip {
+  background: rgba(18, 12, 9, 0.74);
+  border-color: rgba(244, 234, 216, 0.36);
+  color: #fff8f2;
+  backdrop-filter: blur(8px);
+}
+
+.entry-scene .chip.active,
+.home-screen.scene-bg .ui-lang-bar .chip.active {
+  background: rgba(226, 88, 34, 0.48);
+  border-color: #f3a57a;
+  color: #fff8f2;
+}
+
+.entry-scene .meeting-mode .chip.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 184, 109, 0.22);
+}
+
+.entry-scene .secondary,
+.entry-scene .field input,
+.entry-scene .join-name input {
+  background: rgba(18, 12, 9, 0.84);
+  border-color: rgba(244, 234, 216, 0.3);
+  color: var(--cream);
+}
+
+.entry-scene .primary {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.entry-scene .install-card {
+  background: rgba(27, 19, 15, 0.92);
+  border-color: rgba(244, 234, 216, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+/* Host phone sits on the same photo. Caption panes stay on dark cards so
+   EN | ES | PT text does not pick up the sunset. */
+.phone-screen.scene-bg .brand-text h1,
+.phone-screen.scene-bg .brand-tagline,
+.phone-screen.scene-bg .brand-subline,
+.phone-screen.scene-bg .brand-credit,
+.phone-screen.scene-bg .control-label,
+.phone-screen.scene-bg .hint,
+.phone-screen.scene-bg .ghost,
+.phone-screen.scene-bg .floor-banner,
+.phone-screen.scene-bg .tv-meta,
+.phone-screen.scene-bg .topic-preview-kicker {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 16px rgba(0, 0, 0, 0.55);
+}
+
+.phone-screen.scene-bg .brand-credit,
+.phone-screen.scene-bg .brand-subline,
+.phone-screen.scene-bg .control-label,
+.phone-screen.scene-bg .hint,
+.phone-screen.scene-bg .ghost {
+  color: #efe4d4;
+}
+
+.phone-screen.scene-bg .chip,
+.phone-screen.scene-bg .room-pill,
+.phone-screen.scene-bg .status-pill {
+  background: rgba(18, 12, 9, 0.74);
+  border-color: rgba(244, 234, 216, 0.36);
+  color: #fff8f2;
+  backdrop-filter: blur(8px);
+}
+
+.phone-screen.scene-bg .chip.active {
+  background: rgba(226, 88, 34, 0.48);
+  border-color: #f3a57a;
+  color: #fff8f2;
+}
+
+.phone-screen.scene-bg .meeting-mode .chip.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 184, 109, 0.22);
+}
+
+.phone-screen.scene-bg .secondary,
+.phone-screen.scene-bg .typed-caption input,
+.phone-screen.scene-bg .topic-insert input,
+.phone-screen.scene-bg .smart-view-mic,
+.phone-screen.scene-bg .preview,
+.phone-screen.scene-bg .topic-preview {
+  background: rgba(18, 12, 9, 0.88);
+  border-color: rgba(244, 234, 216, 0.3);
+  color: var(--cream);
+  backdrop-filter: blur(8px);
+}
+
+.phone-screen.scene-bg .mic {
+  background: rgba(18, 12, 9, 0.92);
+  border-color: rgba(244, 234, 216, 0.28);
+}
+
+.phone-screen.scene-bg .mic.hot,
+.phone-screen.scene-bg .smart-view-mic.hot {
+  background: radial-gradient(circle at 50% 40%, #f07a3d, var(--ember) 72%);
+  border-color: #f3a57a;
+  color: #fff8f2;
+}
+
+.phone-screen.scene-bg .window,
+.phone-screen.scene-bg .tv-topic {
+  background: rgba(18, 12, 9, 0.94);
+  border-color: rgba(244, 234, 216, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.phone-screen.scene-bg .line {
+  color: #fff8f2;
+}
+
+.phone-screen.scene-bg .line.faded {
+  color: #cbbba8;
+}
+
+.phone-screen.scene-bg .line.interim {
+  color: #d7c4a8;
+}
+
+.phone-screen.scene-bg .primary {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
