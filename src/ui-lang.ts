@@ -21,7 +21,7 @@ export const UI_LANG_ENDONYM: Record<UiLang, string> = {
 type Copy = Record<UiLang, string>;
 
 const STRINGS = {
-  "chrome.language": { en: "App language", es: "Idioma de la app", pt: "Idioma do app" },
+  "chrome.language": { en: "Choose your language", es: "Elige tu idioma", pt: "Escolha seu idioma" },
   "chrome.room": { en: "Room", es: "Sala", pt: "Sala" },
   "chrome.leave": { en: "Leave", es: "Salir", pt: "Sair" },
   "chrome.send": { en: "Send", es: "Enviar", pt: "Enviar" },
@@ -58,16 +58,26 @@ const STRINGS = {
     pt: "O celular captura a fala ao vivo. Escolha o tema b\u00edblico de hoje no celular; a TV mostra o vers\u00edculo, um folheto breve e janelas de legendas em ingl\u00eas, espanhol e portugu\u00eas.",
   },
   "home.create": {
-    en: "Create room on this phone",
-    es: "Crear sala en este tel\u00e9fono",
-    pt: "Criar sala neste celular",
+    en: "Create room",
+    es: "Crear sala",
+    pt: "Criar sala",
+  },
+  "home.createHelp": {
+    en: "Start the meeting on this phone.",
+    es: "Empieza la reuni\u00f3n en este tel\u00e9fono.",
+    pt: "Comece a reuni\u00e3o neste celular.",
   },
   "home.roomCode": { en: "Room code", es: "C\u00f3digo de la sala", pt: "C\u00f3digo da sala" },
   "home.openTv": { en: "Open TV windows", es: "Abrir ventanas de la TV", pt: "Abrir janelas da TV" },
   "home.joinPhone": {
-    en: "Join on this phone",
-    es: "Unirse en este tel\u00e9fono",
-    pt: "Entrar neste celular",
+    en: "Join",
+    es: "Unirse",
+    pt: "Entrar",
+  },
+  "home.joinHelp": {
+    en: "Enter the room code, then join on this phone.",
+    es: "Escribe el c\u00f3digo y \u00fanete en este tel\u00e9fono.",
+    pt: "Digite o c\u00f3digo e entre neste celular.",
   },
   "home.hostHint": {
     en: "Host: <strong>Chrome</strong> on the Galaxy Z Fold (not Samsung Internet). Brothers: scan <strong>Join on phones</strong> in <strong>Chrome on Android</strong> or <strong>Safari / Chrome on iPhone</strong> \u2014 no app store install. <strong>Send to TV</strong> opens the caption page in the TV\u2019s own browser. <strong>Smart View mode</strong> is Fold-only mirroring.",
@@ -108,9 +118,9 @@ const STRINGS = {
     pt: "Este \u00e9 o app instalado Fire and Fellowship. Crie uma sala aqui e depois abra o link da TV na televis\u00e3o da reuni\u00e3o.",
   },
   "home.installStandaloneSteps": {
-    en: "<li>Tap <strong>Create room on this phone</strong>.</li><li>Pick the topic of the day. Use <strong>Send to TV</strong> (QR / TV browser) or <strong>Smart View mode</strong> (mirror captions from the Fold quick panel).</li><li>Keep the Fold on this app while you speak. Exit Smart View mode to return to mic controls.</li>",
-    es: "<li>Toca <strong>Crear sala en este tel\u00e9fono</strong>.</li><li>Elige el tema del d\u00eda. Usa <strong>Enviar a la TV</strong> (QR / navegador de la TV) o <strong>Modo Smart View</strong> (refleja los subt\u00edtulos desde el panel r\u00e1pido del Fold).</li><li>Deja el Fold en esta app mientras hablas. Sal del modo Smart View para volver a los controles del micr\u00f3fono.</li>",
-    pt: "<li>Toque em <strong>Criar sala neste celular</strong>.</li><li>Escolha o tema do dia. Use <strong>Enviar para a TV</strong> (QR / navegador da TV) ou <strong>Modo Smart View</strong> (espelha as legendas pelo painel r\u00e1pido do Fold).</li><li>Deixe o Fold neste app enquanto fala. Saia do modo Smart View para voltar aos controles do microfone.</li>",
+    en: "<li>Tap <strong>Create room</strong>.</li><li>Pick the topic of the day. Use <strong>Send to TV</strong> (QR / TV browser) or <strong>Smart View mode</strong> (mirror captions from the Fold quick panel).</li><li>Keep the Fold on this app while you speak. Exit Smart View mode to return to mic controls.</li>",
+    es: "<li>Toca <strong>Crear sala</strong>.</li><li>Elige el tema del d\u00eda. Usa <strong>Enviar a la TV</strong> (QR / navegador de la TV) o <strong>Modo Smart View</strong> (refleja los subt\u00edtulos desde el panel r\u00e1pido del Fold).</li><li>Deja el Fold en esta app mientras hablas. Sal del modo Smart View para volver a los controles del micr\u00f3fono.</li>",
+    pt: "<li>Toque em <strong>Criar sala</strong>.</li><li>Escolha o tema do dia. Use <strong>Enviar para a TV</strong> (QR / navegador da TV) ou <strong>Modo Smart View</strong> (espelha as legendas pelo painel r\u00e1pido do Fold).</li><li>Deixe o Fold neste app enquanto fala. Saia do modo Smart View para voltar aos controles do microfone.</li>",
   },
   "home.installJust": {
     en: "Installed. Open Fire and Fellowship from your home screen for meeting night.",
@@ -515,7 +525,7 @@ export function uiLangBarHtml(labelId = "ui-lang-label"): string {
   ).join("");
   return `
     <div class="ui-lang-bar" data-ui-lang-bar>
-      <p class="control-label" id="${labelId}" data-i18n="chrome.language">App language</p>
+      <p class="control-label" id="${labelId}" data-i18n="chrome.language">Choose your language</p>
       <div class="chips" role="group" aria-labelledby="${labelId}">
         ${chips}
       </div>

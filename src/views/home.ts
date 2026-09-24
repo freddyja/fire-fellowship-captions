@@ -14,22 +14,30 @@ import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
 
 export function mountHome(root: HTMLElement): () => void {
   root.innerHTML = `
-    <section class="screen">
-      ${brandBlock()}
+    <section class="screen home-screen">
       ${uiLangBarHtml("home-ui-lang-label")}
-      <p class="lede" data-i18n="home.lede">
-        Phone captures live speech. Pick today’s Bible topic on the phone; the TV shows the verse, a short handout, and English, Spanish, and Portuguese caption windows.
-      </p>
-      <div class="stack">
-        <button class="primary" data-create type="button" data-i18n="home.create">Create room on this phone</button>
+      ${brandBlock()}
+      <div class="stack home-actions">
+        <div class="home-action">
+          <button class="primary" data-create type="button" data-i18n="home.create">Create room</button>
+          <p class="home-action-help" data-i18n="home.createHelp">Start the meeting on this phone.</p>
+        </div>
         <form class="stack" data-join>
           <label class="field">
             <span data-i18n="home.roomCode">Room code</span>
             <input name="room" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD" />
           </label>
+          <div class="home-action">
+            <button class="primary" data-join-phone type="button" data-i18n="home.joinPhone">Join</button>
+            <p class="home-action-help" data-i18n="home.joinHelp">Enter the room code, then join on this phone.</p>
+          </div>
           <button class="secondary" type="submit" data-i18n="home.openTv">Open TV windows</button>
-          <button class="secondary" data-join-phone type="button" data-i18n="home.joinPhone">Join on this phone</button>
         </form>
+      </div>
+      <p class="lede" data-i18n="home.lede">
+        Phone captures live speech. Pick today’s Bible topic on the phone; the TV shows the verse, a short handout, and English, Spanish, and Portuguese caption windows.
+      </p>
+      <div class="stack">
         <p class="hint" data-i18n="home.hostHint" data-i18n-mode="html">Host: <strong>Chrome</strong> on the Galaxy Z Fold (not Samsung Internet). Brothers: scan <strong>Join on phones</strong> in <strong>Chrome on Android</strong> or <strong>Safari / Chrome on iPhone</strong> — no app store install. <strong>Send to TV</strong> opens the caption page in the TV’s own browser. <strong>Smart View mode</strong> is Fold-only mirroring.</p>
         <div class="meeting-mode">
           <p class="control-label" data-i18n="home.meetingMode">Meeting mode</p>
