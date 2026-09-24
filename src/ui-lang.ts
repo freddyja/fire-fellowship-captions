@@ -334,7 +334,7 @@ const STRINGS = {
     pt: "N\u00e3o foi poss\u00edvel escrever esse folheto.",
   },
   "host.spokenLanguage": { en: "Spoken language", es: "Idioma hablado", pt: "Idioma falado" },
-  "host.tvLayout": { en: "TV layout", es: "Dise\u00f1o de la TV", pt: "Layout da TV" },
+  "host.tvLayout": { en: "Watch language", es: "Idioma a ver", pt: "Idioma para assistir" },
   "host.layoutEn": { en: "English", es: "Ingl\u00e9s", pt: "Ingl\u00eas" },
   "host.layoutEs": { en: "Spanish", es: "Espa\u00f1ol", pt: "Espanhol" },
   "host.layoutPt": { en: "Portuguese", es: "Portugu\u00e9s", pt: "Portugu\u00eas" },

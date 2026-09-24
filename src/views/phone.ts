@@ -125,17 +125,17 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <div class="chips" data-source></div>
             </div>
             <div>
-              <p class="control-label" data-i18n="host.tvLayout">TV layout</p>
+              <p class="control-label" data-i18n="host.tvLayout">Watch language</p>
               <div class="chips" data-layouts></div>
             </div>
             <div class="row-actions tv-path-actions">
               <button class="secondary join-phones-btn" data-join-phones type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="join-phones-dialog" data-i18n="host.joinPhones" data-i18n-aria="host.joinPhonesAria" aria-label="Join on phones — show QR so brothers can watch and speak">
                 Join on phones
               </button>
-              <button class="secondary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" data-i18n="host.smartView" data-i18n-aria="host.smartViewAria" aria-label="Smart View mode — show caption layout for system mirroring">
+              <button class="primary smart-view-btn" data-smart-view-mode type="button" aria-pressed="false" data-i18n="host.smartView" data-i18n-aria="host.smartViewAria" aria-label="Smart View mode — show caption layout for system mirroring">
                 Smart View mode
               </button>
-              <button class="primary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" data-i18n="host.sendToTv" data-i18n-aria="host.sendToTvAria" aria-label="Send to TV — show QR and TV caption link">
+              <button class="secondary send-tv-btn" data-send-tv type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="send-tv-dialog" data-i18n="host.sendToTv" data-i18n-aria="host.sendToTvAria" aria-label="Send to TV — show QR and TV caption link">
                 Send to TV
               </button>
             </div>
