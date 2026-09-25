@@ -1360,10 +1360,11 @@ async function main() {
   assert(appJs.includes("phone-live-board"), "host phone shows EN ES PT caption panes");
   assert(appJs.includes("line-speaker"), "caption panes print the speaker name");
   assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
-  assert(appJs.includes("Offline / Local meeting"), "offline / local meeting toggle");
-  assert(appJs.includes("Offline translate (limited phrases)"), "offline translate banner");
-  assert(appJs.includes("npm run build"), "laptop setup npm run build");
-  assert(appJs.includes("http://LAPTOP-LAN-IP:PORT"), "laptop LAN URL");
+  assert(appJs.includes("Have a room code?"), "room code stays folded on Create room");
+  assert(appJs.includes("Join on this phone"), "join on this phone stays in the room-code fold");
+  assert(!appJs.includes("data-offline-mode"), "Meeting mode toggle is not on Create room or the host phone");
+  assert(!appJs.includes("data-local-setup"), "laptop steps are not on Create room or the host phone");
+  assert(appJs.includes("ff-offline-local-meeting"), "offline meeting preference still switches translate fallbacks");
   assert(appJs.includes("Design by Freddy Jara-Almonte"), "design credit under the title");
   assert(
     /Men's Fellowship<\/p>\s*<p class="brand-subline">Break language barriers in your small groups\. No equipment needed - works on any device\./.test(
