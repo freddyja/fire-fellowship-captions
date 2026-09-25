@@ -1315,6 +1315,42 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   gap: 0.75rem;
 }
 
+.meeting-mode {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+}
+
+.meeting-mode .control-label {
+  margin-bottom: 0;
+}
+
+.offline-banner {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(232, 184, 109, 0.45);
+  border-radius: 14px;
+  background: rgba(232, 184, 109, 0.1);
+  color: var(--gold);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.meeting-mode .chip.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 184, 109, 0.12);
+}
+
+.offline-banner a,
+.offline-banner .setup-link {
+  color: var(--cream);
+  min-height: 0;
+  padding: 0;
+  display: inline;
+  font: inherit;
+}
+
 .setup-commands {
   margin: 0.85rem 0 0;
   padding: 0.85rem 1rem;
@@ -2541,6 +2577,12 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   background: rgba(226, 88, 34, 0.48);
   border-color: #f3a57a;
   color: #fff8f2;
+}
+
+.phone-screen.scene-bg .meeting-mode .chip.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 184, 109, 0.22);
 }
 
 .phone-screen.scene-bg .secondary,

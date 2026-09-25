@@ -4,13 +4,8 @@ export const LOCAL_SETUP_COMMANDS = `npm install
 npm run build
 npm start`;
 
-export function localSetupInnerHtml(): string {
+function localSetupBodyHtml(): string {
   return `
-    <details class="fold">
-      <summary class="fold-summary">
-        <h2 id="local-setup-title" data-i18n="setup.title">Laptop LAN / hotspot</h2>
-      </summary>
-      <div class="fold-body">
         <p class="install-copy" data-i18n="setup.intro">No public internet? Run the app on a laptop. Fold and TV open that laptop on the same Wi‑Fi or phone hotspot.</p>
         <pre class="setup-commands" data-setup-commands><code>${LOCAL_SETUP_COMMANDS}</code></pre>
         <button class="secondary" data-copy-setup type="button" data-i18n="setup.copy">Copy commands</button>
@@ -21,7 +16,19 @@ export function localSetupInnerHtml(): string {
         </ol>
         <p class="hint" data-this-origin-wrap hidden><span data-i18n="setup.originBefore">This device is already on</span> <code data-this-origin></code><span data-i18n="setup.originAfter"> — use that URL on the Fold and TV if they share this network.</span></p>
         <p class="hint" data-i18n="setup.micHint" data-i18n-mode="html">Use <strong>Chrome</strong> for the mic. Speech recognition may still need a network path to the device’s speech service (Chrome / Google), depending on the phone. That is not fully offline. <strong>Type a caption</strong> and Send if the mic cannot reach a recognizer.</p>
-        <p class="hint" data-i18n="setup.offlineHint" data-i18n-mode="html">Captions use the built-in dictionary (no MyMemory) when this browser already has the offline preference, or when the laptop env is <code>TRANSLATE_PROVIDER=mock</code>.</p>
+        <p class="hint" data-i18n="setup.offlineHint" data-i18n-mode="html">Captions use the built-in dictionary (no MyMemory) when this browser already has the offline preference, or when the laptop env is <code>TRANSLATE_PROVIDER=mock</code>.</p>`;
+}
+
+/** Home keeps the fold. The host Meeting mode dialog passes `{ fold: false }`. */
+export function localSetupInnerHtml(opts?: { fold?: boolean }): string {
+  const body = localSetupBodyHtml();
+  if (opts?.fold === false) return body;
+  return `
+    <details class="fold">
+      <summary class="fold-summary">
+        <h2 id="local-setup-title" data-i18n="setup.title">Laptop LAN / hotspot</h2>
+      </summary>
+      <div class="fold-body">${body}
       </div>
     </details>
   `;

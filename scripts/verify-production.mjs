@@ -1362,11 +1362,19 @@ async function main() {
   assert(appJs.includes("join-screen"), "guest join is a phone layout, not Fold-only");
   assert(appJs.includes("Have a room code?"), "room code stays folded on Create room");
   assert(appJs.includes("Join on this phone"), "join on this phone stays in the room-code fold");
-  assert(!appJs.includes("data-offline-mode"), "Meeting mode toggle is not on the main menu or the host phone");
-  assert(!appJs.includes("data-offline-banner"), "offline banner is not on the main menu or the host phone");
-  assert(!appJs.includes("data-local-setup-dialog"), "laptop steps dialog is not on the host phone");
-  assert(!appJs.includes("data-local-setup-open"), "laptop steps are not opened from the host phone");
+  assert(appJs.includes("data-offline-mode"), "host phone has the Meeting mode toggle");
+  assert(
+    (appJs.match(/data-offline-mode type="button"/g) ?? []).length === 1,
+    "Meeting mode toggle is only on the host phone",
+  );
+  assert(appJs.includes("data-offline-banner"), "host phone shows the offline translate banner");
+  assert(appJs.includes("data-local-setup-dialog"), "offline banner can open laptop steps");
+  assert(appJs.includes("data-local-setup-open"), "laptop steps open from the host Meeting mode banner");
   assert(appJs.includes('id="local-setup"'), "Laptop LAN / hotspot is on the main menu");
+  assert(
+    appJs.includes('class="install-card" id="local-setup"'),
+    "Laptop LAN / hotspot stays on the main menu",
+  );
   assert(appJs.includes("data-local-setup"), "main menu binds the local LAN setup");
   assert(appJs.includes("Laptop LAN / hotspot"), "Laptop LAN / hotspot title");
   assert(appJs.includes("npm run build"), "laptop setup npm run build");
@@ -1415,6 +1423,8 @@ async function main() {
   assert(!appCss.includes("--join-vvh"), "join is not locked to a visual-viewport variable");
   assert(!/position:\s*fixed/.test(appCss), "join does not use a fixed lock overlay");
   assert(appCss.includes("phone-live-board"), "host caption panes are styled");
+  assert(appCss.includes(".meeting-mode"), "Meeting mode block is styled");
+  assert(appCss.includes(".offline-banner"), "offline banner is styled");
   assert(
     appCss.includes("#1a527f") && appCss.includes("#7d4318") && appCss.includes("#156042"),
     "solid EN / ES / PT caption cards",
