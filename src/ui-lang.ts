@@ -53,9 +53,9 @@ const STRINGS = {
   },
 
   "home.lede": {
-    en: "Phone captures live speech. Pick today\u2019s Bible topic on the phone; the TV shows the verse, a short handout, and English, Spanish, and Portuguese caption windows.",
-    es: "El tel\u00e9fono captura la voz en vivo. Elige el tema b\u00edblico de hoy en el tel\u00e9fono; la TV muestra el vers\u00edculo, una hoja breve y ventanas de subt\u00edtulos en ingl\u00e9s, espa\u00f1ol y portugu\u00e9s.",
-    pt: "O celular captura a fala ao vivo. Escolha o tema b\u00edblico de hoje no celular; a TV mostra o vers\u00edculo, um folheto breve e janelas de legendas em ingl\u00eas, espanhol e portugu\u00eas.",
+    en: "Live speech on this phone. Pick today\u2019s Bible topic; the TV shows the verse, a short handout, and captions.",
+    es: "Voz en vivo en este tel\u00e9fono. Elige el tema b\u00edblico de hoy; la TV muestra el vers\u00edculo, una hoja breve y los subt\u00edtulos.",
+    pt: "Fala ao vivo neste celular. Escolha o tema b\u00edblico de hoje; a TV mostra o vers\u00edculo, um folheto breve e as legendas.",
   },
   "home.create": {
     en: "Create room",
@@ -69,10 +69,15 @@ const STRINGS = {
   },
   "home.roomCode": { en: "Room code", es: "C\u00f3digo de la sala", pt: "C\u00f3digo da sala" },
   "home.openTv": { en: "Open TV windows", es: "Abrir ventanas de la TV", pt: "Abrir janelas da TV" },
+  "home.haveCode": {
+    en: "Have a room code?",
+    es: "\u00bfTienes un c\u00f3digo de sala?",
+    pt: "Tem um c\u00f3digo da sala?",
+  },
   "home.joinPhone": {
-    en: "Join",
-    es: "Unirse",
-    pt: "Entrar",
+    en: "Join on this phone",
+    es: "Unirse en este tel\u00e9fono",
+    pt: "Entrar neste celular",
   },
   "home.joinHelp": {
     en: "Enter the room code, then join on this phone.",

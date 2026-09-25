@@ -161,8 +161,7 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   width: min(100%, 28rem);
 }
 
-/* Home puts this bar first, before the brand. Keep it compact so the
-   Create / Join actions stay the heavy controls on the first screen. */
+/* Home keeps this bar compact so Create room stays the heavy control. */
 .home-screen .ui-lang-bar {
   margin: 0 0 0.5rem;
 }
@@ -206,24 +205,88 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   }
 }
 
-.home-actions {
-  margin-top: 1.2rem;
-}
-
-.home-action {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.home-action-help {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.35;
+.home-screen {
+  gap: 0.65rem;
 }
 
 .home-screen .lede {
-  margin-top: 1.35rem;
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.home-create {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 0.15rem;
+  font-size: 1.08rem;
+}
+
+.home-fold {
+  border-top: 1px solid var(--line);
+}
+
+.home-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.7rem 0;
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.home-fold > summary::-webkit-details-marker,
+.home-fold > summary::marker {
+  display: none;
+  content: "";
+}
+
+.home-fold > summary::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--gold);
+  border-bottom: 2px solid var(--gold);
+  transform: rotate(45deg);
+  flex: none;
+}
+
+.home-fold[open] > summary {
+  color: var(--cream);
+}
+
+.home-fold[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.home-fold > summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.home-fold-body,
+.home-code {
+  display: grid;
+  gap: 0.65rem;
+  padding-bottom: 0.85rem;
+}
+
+.home-fold .install-card {
+  margin-top: 0;
+  box-shadow: none;
+  padding: 0.85rem 0.95rem 1rem;
+}
+
+.home-fold .hint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .ui-lang-bar .control-label {
@@ -1250,42 +1313,6 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-}
-
-.meeting-mode {
-  display: grid;
-  gap: 0.45rem;
-  justify-items: start;
-}
-
-.meeting-mode .control-label {
-  margin-bottom: 0;
-}
-
-.offline-banner {
-  margin: 0;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid rgba(232, 184, 109, 0.45);
-  border-radius: 14px;
-  background: rgba(232, 184, 109, 0.1);
-  color: var(--gold);
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.meeting-mode .chip.active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(232, 184, 109, 0.12);
-}
-
-.offline-banner a,
-.offline-banner .setup-link {
-  color: var(--cream);
-  min-height: 0;
-  padding: 0;
-  display: inline;
-  font: inherit;
 }
 
 .setup-commands {
@@ -2411,7 +2438,7 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
 .entry-scene .brand-subline,
 .entry-scene .brand-credit,
 .entry-scene .lede,
-.entry-scene .home-action-help,
+.entry-scene .home-fold > summary,
 .entry-scene .hint,
 .entry-scene .control-label,
 .entry-scene .field span,
@@ -2426,7 +2453,7 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
 .entry-scene .brand-credit,
 .entry-scene .brand-subline,
 .entry-scene .lede,
-.entry-scene .home-action-help,
+.entry-scene .home-fold > summary,
 .entry-scene .hint,
 .entry-scene .control-label,
 .entry-scene .field span,
@@ -2451,10 +2478,8 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   color: #fff8f2;
 }
 
-.entry-scene .meeting-mode .chip.active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(232, 184, 109, 0.22);
+.entry-scene .home-fold {
+  border-top-color: rgba(244, 234, 216, 0.22);
 }
 
 .entry-scene .secondary,
@@ -2512,12 +2537,6 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   background: rgba(226, 88, 34, 0.48);
   border-color: #f3a57a;
   color: #fff8f2;
-}
-
-.phone-screen.scene-bg .meeting-mode .chip.active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(232, 184, 109, 0.22);
 }
 
 .phone-screen.scene-bg .secondary,
