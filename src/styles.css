@@ -1341,8 +1341,73 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   scroll-margin-top: 1.25rem;
 }
 
+/* Home only: the closed Laptop LAN / hotspot summary is a peer of Create room.
+   The rendered Create room control is the .primary box (full column, 52px,
+   0.95rem 1.25rem padding, 1.08rem type, pill radius). The fold body still
+   holds the npm steps. */
 .home-screen > #local-setup.install-card {
   margin-top: 0.85rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.home-screen > #local-setup .fold-summary {
+  position: relative;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.95rem 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(18, 12, 9, 0.84);
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 234, 216, 0.3),
+    0 12px 28px rgba(0, 0, 0, 0.38);
+  color: var(--cream);
+  font-family: var(--font-ui);
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: normal;
+  text-align: center;
+}
+
+.home-screen > #local-setup .fold-summary h2 {
+  margin: 0;
+  padding-inline: 0.9rem;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  text-align: center;
+}
+
+.home-screen > #local-setup .fold-summary::after {
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.home-screen > #local-setup .fold[open] > .fold-summary::after {
+  transform: translateY(-50%) rotate(-135deg);
+}
+
+.home-screen > #local-setup .fold-summary:focus-visible {
+  border-radius: 999px;
+}
+
+.home-screen > #local-setup .fold-body {
+  margin-top: 0.75rem;
+  padding: 1.1rem 1.15rem 1.2rem;
+  border: 1px solid rgba(244, 234, 216, 0.18);
+  border-radius: var(--radius);
+  background: rgba(27, 19, 15, 0.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
 }
 
 .topic-clear {
