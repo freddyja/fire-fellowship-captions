@@ -1364,7 +1364,7 @@ async function main() {
   assert(appJs.includes("Join on this phone"), "join on this phone stays in the room-code fold");
   assert(appJs.includes("data-offline-mode"), "host phone has the Meeting mode toggle");
   assert(
-    (appJs.match(/data-offline-mode" type="button"/g) ?? []).length === 1,
+    (appJs.match(/data-offline-mode type="button"/g) ?? []).length === 1,
     "Meeting mode toggle is only on the host phone",
   );
   assert(appJs.includes("data-offline-banner"), "host phone shows the offline translate banner");
