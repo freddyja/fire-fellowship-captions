@@ -223,6 +223,12 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   font-size: 1.08rem;
 }
 
+/* .primary sets min-height: 52px later, at the same specificity.
+   Create room stays the 56px declared on .home-create. */
+.primary.home-create {
+  min-height: 56px;
+}
+
 .home-fold {
   border-top: 1px solid var(--line);
 }
@@ -1377,10 +1383,9 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   scroll-margin-top: 1.25rem;
 }
 
-/* Home only: the closed Laptop LAN / hotspot summary is a peer of Create room.
-   The rendered Create room control is the .primary box (full column, 52px,
-   0.95rem 1.25rem padding, 1.08rem type, pill radius). The fold body still
-   holds the npm steps. */
+/* Home only: the closed Laptop LAN / hotspot summary is a peer of
+   .primary.home-create (full column, 56px, 0.95rem 1.25rem padding,
+   1.08rem type, pill radius). The fold body still holds the npm steps. */
 .home-screen > #local-setup.install-card {
   margin-top: 0.85rem;
   padding: 0;
@@ -1394,7 +1399,7 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   position: relative;
   justify-content: center;
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
   padding: 0.95rem 1.25rem;
   border: 0;
   border-radius: 999px;
