@@ -1351,12 +1351,15 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   min-height: 4.6rem;
 }
 
-.preview p {
+.preview > p {
   margin: 0;
+}
+
+.preview > [data-preview] {
   color: var(--cream);
 }
 
-.preview .interim {
+.preview > [data-preview].interim {
   color: var(--muted);
   font-style: italic;
 }
