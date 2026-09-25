@@ -6,6 +6,7 @@ import {
   subscribeInstall,
   wasJustInstalled,
 } from "../install";
+import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { generateRoomCode, isRoomCode, normalizeRoomCode } from "../room";
 import { goto } from "../router";
 import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
@@ -41,6 +42,9 @@ export function mountHome(root: HTMLElement): () => void {
           </aside>
         </div>
       </details>
+      <aside class="install-card" id="local-setup" data-local-setup>
+        ${localSetupInnerHtml()}
+      </aside>
     </section>
   `;
 
@@ -52,6 +56,7 @@ export function mountHome(root: HTMLElement): () => void {
   const installCopy = root.querySelector("[data-install-copy]") as HTMLElement;
   const installBtn = root.querySelector("[data-install-btn]") as HTMLButtonElement;
   const installSteps = root.querySelector("[data-install-steps]") as HTMLOListElement;
+  const localSetup = root.querySelector("[data-local-setup]") as HTMLElement;
 
   const paintInstall = () => {
     const standalone = isStandaloneDisplay();
@@ -105,7 +110,17 @@ export function mountHome(root: HTMLElement): () => void {
   joinPhone?.addEventListener("click", onJoinPhone);
   installBtn.addEventListener("click", onInstall);
   const unsubscribe = subscribeInstall(paintInstall);
+  const unbindSetup = bindLocalSetup(localSetup);
   const unbindLang = bindUiLangBar(root, paintInstall);
+  const openLaptopSteps = () => {
+    const fold = localSetup.querySelector("details");
+    if (fold instanceof HTMLDetailsElement) fold.open = true;
+  };
+  const onHash = () => {
+    if (location.hash === "#local-setup") openLaptopSteps();
+  };
+  if (location.hash === "#local-setup") openLaptopSteps();
+  window.addEventListener("hashchange", onHash);
 
   return () => {
     create?.removeEventListener("click", onCreate);
@@ -113,7 +128,9 @@ export function mountHome(root: HTMLElement): () => void {
     form?.removeEventListener("submit", onJoin);
     joinPhone?.removeEventListener("click", onJoinPhone);
     installBtn.removeEventListener("click", onInstall);
+    window.removeEventListener("hashchange", onHash);
     unsubscribe();
+    unbindSetup();
     unbindLang();
   };
 }
