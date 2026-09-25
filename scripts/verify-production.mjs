@@ -1407,6 +1407,14 @@ async function main() {
   assert(!appCss.includes("--join-vvh"), "join is not locked to a visual-viewport variable");
   assert(!/position:\s*fixed/.test(appCss), "join does not use a fixed lock overlay");
   assert(appCss.includes("phone-live-board"), "host caption panes are styled");
+  assert(
+    appCss.includes("#1a527f") && appCss.includes("#7d4318") && appCss.includes("#156042"),
+    "solid EN / ES / PT caption cards",
+  );
+  assert(
+    appCss.includes("--pane-ink") && appCss.includes("--pane-accent") && appCss.includes("--pane-ink-dim"),
+    "caption ink uses per-language pane tokens",
+  );
   assert(appCss.includes("100svh"), "iOS small viewport height");
   assert(appCss.includes("safe-area-inset-top") && appCss.includes("safe-area-inset-bottom"), "safe area insets");
   assert(appCss.includes("repeat(3,minmax(0,1fr))") || appCss.includes("repeat(3, minmax(0, 1fr))"), "triple pane columns");
