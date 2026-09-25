@@ -191,9 +191,9 @@ const STRINGS = {
     pt: "Use <strong>Chrome</strong> para o microfone. O reconhecimento de fala ainda pode precisar de um caminho de rede at\u00e9 o servi\u00e7o de voz do aparelho (Chrome / Google), conforme o celular. Isso n\u00e3o \u00e9 totalmente offline. <strong>Digite uma legenda</strong> e Enviar se o microfone n\u00e3o alcan\u00e7ar um reconhecedor.",
   },
   "setup.offlineHint": {
-    en: "Turn on <strong>Offline / Local meeting</strong> so captions use the built-in dictionary (no MyMemory). Optional laptop env: <code>TRANSLATE_PROVIDER=mock</code>.",
-    es: "Activa <strong>Reuni\u00f3n sin conexi\u00f3n / local</strong> para que los subt\u00edtulos usen el diccionario incluido (sin MyMemory). Variable opcional en la laptop: <code>TRANSLATE_PROVIDER=mock</code>.",
-    pt: "Ative <strong>Reuni\u00e3o offline / local</strong> para as legendas usarem o dicion\u00e1rio inclu\u00eddo (sem MyMemory). Vari\u00e1vel opcional no laptop: <code>TRANSLATE_PROVIDER=mock</code>.",
+    en: "Captions use the built-in dictionary (no MyMemory) when this browser already has the offline preference, or when the laptop env is <code>TRANSLATE_PROVIDER=mock</code>.",
+    es: "Los subt\u00edtulos usan el diccionario incluido (sin MyMemory) si este navegador ya tiene la preferencia sin conexi\u00f3n, o si la variable de la laptop es <code>TRANSLATE_PROVIDER=mock</code>.",
+    pt: "As legendas usam o dicion\u00e1rio inclu\u00eddo (sem MyMemory) se este navegador j\u00e1 tem a prefer\u00eancia offline, ou se a vari\u00e1vel do laptop for <code>TRANSLATE_PROVIDER=mock</code>.",
   },
 
   "join.roomWord": { en: "Room", es: "Sala", pt: "Sala" },

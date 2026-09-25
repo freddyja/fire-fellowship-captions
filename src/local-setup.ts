@@ -21,7 +21,7 @@ export function localSetupInnerHtml(): string {
         </ol>
         <p class="hint" data-this-origin-wrap hidden><span data-i18n="setup.originBefore">This device is already on</span> <code data-this-origin></code><span data-i18n="setup.originAfter"> — use that URL on the Fold and TV if they share this network.</span></p>
         <p class="hint" data-i18n="setup.micHint" data-i18n-mode="html">Use <strong>Chrome</strong> for the mic. Speech recognition may still need a network path to the device’s speech service (Chrome / Google), depending on the phone. That is not fully offline. <strong>Type a caption</strong> and Send if the mic cannot reach a recognizer.</p>
-        <p class="hint" data-i18n="setup.offlineHint" data-i18n-mode="html">Turn on <strong>Offline / Local meeting</strong> so captions use the built-in dictionary (no MyMemory). Optional laptop env: <code>TRANSLATE_PROVIDER=mock</code>.</p>
+        <p class="hint" data-i18n="setup.offlineHint" data-i18n-mode="html">Captions use the built-in dictionary (no MyMemory) when this browser already has the offline preference, or when the laptop env is <code>TRANSLATE_PROVIDER=mock</code>.</p>
       </div>
     </details>
   `;
