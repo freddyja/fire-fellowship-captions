@@ -2696,3 +2696,56 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
 .phone-screen.scene-bg .primary {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
 }
+
+
+/* ---------------------------------------------------------------------------
+   Scrolling: long captions, topic sheets and dialogs are never cut off.
+   Caption panes scroll inside their card and follow the newest line unless
+   the reader scrolled up (see caption-board.ts). Nothing here locks the body.
+   --------------------------------------------------------------------------- */
+.window {
+  min-height: 0;
+}
+
+.lines,
+.join-screen .tv-board .lines,
+.phone-screen .phone-live-board .lines,
+.phone-screen.is-smart-view .tv-board .lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* flex-end + overflow makes the top of a long pane unreachable;
+     the first line's auto margin keeps short history bottom-aligned instead. */
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.lines > :first-child {
+  margin-top: auto;
+}
+
+/* Join panes grow with the page; cap each one so it scrolls on its own. */
+.join-screen .tv-board .lines {
+  max-height: 45vh;
+  max-height: min(45svh, 22rem);
+}
+
+.tv-topic,
+.tv-handout {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.send-tv-dialog,
+.setup-dialog {
+  /* vh first: older iOS Safari drops dvh and would leave the dialog unbounded. */
+  max-height: calc(100vh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}

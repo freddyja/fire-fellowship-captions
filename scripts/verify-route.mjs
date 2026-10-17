@@ -468,6 +468,86 @@ assert(chromeDraft.active()[0].emit("en-US", "Welcome brothers") === "final", "A
 await flush();
 assert(chromeDraftSpeech.finals.join("|") === "Welcome brothers", "Android final is the only caption");
 
+// Keep listening until Stop: auto-restart on end and recoverable errors.
+const androidLong = createRecognitionWorld({ stickyFirstInstance: false });
+const androidLongSpeech = harness(androidLong, false);
+androidLongSpeech.speech.start();
+await flush();
+assert(androidLong.active()[0].emit("en-US", "First phrase") === "final", "Android first phrase");
+assert(androidLong.active()[0].end() === "end", "Android session ends on a pause");
+await flush();
+assert(androidLong.active().length === 1, "Android restarts after onend");
+assert(androidLong.active()[0].continuous === true, "Android restart stays continuous");
+assert(androidLong.active()[0].emit("en-US", "Second phrase") === "final", "Android second phrase after restart");
+assert(androidLong.active()[0].emitNoSpeech() === "no-speech", "Android silent pause");
+await flush();
+assert(androidLong.active().length === 1, "Android restarts after no-speech");
+assert(androidLong.active()[0].emit("en-US", "Third phrase") === "final", "Android third phrase after no-speech");
+await flush();
+assert(
+  androidLongSpeech.finals.join("|") === "First phrase|Second phrase|Third phrase",
+  `Android finals after restarts are not dropped: ${androidLongSpeech.finals.join("|")}`,
+);
+assert(androidLongSpeech.errors.length === 0, `Android restarts raised ${androidLongSpeech.errors.join(" | ")}`);
+androidLongSpeech.speech.stop();
+await flush();
+assert(androidLong.active().length === 0, "Stop ends the Android restart loop");
+
+const iphoneLong = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneLongSpeech = harness(iphoneLong, true);
+iphoneLongSpeech.speech.setLang(speechLocale("es"), true);
+iphoneLongSpeech.speech.start();
+await flush();
+for (let i = 0; i < 4; i += 1) {
+  assert(iphoneLong.active()[0].emitNoSpeech() === "no-speech", `iPhone silent pause ${i}`);
+  await flush();
+}
+const netRec = iphoneLong.active()[0];
+netRec.running = false;
+netRec.onerror?.({ error: "network" });
+netRec.onend?.();
+await flush();
+assert(iphoneLong.active().length === 1, "iPhone network blip restarts instead of stopping");
+assert(iphoneLong.instances.length === 1, "iPhone restarts reuse the one recognizer");
+assert(iphoneLong.active()[0].engineLang === "es-ES", "iPhone restarts keep Spoken es-ES");
+assert(iphoneLong.active()[0].emit("es-ES", "Hola hermanos") === "final", "iPhone final after many restarts");
+await flush();
+assert(iphoneLongSpeech.finals.join("|") === "Hola hermanos", `iPhone final kept: ${iphoneLongSpeech.finals.join("|")}`);
+assert(
+  iphoneLongSpeech.errors.filter((m) => m.includes("(no-speech)")).length === 1,
+  `no-speech note shows once per Start: ${iphoneLongSpeech.errors.join(" | ")}`,
+);
+assert(
+  !iphoneLongSpeech.errors.some((m) => !m.includes("(no-speech)")),
+  `iPhone restarts raised ${iphoneLongSpeech.errors.join(" | ")}`,
+);
+assert(iphoneLong.active()[0].end() === "end", "iPhone one-shot ends");
+await flush();
+assert(iphoneLong.active().length === 1, "iPhone keeps restarting");
+iphoneLongSpeech.speech.stop();
+await flush();
+assert(iphoneLong.active().length === 0, "Stop ends the iPhone restart loop");
+
+const iphoneRefused = createRecognitionWorld({ stickyFirstInstance: true });
+const iphoneRefusedSpeech = harness(iphoneRefused, true);
+iphoneRefusedSpeech.speech.start();
+await flush();
+iphoneRefused.active()[0].end();
+await flush();
+for (let i = 0; i < 6; i += 1) {
+  const r = iphoneRefused.active()[0];
+  if (!r) break;
+  r.running = false;
+  r.onerror?.({ error: "not-allowed" });
+  r.onend?.();
+  await flush();
+}
+assert(iphoneRefused.active().length === 0, "repeated refused restarts stop the mic");
+assert(
+  iphoneRefusedSpeech.errors.some((m) => m.includes("Tap Start to keep talking")),
+  `refused restarts ask for a tap: ${iphoneRefusedSpeech.errors.join(" | ")}`,
+);
+
 assert(isWatchPref("all") && isWatchPref("es") && !isWatchPref("en-es") && !isWatchPref("fr"), "watch pref is all or one language");
 same(langsForWatch("all"), ["en", "es", "pt"], "Watch=all is three panes");
 same(langsForWatch("es"), ["es"], "Watch=ES is the Spanish pane only");

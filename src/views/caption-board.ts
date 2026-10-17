@@ -99,6 +99,36 @@ function renderTopic(topic: TopicContent): string {
   `;
 }
 
+/** A pane within this many px of the bottom counts as "following the latest line". */
+const PIN_SLACK_PX = 24;
+
+const lastBoardHtml = new WeakMap<HTMLElement, string>();
+
+type PaneScroll = { top: number; pinned: boolean };
+
+function readPaneScroll(board: HTMLElement): Map<string, PaneScroll> {
+  const out = new Map<string, PaneScroll>();
+  for (const pane of board.querySelectorAll<HTMLElement>(".window[data-lang] > .lines")) {
+    const lang = (pane.parentElement as HTMLElement | null)?.dataset.lang;
+    if (!lang) continue;
+    const gap = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
+    out.set(lang, { top: pane.scrollTop, pinned: gap <= PIN_SLACK_PX });
+  }
+  return out;
+}
+
+/**
+ * Caption panes follow the newest line, unless the reader scrolled up to
+ * re-read something — then their position is kept until they scroll back down.
+ */
+function restorePaneScroll(board: HTMLElement, prior: Map<string, PaneScroll>) {
+  for (const pane of board.querySelectorAll<HTMLElement>(".window[data-lang] > .lines")) {
+    const lang = (pane.parentElement as HTMLElement | null)?.dataset.lang ?? "";
+    const before = prior.get(lang);
+    pane.scrollTop = !before || before.pinned ? pane.scrollHeight : before.top;
+  }
+}
+
 function activeSpeakerName(floor: FloorState | null | undefined): string {
   return floor?.holderName?.trim() ?? "";
 }
@@ -113,7 +143,14 @@ export function paintCaptionBoard(
   const activeSpeaker = activeSpeakerName(state.floor);
   board.dataset.count = String(langs.length);
   board.dataset.layout = state.layout;
-  board.innerHTML = langs.map((lang) => renderWindow(lang, state.lines, live, activeSpeaker)).join("");
+  const html = langs.map((lang) => renderWindow(lang, state.lines, live, activeSpeaker)).join("");
+  // Unchanged captions: leave the DOM alone so a finger mid-scroll is not interrupted.
+  if (lastBoardHtml.get(board) !== html || !board.firstElementChild) {
+    const prior = readPaneScroll(board);
+    board.innerHTML = html;
+    lastBoardHtml.set(board, html);
+    restorePaneScroll(board, prior);
+  }
 
   const topic = state.topic;
   if (hasTopicBody(topic) && topic) {

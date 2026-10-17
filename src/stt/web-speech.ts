@@ -49,8 +49,11 @@ export type WebSpeechOptions = {
   appleMobile?: boolean;
   /** Injected in tests. Omitted means `webkitSpeechRecognition` / `SpeechRecognition`. */
   recognitionCtor?: RecognitionCtor | null;
-  /** One-shot restart. Tests run this immediately instead of waiting on a timer. */
-  scheduleRestart?: (run: () => void) => void;
+  /**
+   * Auto-restart after a session ends. `delayMs` is the backoff for this attempt.
+   * Tests run this immediately instead of waiting on a timer.
+   */
+  scheduleRestart?: (run: () => void, delayMs: number) => void;
   /** iOS often never sets `isFinal`. Tests commit the draft immediately. */
   scheduleCommit?: (run: () => void) => void;
   /** Silent start (no onstart / result / end). Tests run this immediately. */
@@ -63,6 +66,18 @@ const IPHONE_TYPE =
 const IPHONE_NO_SPEECH =
   "iPhone heard nothing (no-speech). Type a caption — Send still reaches every phone and the TV.";
 
+/** Safari kept refusing to reopen the mic between phrases. A tap restarts it. */
+const IPHONE_TAP_AGAIN =
+  "iPhone paused the microphone. Tap Start to keep talking, or type a caption.";
+
+const MIC_STOPPED = "The microphone stopped. Tap Start to keep talking, or type a caption.";
+
+/** Errors we ride through by restarting while the user still wants the mic. */
+const RECOVERABLE_ERRORS = new Set(["no-speech", "aborted", "network"]);
+
+/** Give up after this many restarts in a row that never reach the speech engine. */
+const MAX_HARD_FAILURES = 5;
+
 /** Shown when Safari fires `language-not-supported` for the locale we asked for. */
 export function localeRejectedMessage(locale: string, code: string): string {
   return `Safari rejected ${locale} (${code}). Type a caption — Send still reaches every phone and the TV.`;
@@ -73,7 +88,8 @@ export function isSpeechFallbackMessage(message: string): boolean {
     message.includes("Type a caption") ||
     message.includes("Microphone blocked") ||
     message.includes("no Web Speech") ||
-    message.includes("microphone stopped")
+    message.includes("microphone stopped") ||
+    message.includes("Tap Start to keep talking")
   );
 }
 
@@ -108,8 +124,8 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
   const Ctor = options.recognitionCtor === undefined ? getRecognitionCtor() : options.recognitionCtor;
   const scheduleRestart =
     options.scheduleRestart ??
-    ((run: () => void) => {
-      window.setTimeout(run, apple ? 200 : 120);
+    ((run: () => void, delayMs: number) => {
+      window.setTimeout(run, delayMs);
     });
   const scheduleCommit =
     options.scheduleCommit ??
@@ -132,6 +148,14 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
   let lastCommitted = "";
   let aborting = false;
   let sessionAlive = false;
+  /** Sessions in a row that ended without words. Only stretches the backoff. */
+  let quietStreak = 0;
+  /** Restarts in a row that failed to reach the engine (throw, network, refused). */
+  let hardFailures = 0;
+  /** True once any session since the user's Start tap has run. */
+  let autoRestarting = false;
+  let noSpeechNoted = false;
+  let visibilityWait: (() => void) | null = null;
 
   const provider: SpeechProvider = {
     supported: Boolean(Ctor),
@@ -161,6 +185,11 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
         return;
       }
       wantListening = true;
+      quietStreak = 0;
+      hardFailures = 0;
+      autoRestarting = false;
+      noSpeechNoted = false;
+      clearVisibilityWait();
       begin(true);
     },
     stop() {
@@ -172,6 +201,8 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
       lastCommitted = "";
       aborting = false;
       sessionAlive = false;
+      autoRestarting = false;
+      clearVisibilityWait();
       const mine = rec;
       // Drop the desktop object. On iOS the next Start must reuse it or the
       // engine keeps the first session's language (English).
@@ -288,8 +319,24 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
 
   function armWatchdog(mine: SpeechRecognitionLike, gen: number) {
     const token = ++watchdogToken;
+    const auto = autoRestarting;
     scheduleWatchdog(() => {
       if (token !== watchdogToken || gen !== generation || !wantListening || sessionAlive) return;
+      if (auto) {
+        // A silent auto-restart: try again a few times before asking for a tap.
+        hardFailures += 1;
+        try {
+          mine.abort();
+        } catch {
+          /* never started */
+        }
+        if (hardFailures >= MAX_HARD_FAILURES) {
+          giveUp(IPHONE_TAP_AGAIN);
+          return;
+        }
+        restart(gen);
+        return;
+      }
       wantListening = false;
       cancelCommit();
       draft = "";
@@ -318,25 +365,91 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     });
   }
 
-  function restart(mine: SpeechRecognitionLike, gen: number) {
+  function clearVisibilityWait() {
+    if (!visibilityWait) return;
+    document.removeEventListener("visibilitychange", visibilityWait);
+    visibilityWait = null;
+  }
+
+  /** Stop for good, keeping any words already heard, and tell the UI why. */
+  function giveUp(message: string) {
+    commitDraft();
+    wantListening = false;
+    generation += 1;
+    cancelCommit();
+    watchdogToken += 1;
+    clearVisibilityWait();
+    const mine = rec;
+    if (!apple) rec = null;
+    detachAndAbort(mine);
+    provider.onError?.(message);
+  }
+
+  function backoffMs(): number {
+    const base = apple ? 250 : 150;
+    const steps = Math.min(quietStreak + hardFailures * 2, 4);
+    return Math.min(base * 2 ** steps, 2500);
+  }
+
+  /**
+   * Keep listening until the user taps Stop. Each restart is a fresh generation
+   * with fresh result bookkeeping: engines number results from 0 again in every
+   * session, so reusing the old index set would drop the next phrase's finals.
+   */
+  function restart(gen: number) {
     scheduleRestart(() => {
       if (gen !== generation || !wantListening) return;
-      try {
-        sessionAlive = false;
-        mine.lang = locale;
-        mine.start();
-        if (apple) armWatchdog(mine, gen);
-      } catch (err) {
-        // A Stop/abort event can land after Start already opened the new locale.
-        if (alreadyStarted(err) || gen !== generation) return;
-        wantListening = false;
-        provider.onError?.(apple ? IPHONE_TYPE : "The microphone stopped. Type a caption instead.");
+      // A backgrounded tab cannot open the mic. Wait until it is visible again.
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        clearVisibilityWait();
+        visibilityWait = () => {
+          if (document.visibilityState !== "visible") return;
+          clearVisibilityWait();
+          if (gen === generation && wantListening) relaunch();
+        };
+        document.addEventListener("visibilitychange", visibilityWait);
+        return;
       }
-    });
+      relaunch();
+    }, backoffMs());
+  }
+
+  function relaunch() {
+    if (!Ctor || !wantListening) return;
+    autoRestarting = true;
+    const gen = ++generation;
+    let mine: SpeechRecognitionLike;
+    if (apple) {
+      // iOS keeps the first object's language. Reuse it so es-ES / pt-BR stick.
+      if (!rec) rec = new Ctor();
+      mine = rec;
+    } else {
+      // Chrome/Android: a fresh object per session is the most reliable restart.
+      detachAndAbort(rec);
+      rec = new Ctor();
+      mine = rec;
+    }
+    arm(mine, gen);
+    try {
+      mine.lang = locale;
+      mine.start();
+      if (apple) armWatchdog(mine, gen);
+    } catch (err) {
+      // Still live from the last session: its onend (now armed) restarts us.
+      if (alreadyStarted(err) || gen !== generation) return;
+      hardFailures += 1;
+      if (hardFailures >= MAX_HARD_FAILURES) {
+        giveUp(apple ? IPHONE_TAP_AGAIN : MIC_STOPPED);
+        return;
+      }
+      restart(gen);
+    }
   }
 
   function arm(mine: SpeechRecognitionLike, gen: number) {
     mine.lang = locale;
+    // Continuous where it works. iOS Safari's continuous mode repeats and never
+    // finalizes phrases, so iPhone stays one-shot and is restarted between phrases.
     mine.continuous = !apple;
     mine.interimResults = true;
     mine.maxAlternatives = 1;
@@ -345,6 +458,8 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     sessionAlive = false;
     cancelCommit();
     const emittedFinals = new Set<number>();
+    let heardWords = false;
+    let hardError = false;
 
     const noteAlive = () => {
       if (gen !== generation) return;
@@ -356,6 +471,10 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     mine.onresult = (event) => {
       if (gen !== generation) return;
       markAlive();
+      heardWords = true;
+      quietStreak = 0;
+      hardFailures = 0;
+      noSpeechNoted = false;
       let interim = "";
       // Walk the whole list: Chrome on Android often reports resultIndex 0
       // on every event and would re-emit earlier finals as new history lines.
@@ -383,30 +502,45 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     mine.onerror = (event) => {
       if (gen !== generation) return;
       markAlive();
-      if (event.error === "aborted") {
+      const code = event.error;
+      if (code === "aborted") {
         aborting = true;
         return;
       }
-      if (event.error === "no-speech") {
+      if (code === "no-speech") {
         // iOS 18 reports heard speech as no-speech, or ends a pause this way.
-        // Words we already have must publish. An empty pause is shown, not swallowed.
-        if (apple && draft.trim() && draft.trim() !== lastCommitted) {
+        // Words we already have must publish. onend restarts the mic.
+        if (draft.trim() && draft.trim() !== lastCommitted) {
           commitDraft();
           return;
         }
-        if (apple && !draft.trim()) provider.onError?.(IPHONE_NO_SPEECH);
+        // Show the pause once per Start, not on every silent restart.
+        if (apple && !draft.trim() && !noSpeechNoted) {
+          noSpeechNoted = true;
+          provider.onError?.(IPHONE_NO_SPEECH);
+        }
         return;
       }
-      // Desktop Chrome blips "network" and restarts. On iPhone that error means
-      // the speech service never returned words — say so instead of spinning.
-      if (event.error === "network" && !apple) return;
-      if (event.error === "language-not-supported") {
+      if (RECOVERABLE_ERRORS.has(code)) {
+        // network: the speech service blipped. Keep heard words; onend retries with backoff.
+        commitDraft();
+        hardError = true;
+        return;
+      }
+      if (code === "language-not-supported") {
         wantListening = false;
-        provider.onError?.(localeRejectedMessage(locale, event.error));
+        provider.onError?.(localeRejectedMessage(locale, code));
+        return;
+      }
+      if ((code === "not-allowed" || code === "service-not-allowed") && autoRestarting) {
+        // The user already granted the mic this Start. A refusal on an automatic
+        // restart is WebKit wanting a fresh tap; retry briefly, then ask for one.
+        commitDraft();
+        hardError = true;
         return;
       }
       wantListening = false;
-      if (event.error === "not-allowed") {
+      if (code === "not-allowed") {
         provider.onError?.(
           apple
             ? IPHONE_TYPE
@@ -420,7 +554,8 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
         provider.onError?.(IPHONE_TYPE);
         return;
       }
-      provider.onError?.(event.error);
+      commitDraft();
+      provider.onError?.(code);
     };
 
     mine.onend = () => {
@@ -428,8 +563,19 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
       const skipped = aborting;
       aborting = false;
       // WebKit often leaves isFinal false and only then ends the one-shot.
-      if (!skipped && apple) commitDraft();
-      restart(mine, gen);
+      // Chrome can also end mid-phrase. Publish the last hypothesis either way.
+      if (!skipped) commitDraft();
+      if (hardError) {
+        hardFailures += 1;
+        if (hardFailures >= MAX_HARD_FAILURES) {
+          giveUp(apple ? IPHONE_TAP_AGAIN : MIC_STOPPED);
+          return;
+        }
+      } else if (!heardWords) {
+        quietStreak += 1;
+        if (sessionAlive) hardFailures = 0;
+      }
+      restart(gen);
     };
   }
 
