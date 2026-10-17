@@ -1,7 +1,7 @@
 import { brandBlock } from "../brand";
 import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
-import { appendFinalLine, applyFinalLine, finalizedLines } from "../caption-history";
-import { connectRoom, type RoomConnection } from "../realtime/client";
+import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText } from "../caption-history";
+import { connectRoom, RECONNECTING, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
 import { detectSpeechCapability } from "../stt/capability";
 import { createWebSpeechProvider, isNonFatalSpeechNote, isSpeechFallbackMessage } from "../stt/web-speech";
@@ -331,7 +331,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       if (!ok) {
         speech.stop();
         pendingFinal = "";
-        error = someoneElseSpeaking(floor);
+        error = conn?.lastFloorReason() === "offline" ? RECONNECTING : someoneElseSpeaking(floor);
         renderDynamic();
         return;
       }
@@ -380,27 +380,44 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     renderDynamic();
     const epoch = publishEpoch;
     const from = detectLang(spoken, spokenAs);
-    const translated = await translateAll(translator, spoken, from);
-    if (epoch !== publishEpoch) return;
-    lastCaptionWasMock = translator.id === "mock";
+    // Original words first; translations patch the same line when they land.
     const line: CaptionLine = {
       id: crypto.randomUUID(),
       isFinal: true,
       speaker,
-      text: translated,
+      text: provisionalText(spoken),
       at: Date.now(),
     };
-    const lines = coalesce
-      ? applyFinalLine(state.lines, line, from)
-      : appendFinalLine(state.lines, line);
+    const before = state.lines;
+    const lines = coalesce ? applyFinalLine(before, line, from) : appendFinalLine(before, line);
+    if (lines === before || lines.at(-1)?.text[from] !== spoken) return;
+    const lineId = lines.at(-1)!.id;
     state = { ...state, lines, sourceLang: spokenAs, floor, listening: true };
     renderDynamic();
     push();
+    void (async () => {
+      try {
+        const translated = await translateAll(translator, spoken, from);
+        if (epoch !== publishEpoch) return;
+        // A newer revision of this line owns it now.
+        if (state.lines.find((l) => l.id === lineId)?.text[from] !== spoken) return;
+        lastCaptionWasMock = translator.id === "mock";
+        const patched = patchLineText(state.lines, lineId, translated, from);
+        if (patched === state.lines) return;
+        state = { ...state, lines: patched };
+        renderDynamic();
+        if (isFloorHolder(floor, peerId)) push();
+      } catch (err) {
+        console.warn("[captions] translation failed; original words stay", err);
+      }
+    })();
   }
 
   let publishQueue: Promise<void> = Promise.resolve();
   const queuePublish = (text: string, coalesce = true) => {
-    publishQueue = publishQueue.then(() => publishFinal(text, coalesce)).catch(() => undefined);
+    publishQueue = publishQueue
+      .then(() => publishFinal(text, coalesce))
+      .catch((err) => console.warn("[captions] publish failed", err));
   };
 
   speech.onResult = (result) => {
@@ -433,6 +450,13 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     }
     pendingFinal = "";
     stopLocalMic();
+    // Fatal speech error (including giving up after retries): free the turn.
+    if (isFloorHolder(floor, peerId)) {
+      void (async () => {
+        await conn?.releaseFloor();
+        push();
+      })();
+    }
     typeInput.focus();
     renderDynamic();
   };

@@ -119,6 +119,13 @@ function getRecognitionCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+/** iPhone: commit a still-interim phrase after this much quiet. */
+export const APPLE_COMMIT_MS = 1200;
+/** iPhone: a start() that never reports life within this window is retried. */
+export const WATCHDOG_MS = 2500;
+/** Restart cap after a normal end-of-phrase silence. Hard failures still back off. */
+export const SILENCE_RESTART_CAP_MS = 250;
+
 export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechProvider {
   const apple = options.appleMobile ?? isAppleMobile();
   const Ctor = options.recognitionCtor === undefined ? getRecognitionCtor() : options.recognitionCtor;
@@ -130,12 +137,12 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
   const scheduleCommit =
     options.scheduleCommit ??
     ((run: () => void) => {
-      window.setTimeout(run, 650);
+      window.setTimeout(run, APPLE_COMMIT_MS);
     });
   const scheduleWatchdog =
     options.scheduleWatchdog ??
     ((run: () => void) => {
-      window.setTimeout(run, 4000);
+      window.setTimeout(run, WATCHDOG_MS);
     });
 
   let rec: SpeechRecognitionLike | null = null;
@@ -354,14 +361,10 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
     const token = ++commitToken;
     scheduleCommit(() => {
       if (token !== commitToken || gen !== generation || !wantListening) return;
-      if (!commitDraft()) return;
-      // iOS 18 can leave the session running with isFinal stuck false.
-      // stop() ends it so the next phrase is a new one-shot.
-      try {
-        mine.stop();
-      } catch {
-        /* already ending */
-      }
+      // Publish only. Calling stop() here cut the speaker off mid-sentence after a
+      // short breath; Safari ends the one-shot itself and onend restarts it.
+      void mine;
+      commitDraft();
     });
   }
 
@@ -387,6 +390,10 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
 
   function backoffMs(): number {
     const base = apple ? 250 : 150;
+    if (hardFailures === 0) {
+      // Ordinary silence between phrases: come back fast so the next words are heard.
+      return Math.min(base, SILENCE_RESTART_CAP_MS);
+    }
     const steps = Math.min(quietStreak + hardFailures * 2, 4);
     return Math.min(base * 2 ** steps, 2500);
   }
@@ -565,6 +572,9 @@ export function createWebSpeechProvider(options: WebSpeechOptions = {}): SpeechP
       // WebKit often leaves isFinal false and only then ends the one-shot.
       // Chrome can also end mid-phrase. Publish the last hypothesis either way.
       if (!skipped) commitDraft();
+      // A new session numbers results from 0 and may repeat the last phrase's
+      // words legitimately; forget the previous commit so it is not dropped.
+      lastCommitted = "";
       if (hardError) {
         hardFailures += 1;
         if (hardFailures >= MAX_HARD_FAILURES) {

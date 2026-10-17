@@ -2749,3 +2749,22 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* "New captions ↓" pill on a pane the reader scrolled up in */
+.window[data-lang] { position: relative; }
+.new-captions-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #111;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}

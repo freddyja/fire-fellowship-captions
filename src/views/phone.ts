@@ -1,11 +1,11 @@
 import { brandBlock } from "../brand";
 import { applyI18n, readUiLang, subscribeUiLang, t, type UiStringKey } from "../ui-lang";
-import { appendFinalLine, applyFinalLine, finalizedLines, previewCaption } from "../caption-history";
+import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText, previewCaption } from "../caption-history";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
 import { tvQrSvg } from "../qr";
-import { connectRoom, type RoomConnection } from "../realtime/client";
+import { connectRoom, RECONNECTING, type RoomConnection } from "../realtime/client";
 import { goto, joinUrl, tvUrl } from "../router";
 import { createWebSpeechProvider, isNonFatalSpeechNote, isSpeechFallbackMessage } from "../stt/web-speech";
 import { requestTopicHandout } from "../topic-ask";
@@ -479,26 +479,41 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     renderDynamic();
     const epoch = publishEpoch;
     const from = detectLang(spoken, spokenAs);
-    const translated = await translateAll(translator, spoken, from);
-    if (epoch !== publishEpoch) return;
-    lastCaptionWasMock = translator.id === "mock";
-    paintLimitedBanner();
+    // Show the original words now; translations fill in when they arrive, so one
+    // slow translation never holds back the captions behind it.
     const line: CaptionLine = {
       id: crypto.randomUUID(),
       isFinal: true,
       speaker,
-      text: translated,
+      text: provisionalText(spoken),
       at: Date.now(),
     };
-    const lines = coalesce
-      ? applyFinalLine(state.lines, line, from)
-      : appendFinalLine(state.lines, line);
+    const before = state.lines;
+    const lines = coalesce ? applyFinalLine(before, line, from) : appendFinalLine(before, line);
+    if (lines === before || lines.at(-1)?.text[from] !== spoken) return;
+    const lineId = lines.at(-1)!.id;
     setState({ ...state, lines });
+    void (async () => {
+      try {
+        const translated = await translateAll(translator, spoken, from);
+        if (epoch !== publishEpoch) return;
+        // A newer revision of this line owns it now.
+        if (state.lines.find((l) => l.id === lineId)?.text[from] !== spoken) return;
+        lastCaptionWasMock = translator.id === "mock";
+        paintLimitedBanner();
+        const patched = patchLineText(state.lines, lineId, translated, from);
+        if (patched !== state.lines) setState({ ...state, lines: patched });
+      } catch (err) {
+        console.warn("[captions] translation failed; original words stay", err);
+      }
+    })();
   }
 
   let publishQueue: Promise<void> = Promise.resolve();
   const queuePublish = (text: string, coalesce = true) => {
-    publishQueue = publishQueue.then(() => publishFinal(text, coalesce)).catch(() => undefined);
+    publishQueue = publishQueue
+      .then(() => publishFinal(text, coalesce))
+      .catch((err) => console.warn("[captions] publish failed", err));
   };
 
   const releaseWake = () => {
@@ -546,7 +561,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       if (!ok) {
         speech.stop();
         pendingFinal = "";
-        error = someoneElseSpeaking(floor);
+        error = floorError();
         renderDynamic();
         return;
       }
@@ -575,14 +590,14 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       const freed = (await conn?.forceRelease()) ?? false;
       if (!freed) {
         speech.stop();
-        error = "Could not reclaim the mic.";
+        error = conn?.lastFloorReason() === "offline" ? RECONNECTING : "Could not reclaim the mic.";
         renderDynamic();
         return;
       }
       const ok = (await conn?.claimFloor("Host")) ?? false;
       if (!ok) {
         speech.stop();
-        error = someoneElseSpeaking(floor);
+        error = floorError();
         renderDynamic();
         return;
       }
@@ -596,6 +611,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       setState({ ...state, listening: true });
     })();
   };
+
+  const floorError = () =>
+    conn?.lastFloorReason() === "offline" ? RECONNECTING : someoneElseSpeaking(floor);
 
   const onVisibility = () => {
     if (document.visibilityState === "visible" && state.listening) void requestWake();
@@ -627,9 +645,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       releaseWake();
       typeForm.hidden = false;
       liveInterim = "";
-      if (message.includes("Microphone blocked") || message.includes("no Web Speech")) {
-        void conn?.releaseFloor();
-      }
+      // Every fatal speech error (including giving up after retries) frees the
+      // turn, or other phones stay locked out behind a dead mic.
+      if (isFloorHolder(floor, peerId)) void conn?.releaseFloor();
       setState({ ...state, listening: false });
       return;
     }
