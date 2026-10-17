@@ -6,7 +6,11 @@ import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
 import { tvQrSvg } from "../qr";
 import { connectRoom, RECONNECTING, type RoomConnection } from "../realtime/client";
-import { goto, joinUrl, tvUrl } from "../router";
+import { withLinkToken } from "../auth";
+import { goto, joinUrl, tvUrl as plainTvUrl } from "../router";
+
+/** TV links carry this device's token in #k= so the TV skips the PIN pad. */
+const tvUrl: typeof plainTvUrl = (room, lang) => withLinkToken(plainTvUrl(room, lang));
 import { createWebSpeechProvider, isNonFatalSpeechNote, isSpeechFallbackMessage } from "../stt/web-speech";
 import { requestTopicHandout } from "../topic-ask";
 import { renderTopicHandout } from "../topic-layout";
@@ -755,7 +759,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const paintSendTv = () => {
     const url = tvUrl(room);
     qrBox.innerHTML = tvQrSvg(url);
-    urlEl.textContent = url;
+    urlEl.textContent = plainTvUrl(room);
     langList.innerHTML = LANGS.map((lang) => {
       const langUrl = tvUrl(room, lang);
       return `
@@ -763,7 +767,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
           <div class="send-tv-lang-qr">${tvQrSvg(langUrl, `QR code for ${LANG_LABEL[lang]} TV captions`)}</div>
           <div class="send-tv-lang-meta">
             <p class="control-label">${LANG_SHORT[lang]} · ${LANG_LABEL[lang]}</p>
-            <p class="send-tv-lang-url">${escapeHtml(langUrl)}</p>
+            <p class="send-tv-lang-url">${escapeHtml(plainTvUrl(room, lang))}</p>
             <div class="send-tv-lang-actions">
               <button class="secondary" data-copy-lang="${lang}" type="button">${escapeHtml(t("host.copyLangLink", { lang: LANG_SHORT[lang] }))}</button>
               <button class="ghost" data-open-lang="${lang}" type="button">${escapeHtml(t("host.open"))}</button>

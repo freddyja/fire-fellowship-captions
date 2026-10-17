@@ -464,6 +464,32 @@ const STRINGS = {
   "tv.phoneConnected": { en: "Phone connected", es: "Tel\u00e9fono conectado", pt: "Celular conectado" },
   "tv.waiting": { en: "Waiting for phone", es: "Esperando el tel\u00e9fono", pt: "Aguardando o celular" },
   "tv.live": { en: "Live", es: "En vivo", pt: "Ao vivo" },
+
+  "pin.title": { en: "Enter the meeting PIN", es: "Ingresa el PIN de la reuni\u00f3n", pt: "Digite o PIN da reuni\u00e3o" },
+  "pin.help": {
+    en: "Ask the host for the 4-digit PIN. This device will remember it.",
+    es: "P\u00eddele al anfitri\u00f3n el PIN de 4 d\u00edgitos. Este dispositivo lo recordar\u00e1.",
+    pt: "Pe\u00e7a ao anfitri\u00e3o o PIN de 4 d\u00edgitos. Este aparelho vai lembrar.",
+  },
+  "pin.clear": { en: "Clear", es: "Borrar", pt: "Limpar" },
+  "pin.back": { en: "Delete", es: "Eliminar", pt: "Apagar" },
+  "pin.checking": { en: "Checking\u2026", es: "Verificando\u2026", pt: "Verificando\u2026" },
+  "pin.wrong": {
+    en: "Wrong PIN. {n} tries left.",
+    es: "PIN incorrecto. Quedan {n} intentos.",
+    pt: "PIN incorreto. Restam {n} tentativas.",
+  },
+  "pin.locked": {
+    en: "Too many tries. Try again in {time}.",
+    es: "Demasiados intentos. Intenta de nuevo en {time}.",
+    pt: "Muitas tentativas. Tente de novo em {time}.",
+  },
+  "pin.tryAgainNow": { en: "You can try again now.", es: "Ya puedes intentar de nuevo.", pt: "Voc\u00ea j\u00e1 pode tentar de novo." },
+  "pin.error": {
+    en: "Could not reach the server. Try again.",
+    es: "No se pudo conectar con el servidor. Intenta de nuevo.",
+    pt: "N\u00e3o foi poss\u00edvel falar com o servidor. Tente de novo.",
+  },
 } satisfies Record<string, Copy>;
 
 export type UiStringKey = keyof typeof STRINGS;

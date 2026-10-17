@@ -1,4 +1,4 @@
-const CACHE = "fire-fellowship-v7";
+const CACHE = "fire-fellowship-v8";
 const PRECACHE = [
   "/",
   "/index.html",
@@ -11,7 +11,7 @@ const PRECACHE = [
   "/icon-512-maskable.png",
 ];
 
-const PASS = new Set(["/caption-ws", "/health", "/api/translate", "/api/topic-handout"]);
+const PASS = new Set(["/caption-ws", "/health", "/api/translate", "/api/topic-handout", "/api/login", "/api/auth"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

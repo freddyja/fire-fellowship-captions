@@ -1,3 +1,4 @@
+import { authFetch } from "../auth";
 import { isOfflineMeeting } from "../offline-mode";
 import { isLang, type Lang } from "../types";
 import type { Translator } from "./types";
@@ -61,7 +62,7 @@ async function postTranslate(text: string, from: Lang, to?: Lang[]): Promise<Tra
   if (isOfflineMeeting()) payload.provider = "mock";
   let res: Response;
   try {
-    res = await fetch("/api/translate", {
+    res = await authFetch("/api/translate", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),

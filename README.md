@@ -292,6 +292,45 @@ Demo line (works on DeepL, MyMemory, and the built-in mock dictionary):
 
 > Welcome brothers. Thank you for coming tonight. Let us begin.
 
+## Meeting PIN (optional)
+
+Set a **4-digit PIN** on the host and everyone must enter it once per device before the app opens. Leave it unset and the app is open, exactly as before.
+
+| Variable | Meaning |
+| --- | --- |
+| `APP_PIN` | The 4-digit PIN (e.g. set in the Render dashboard). Takes priority. |
+| `APP_PASSWORD` | Same thing, alternate name. Used when `APP_PIN` is empty. |
+| `APP_SECRET` | Optional. Signs device tokens. Unset = derived from the PIN, so changing the PIN signs every device out. |
+
+- Never commit the PIN. On Render: **Dashboard → fire-fellowship-captions → Environment → add `APP_PASSWORD`** (or `APP_PIN`), then save (Render redeploys). `render.yaml` lists the key with `sync: false` and no value.
+- A value that is not exactly 4 digits keeps the gate **on** and refuses every login (fail closed), with a warning in the logs.
+- Checked on the server: every `/api/*` route (translate, topic handouts) and the `/caption-ws` websocket upgrade. Public: `/health`, the app shell/static files, `POST /api/login`, `GET /api/auth`.
+
+### PIN API (mirror this in Meeting Translator)
+
+```
+POST /api/login   {"pin":"1234","deviceId":"<optional stable id>"}
+  200 {"ok":true,"token":"v1.<exp>.<sig>","expiresAt":<ms>,"required":true}
+  400 {"error":"pin must be 4 digits"}            (not counted as a wrong try)
+  401 {"error":"wrong_pin","remaining":<n>}       (tries left before a lockout)
+  429 {"error":"locked","retryAfter":<seconds>}   (+ Retry-After header)
+  503 {"error":"pin_misconfigured"}               (PIN env var is not 4 digits)
+  Gate off: 200 {"ok":true,"token":"","required":false}
+
+GET /api/auth   -> {"required":bool,"ok":bool}   (is the gate on; is my token good)
+```
+
+Send the token as `Authorization: Bearer <token>` (or an `ff_auth` cookie) on API calls, and as `/caption-ws?auth=<token>` on the websocket. A missing/bad token gets `401` (`{"error":"auth"}`), and the websocket upgrade is refused with HTTP 401. Tokens are HMAC-SHA256 signed and last 180 days. The PIN is compared with `timingSafeEqual`.
+
+**Wrong-PIN lockout:** 5 wrong tries per IP *and* per device id → locked 1 min, then 5 min, then 15 min for each further run of 5. An hour with no wrong tries starts over; a correct PIN clears it. A global cap of 60 wrong tries per 15 minutes (all callers) slows anyone rotating IPs; devices already signed in keep working during a lockout.
+
+### How each screen gets in
+
+- **Host phone / brothers' phones (Join QR):** the PIN pad shows once; the token is kept in `localStorage` (`ff-auth-token`). The Join link does **not** carry the token, so a forwarded Join link or QR photo still needs the PIN.
+- **TV (Send to TV):** the TV links and QR codes the host shows carry the host's token in the URL **fragment** (`#k=…`). Fragments are never sent to the server or logged by it; the TV saves the token and strips it from the address bar, so the TV never needs the PIN typed with a remote. The on-screen URL text stays the plain link. If the TV opens a plain link, it shows the PIN pad (one entry, remembered).
+- **Smart View:** runs on the host phone, already signed in.
+- Any `401` (PIN changed, token expired) clears the token and brings the PIN pad back.
+
 ## Translation / env
 
 The phone translates **before** it sends captions to the TV. The Fold calls `POST /api/translate` on the same host. Source language → the other TV windows (**EN / ES / PT**, any direction). Keys stay on the server. Do **not** put `DEEPL_AUTH_KEY` or a Google key in any `VITE_*` variable.
