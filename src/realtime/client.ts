@@ -1,3 +1,4 @@
+import { checkAuth, signalAuthRequired, wsAuthQuery } from "../auth";
 import {
   emptyFloor,
   type ConnStatus,
@@ -140,11 +141,13 @@ export function connectRoom(opts: {
     window.clearTimeout(retryTimer);
     opts.onStatus("connecting");
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${proto}//${location.host}/caption-ws`);
+    const socket = new WebSocket(`${proto}//${location.host}/caption-ws${wsAuthQuery()}`);
     ws = socket;
+    let opened = false;
 
     socket.onopen = () => {
       if (ws !== socket) return;
+      opened = true;
       attempt = 0;
       socket.send(
         JSON.stringify({
@@ -223,6 +226,12 @@ export function connectRoom(opts: {
       if (ws !== socket) return;
       ws = null;
       opts.onStatus("offline");
+      // Never opened: maybe the PIN gate refused us (browsers hide the 401).
+      if (!opened && attempt >= 1) {
+        void checkAuth().then((status) => {
+          if (status?.required && !status.ok) signalAuthRequired();
+        });
+      }
       scheduleRetry();
     };
 

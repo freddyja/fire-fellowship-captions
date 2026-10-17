@@ -1,8 +1,9 @@
+import { authFetch } from "./auth";
 import { normalizeTopic } from "./topics";
 import type { TopicContent } from "./types";
 
 export async function requestTopicHandout(query: string, signal?: AbortSignal): Promise<TopicContent> {
-  const res = await fetch("/api/topic-handout", {
+  const res = await authFetch("/api/topic-handout", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query }),
