@@ -172,6 +172,7 @@ Do not deploy mid-meeting (a new machine can drop the in-memory room).
 1. New **Web Service** (not a Static Site) from this repo, or apply `render.yaml`.
 2. Build `npm ci && npm run build`, start `npm start`, Node 22.
 3. Free instances sleep; open the URL a minute before the meeting.
+   **Pre-meeting wake:** opening the app now pings `GET /health` right away, so the host starts waking before anyone taps Start. Open the app on the host phone (or the TV) about a minute before the meeting starts; the first open after an idle night can take up to ~50 s on the free plan.
 4. Instance count: **1**.
 
 ### After you have the URL

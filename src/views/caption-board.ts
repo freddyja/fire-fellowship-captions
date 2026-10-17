@@ -125,8 +125,35 @@ function restorePaneScroll(board: HTMLElement, prior: Map<string, PaneScroll>) {
   for (const pane of board.querySelectorAll<HTMLElement>(".window[data-lang] > .lines")) {
     const lang = (pane.parentElement as HTMLElement | null)?.dataset.lang ?? "";
     const before = prior.get(lang);
-    pane.scrollTop = !before || before.pinned ? pane.scrollHeight : before.top;
+    const follow = !before || before.pinned;
+    pane.scrollTop = follow ? pane.scrollHeight : before.top;
+    // Reader scrolled up and new lines arrived below: offer a jump back down.
+    if (!follow && pane.scrollHeight - pane.scrollTop - pane.clientHeight > PIN_SLACK_PX) {
+      addNewCaptionsPill(pane);
+    }
   }
+}
+
+function addNewCaptionsPill(pane: HTMLElement) {
+  const win = pane.parentElement;
+  if (!win || win.querySelector(".new-captions-pill")) return;
+  const pill = document.createElement("button");
+  pill.type = "button";
+  pill.className = "new-captions-pill";
+  pill.textContent = "New captions ↓";
+  const drop = () => {
+    pill.remove();
+    pane.removeEventListener("scroll", onScroll);
+  };
+  const onScroll = () => {
+    if (pane.scrollHeight - pane.scrollTop - pane.clientHeight <= PIN_SLACK_PX) drop();
+  };
+  pill.addEventListener("click", () => {
+    pane.scrollTop = pane.scrollHeight;
+    drop();
+  });
+  pane.addEventListener("scroll", onScroll, { passive: true });
+  win.appendChild(pill);
 }
 
 function activeSpeakerName(floor: FloorState | null | undefined): string {

@@ -152,6 +152,7 @@ async function tryMyMemoryPair(
   source: string,
   from: Lang,
   to: Lang,
+  allowPivot = true,
 ): Promise<{ text: string; provider: TranslateProvider } | null> {
   if (myMemoryOnCooldown()) return null;
   try {
@@ -162,7 +163,7 @@ async function tryMyMemoryPair(
     console.warn("[translate] MyMemory pair failed; trying MinT", from, to);
     console.warn(err instanceof Error ? err.message : "translate error");
   }
-  if (from !== "en" && to !== "en" && !myMemoryOnCooldown()) {
+  if (allowPivot && from !== "en" && to !== "en" && !myMemoryOnCooldown()) {
     try {
       const viaEn = await getMyMemoryTranslator().translate(source, from, "en");
       if (!isIdentityTranslation(source, viaEn)) {
@@ -171,6 +172,8 @@ async function tryMyMemoryPair(
       }
     } catch (err) {
       markMyMemoryFailure(err);
+      console.warn("[translate] MyMemory pivot via EN failed", from, to);
+      console.warn(err instanceof Error ? err.message : "translate error");
     }
   }
   return null;
@@ -188,8 +191,9 @@ async function translateOnePair(
 
   if (prefer === "deepl") {
     try {
+      // Unchanged text (names, "Amén", "OK") is a real answer, not a failure.
       const text = await cachedDeepL(source, from, to);
-      if (!isIdentityTranslation(source, text)) return { text, provider: "deepl" };
+      if (text.trim()) return { text, provider: "deepl" };
     } catch (err) {
       console.warn("[translate] DeepL pair failed; trying next", from, to);
       console.warn(err instanceof Error ? err.message : "translate error");
@@ -199,7 +203,7 @@ async function translateOnePair(
   if (prefer === "google") {
     try {
       const text = await googleTranslate(source, from, to);
-      if (!isIdentityTranslation(source, text)) return { text, provider: "google" };
+      if (text.trim()) return { text, provider: "google" };
     } catch (err) {
       console.warn("[translate] Google pair failed; trying next", from, to);
       console.warn(err instanceof Error ? err.message : "translate error");
@@ -213,7 +217,9 @@ async function translateOnePair(
   }
 
   if (prefer !== "mock") {
-    const remembered = await tryMyMemoryPair(source, from, to);
+    // With a paid/keyed provider configured, skip the slow MyMemory two-step pivot.
+    const keyed = prefer === "deepl" || prefer === "google";
+    const remembered = await tryMyMemoryPair(source, from, to, !keyed);
     if (remembered) return remembered;
     const minted = await tryMinTPair(source, from, to);
     if (minted) return minted;
@@ -286,6 +292,9 @@ function cacheSet(key: string, value: string): void {
   cache.set(key, value);
 }
 
+/** Live captions: a slow DeepL call must not hold the line for 8 s. */
+const DEEPL_TIMEOUT_MS = 4000;
+
 async function cachedDeepL(text: string, from: Lang, to: Lang): Promise<string> {
   const cacheKey = `deepl:${from}:${to}:${text}`;
   const hit = cacheGet(cacheKey);
@@ -293,6 +302,7 @@ async function cachedDeepL(text: string, from: Lang, to: Lang): Promise<string> 
   const translated = await deeplTranslate(text, from, to, {
     authKey: deeplKey(),
     apiUrl: deeplApiUrlOverride(),
+    timeoutMs: DEEPL_TIMEOUT_MS,
   });
   cacheSet(cacheKey, translated);
   return translated;

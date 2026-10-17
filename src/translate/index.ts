@@ -5,7 +5,7 @@ import { mockTranslator } from "./mock";
 import { createLibreTranslator } from "./libretranslate";
 import { createMyMemoryTranslator } from "./mymemory";
 import { passthroughTranslator } from "./passthrough";
-import { createServerTranslator } from "./server";
+import { createServerTranslator, isServerAnswered } from "./server";
 import { translateAll as runTranslateAll, type Translator } from "./types";
 
 export type { Translator } from "./types";
@@ -58,13 +58,13 @@ function withFallback(primary: Translator): Translator {
         lastId = primary.id;
         return translated;
       } catch (err) {
-        if (allowMintFallback) {
+        if (allowMintFallback && !isServerAnswered(err)) {
           try {
             const minted = await createMinTTranslator().translate(text, from, to);
             lastId = "mint";
             return minted;
-          } catch {
-            /* mock */
+          } catch (mintErr) {
+            console.warn("[translate] MinT fallback failed", mintErr);
           }
         }
         console.warn(`[translate] ${primary.id} failed, using mock`, err);
@@ -73,21 +73,23 @@ function withFallback(primary: Translator): Translator {
       }
     },
     async translateAll(text, from) {
+      let answered = false;
       try {
         const mapped = await runTranslateAll(primary, text, from);
         lastId = primary.id;
         return mapped;
       } catch (err) {
         console.warn(`[translate] ${primary.id} failed, trying MinT then mock`, err);
+        answered = isServerAnswered(err);
       }
-      if (allowMintFallback) {
+      if (allowMintFallback && !answered) {
         try {
           const mint = createMinTTranslator();
           const mapped = await runTranslateAll(mint, text, from);
           lastId = "mint";
           return mapped;
-        } catch {
-          /* mock */
+        } catch (mintErr) {
+          console.warn("[translate] MinT fallback failed", mintErr);
         }
       }
       lastId = "mock";
@@ -103,7 +105,8 @@ function withFallback(primary: Translator): Translator {
 async function safeMock(text: string, from: import("../types").Lang, to: import("../types").Lang): Promise<string> {
   try {
     return await mockTranslator.translate(text, from, to);
-  } catch {
+  } catch (err) {
+    console.warn("[translate] mock failed", err);
     return text;
   }
 }

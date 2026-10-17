@@ -16,6 +16,8 @@ type Client = {
   room: string;
   role: Role;
   name: string;
+  /** Stable per-tab id from the browser, so a reconnect keeps the speaking turn. */
+  clientId: string | null;
 };
 
 type RoomState = Record<string, unknown>;
@@ -27,9 +29,14 @@ type Room = {
 };
 
 type Inbound =
-  | { type: "join"; room: string; role?: string; name?: string }
+  | { type: "join"; room: string; role?: string; name?: string; clientId?: string }
   | { type: "push"; state: unknown }
-  | { type: "floor"; action?: string; name?: string };
+  | { type: "ping" }
+  | { type: "floor"; action?: string; name?: string; rid?: number };
+
+/** Heartbeat: ping every interval; terminate a socket after this many missed pongs. */
+export const HEARTBEAT_MS = 20_000;
+export const MAX_MISSED_PONGS = 2;
 
 const LAYOUTS = new Set(["en", "es", "pt", "en-es", "en-pt", "es-pt", "en-es-pt"]);
 const LANGS = new Set(["en", "es", "pt"]);
@@ -38,7 +45,10 @@ export type CaptionRelay = {
   roomCount(): number;
 };
 
-export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
+export function attachCaptionRelay(
+  httpServer: Server | null,
+  options: { heartbeatMs?: number } = {},
+): CaptionRelay {
   if (!httpServer) return { roomCount: () => 0 };
 
   const flagged = httpServer as Server & { __ffRelay?: CaptionRelay };
@@ -57,14 +67,42 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
     });
   });
 
+  const missed = new WeakMap<WebSocket, number>();
+  const heartbeat = setInterval(() => {
+    for (const sock of wss.clients) {
+      const count = missed.get(sock) ?? 0;
+      if (count >= MAX_MISSED_PONGS) {
+        // A phone that locked or lost Wi-Fi without a FIN. Free its turn now.
+        sock.terminate();
+        continue;
+      }
+      missed.set(sock, count + 1);
+      try {
+        sock.ping();
+      } catch {
+        sock.terminate();
+      }
+    }
+  }, options.heartbeatMs ?? HEARTBEAT_MS);
+  heartbeat.unref?.();
+  httpServer.on("close", () => clearInterval(heartbeat));
+
   wss.on("connection", (ws) => {
     let client: Client | null = null;
+    missed.set(ws, 0);
+    ws.on("pong", () => missed.set(ws, 0));
 
     ws.on("message", (raw) => {
       let msg: Inbound;
       try {
         msg = JSON.parse(String(raw)) as Inbound;
       } catch {
+        return;
+      }
+      missed.set(ws, 0);
+
+      if (msg.type === "ping") {
+        send(ws, { type: "pong" });
         return;
       }
 
@@ -81,13 +119,31 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
           bucket = { clients: new Set(), state: null, floor: emptyFloor() };
           rooms.set(room, bucket);
         }
+        const clientId = parseClientId(msg.clientId);
         client = {
           id: randomUUID(),
           ws,
           room,
           role,
           name: sanitizeName(msg.name, role === "phone" ? "Host" : role === "guest" ? "Guest" : "Brother"),
+          clientId,
         };
+        // Same tab reconnecting: retire its old socket and hand the turn over.
+        if (clientId) {
+          for (const old of [...bucket.clients]) {
+            if (old.clientId !== clientId || old.ws === ws) continue;
+            bucket.clients.delete(old);
+            if (bucket.floor.holderId === old.id) {
+              bucket.floor = { holderId: client.id, holderName: client.name };
+              rememberFloor(bucket);
+            }
+            try {
+              old.ws.terminate();
+            } catch {
+              /* gone */
+            }
+          }
+        }
         bucket.clients.add(client);
         const counts = peerCounts(bucket);
         send(ws, {
@@ -111,7 +167,7 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
 
       if (msg.type === "floor") {
         if (typeof msg.name === "string") client.name = sanitizeName(msg.name, client.name);
-        handleFloor(bucket, client, parseFloorAction(msg.action));
+        handleFloor(bucket, client, parseFloorAction(msg.action), parseRid(msg.rid));
         return;
       }
 
@@ -127,7 +183,9 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
       const bucket = rooms.get(client.room);
       if (bucket) {
         const leaving = client;
-        bucket.clients.delete(leaving);
+        client = null;
+        // Already replaced by a reconnect of the same tab.
+        if (!bucket.clients.delete(leaving)) return;
         if (bucket.floor.holderId === leaving.id) {
           bucket.floor = emptyFloor();
           if (bucket.state) {
@@ -150,7 +208,14 @@ export function attachCaptionRelay(httpServer: Server | null): CaptionRelay {
   return api;
 }
 
-function handleFloor(bucket: Room, client: Client, action: "claim" | "release" | "force" | ""): void {
+function handleFloor(
+  bucket: Room,
+  client: Client,
+  action: "claim" | "release" | "force" | "",
+  rid?: number,
+): void {
+  const sendFloorResult = (c: Client, ok: boolean, reason: string | undefined, floor: Floor) =>
+    sendFloorReply(c, ok, reason, floor, action || undefined, rid);
   if (!action) {
     sendFloorResult(client, false, "denied", bucket.floor);
     return;
@@ -230,7 +295,9 @@ function applyPush(bucket: Room, client: Client, raw: unknown): void {
     return;
   }
 
+  let granted = false;
   if (wantsMic && (!bucket.floor.holderId || bucket.floor.holderId === client.id)) {
+    granted = bucket.floor.holderId !== client.id;
     bucket.floor = { holderId: client.id, holderName: client.name };
   }
 
@@ -277,6 +344,11 @@ function applyPush(bucket: Room, client: Client, raw: unknown): void {
     }
   }
   if (dropsMic) broadcastFloor(bucket);
+  if (granted) {
+    // A push with listening:true took a free turn. Tell the pusher and everyone else.
+    sendFloorReply(client, true, undefined, bucket.floor, "claim");
+    broadcastFloor(bucket, client.ws);
+  }
 }
 
 function applyHostMeta(bucket: Room, client: Client, incoming: RoomState): void {
@@ -385,13 +457,30 @@ function send(ws: WebSocket, payload: unknown): void {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
 }
 
-function sendFloorResult(client: Client, ok: boolean, reason: string | undefined, floor: Floor): void {
+function sendFloorReply(
+  client: Client,
+  ok: boolean,
+  reason: string | undefined,
+  floor: Floor,
+  action?: string,
+  rid?: number,
+): void {
   send(client.ws, {
     type: "floor",
     ok,
     reason,
+    action,
+    rid,
     floor: snapshotFloor(floor),
   });
+}
+
+function parseClientId(value: unknown): string | null {
+  return typeof value === "string" && /^[\w-]{8,64}$/.test(value) ? value : null;
+}
+
+function parseRid(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function peerCounts(bucket: Room): { phones: number; tvs: number; guests: number } {
@@ -415,9 +504,10 @@ function broadcastPeers(bucket: Room): void {
   }
 }
 
-function broadcastFloor(bucket: Room): void {
+function broadcastFloor(bucket: Room, except?: WebSocket): void {
   const payload = JSON.stringify({ type: "floor", floor: snapshotFloor(bucket.floor) });
   for (const client of bucket.clients) {
+    if (client.ws === except) continue;
     if (client.ws.readyState === WebSocket.OPEN) client.ws.send(payload);
   }
 }

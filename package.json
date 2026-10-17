@@ -1,7 +1,7 @@
 {
   "name": "fire-fellowship-captions",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -11,7 +11,9 @@
     "start": "node --experimental-strip-types server/index.ts",
     "verify:prod": "node --experimental-strip-types scripts/verify-route.mjs && node scripts/verify-production.mjs",
     "verify:translate": "node --experimental-strip-types scripts/verify-translate.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": ">=22.6"
@@ -25,6 +27,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-basic-ssl": "^2.1.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "vitest": "^3.2.7"
   }
 }
