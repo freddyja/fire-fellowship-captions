@@ -232,6 +232,9 @@ const STRINGS = {
   "join.esOnly": { en: "ES only", es: "Solo ES", pt: "S\u00f3 ES" },
   "join.ptOnly": { en: "PT only", es: "Solo PT", pt: "S\u00f3 PT" },
   "join.allThree": { en: "All three", es: "Los tres", pt: "Os tr\u00eas" },
+  "join.enEs": { en: "EN | ES", es: "EN | ES", pt: "EN | ES" },
+  "join.enPt": { en: "EN | PT", es: "EN | PT", pt: "EN | PT" },
+  "join.esPt": { en: "ES | PT", es: "ES | PT", pt: "ES | PT" },
   "join.captionsOnly": { en: "Captions only", es: "Solo subt\u00edtulos", pt: "S\u00f3 legendas" },
   "join.captionsOnlyAria": {
     en: "Captions only \u2014 hide the topic handout on this mirrored view",
@@ -281,9 +284,9 @@ const STRINGS = {
     pt: "Voc\u00ea est\u00e1 falando \u2014 as legendas v\u00e3o para cada celular e para a TV.",
   },
   "join.floorHolding": {
-    en: "You have the mic. Type a caption, or Stop to free the floor.",
-    es: "Tienes el micr\u00f3fono. Escribe un subt\u00edtulo, o Detener para soltar la palabra.",
-    pt: "Voc\u00ea tem o microfone. Digite uma legenda, ou Parar para liberar a palavra.",
+    en: "It's your turn. Tap Start to talk, or type a caption.",
+    es: "Es tu turno. Toca Iniciar para hablar, o escribe un subt\u00edtulo.",
+    pt: "\u00c9 a sua vez. Toque em Iniciar para falar, ou digite uma legenda.",
   },
   "join.floorTypeOnly": {
     en: "Mic is free. Type a caption to send it to every phone and the TV.",
@@ -306,7 +309,36 @@ const STRINGS = {
     pt: "cabe\u00e7a do lar, contentamento, perd\u00e3o\u2026",
   },
   "host.ask": { en: "Ask for topic", es: "Pedir tema", pt: "Pedir tema" },
-  "host.set": { en: "Set", es: "Fijar", pt: "Definir" },
+  "host.set": { en: "Show on TV", es: "Mostrar en la TV", pt: "Mostrar na TV" },
+  "host.setAria": {
+    en: "Show the typed theme on the TV now, using the built-in topics",
+    es: "Mostrar ahora en la TV el tema escrito, con los temas incluidos",
+    pt: "Mostrar agora na TV o tema digitado, com os temas inclu\u00eddos",
+  },
+  "host.moreOptions": { en: "More options", es: "M\u00e1s opciones", pt: "Mais op\u00e7\u00f5es" },
+  "host.offlineHint": {
+    en: "Only if there is no internet. Translations then use a small built-in phrase list.",
+    es: "Solo si no hay internet. Las traducciones usan entonces una lista breve de frases incluida.",
+    pt: "S\u00f3 se n\u00e3o houver internet. As tradu\u00e7\u00f5es usam ent\u00e3o uma lista curta de frases inclu\u00edda.",
+  },
+  "host.smartViewHint": {
+    en: "Smart View mirrors this phone\u2019s screen to the TV. Send to TV opens captions in the TV\u2019s own browser.",
+    es: "Smart View refleja la pantalla de este tel\u00e9fono en la TV. Enviar a la TV abre los subt\u00edtulos en el navegador de la TV.",
+    pt: "O Smart View espelha a tela deste celular na TV. Enviar para a TV abre as legendas no navegador da pr\u00f3pria TV.",
+  },
+  "host.layoutEnEs": { en: "EN | ES", es: "EN | ES", pt: "EN | ES" },
+  "host.layoutEnPt": { en: "EN | PT", es: "EN | PT", pt: "EN | PT" },
+  "host.layoutEsPt": { en: "ES | PT", es: "ES | PT", pt: "ES | PT" },
+  "host.twoLanguages": {
+    en: "Two languages per screen",
+    es: "Dos idiomas por pantalla",
+    pt: "Dois idiomas por tela",
+  },
+  "host.twoLanguagesHint": {
+    en: "Same room. That screen shows two languages side by side.",
+    es: "La misma sala. Esa pantalla muestra dos idiomas lado a lado.",
+    pt: "A mesma sala. Essa tela mostra dois idiomas lado a lado.",
+  },
   "host.askStatus": {
     en: "Type a theme and tap <strong>Ask for topic</strong> \u2014 or tap a chip.",
     es: "Escribe un tema y toca <strong>Pedir tema</strong> \u2014 o toca una opci\u00f3n.",
@@ -464,6 +496,7 @@ const STRINGS = {
   "tv.phoneConnected": { en: "Phone connected", es: "Tel\u00e9fono conectado", pt: "Celular conectado" },
   "tv.waiting": { en: "Waiting for phone", es: "Esperando el tel\u00e9fono", pt: "Aguardando o celular" },
   "tv.live": { en: "Live", es: "En vivo", pt: "Ao vivo" },
+  "tv.leaveConfirm": { en: "Tap again to leave", es: "Toca otra vez para salir", pt: "Toque de novo para sair" },
 
   "pin.title": { en: "Enter the meeting PIN", es: "Ingresa el PIN de la reuni\u00f3n", pt: "Digite o PIN da reuni\u00e3o" },
   "pin.help": {

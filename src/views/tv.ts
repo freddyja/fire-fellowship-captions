@@ -4,24 +4,27 @@ import { finalizedLines } from "../caption-history";
 import { connectRoom } from "../realtime/client";
 import { goto } from "../router";
 import { normalizeTopic } from "../topics";
-import { LANG_LABEL, LANG_SHORT, emptyState, type ConnStatus, type Lang, type PeerCounts } from "../types";
+import { LANG_LABEL, LANG_SHORT, emptyState, langsForLayout, type ConnStatus, type Layout, type PeerCounts } from "../types";
 import { paintCaptionBoard } from "./caption-board";
 
-export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => void {
+/** How long "Tap again to leave" stays armed on the TV. */
+const LEAVE_ARM_MS = 4000;
+
+export function mountTv(root: HTMLElement, room: string, lang?: Layout): () => void {
   let state = emptyState(room);
   let peers: PeerCounts = { phones: 0, tvs: 1, guests: 0 };
   let connStatus: ConnStatus = "connecting";
   const langLock = lang;
 
   root.innerHTML = `
-    <section class="screen tv-screen${langLock ? " is-lang-lock" : ""}">
+    <section class="screen tv-screen${langLock ? ` is-lang-lock is-lang-lock-${langsForLayout(langLock).length}` : ""}">
       <div class="tv-top">
         ${brandBlock(true)}
         <div class="tv-meta">
           <div class="room-pill"><span data-i18n="chrome.room">Room</span> <strong data-room></strong></div>
           <div class="room-pill" data-lang-pill hidden></div>
           <div class="status-pill"><span class="dot" data-dot></span><span data-status></span></div>
-          <button class="ghost" data-home type="button" data-i18n="chrome.leave">Leave</button>
+          <button class="ghost tv-leave" data-home type="button" data-i18n="chrome.leave" title="Leave this TV view">Leave</button>
         </div>
       </div>
       <aside class="tv-topic" data-topic hidden></aside>
@@ -35,16 +38,42 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
   const langPill = root.querySelector("[data-lang-pill]") as HTMLElement;
   const statusEl = root.querySelector("[data-status]") as HTMLElement;
   const dot = root.querySelector("[data-dot]") as HTMLElement;
-  const home = root.querySelector("[data-home]");
+  const home = root.querySelector("[data-home]") as HTMLButtonElement | null;
 
-  const onHome = () => goto("home");
+  // A TV remote or a stray tap should not end the meeting view: Leave needs a second tap.
+  let leaveArmed = false;
+  let leaveTimer = 0;
+  const disarmLeave = () => {
+    leaveArmed = false;
+    window.clearTimeout(leaveTimer);
+    if (home) {
+      home.classList.remove("is-armed");
+      home.textContent = t("chrome.leave");
+    }
+  };
+  const onHome = () => {
+    if (!leaveArmed) {
+      leaveArmed = true;
+      if (home) {
+        home.classList.add("is-armed");
+        home.textContent = t("tv.leaveConfirm");
+      }
+      window.clearTimeout(leaveTimer);
+      leaveTimer = window.setTimeout(disarmLeave, LEAVE_ARM_MS);
+      return;
+    }
+    disarmLeave();
+    goto("home");
+  };
   home?.addEventListener("click", onHome);
 
   function render() {
     roomEl.textContent = state.room;
     if (langLock) {
       langPill.hidden = false;
-      langPill.textContent = `${LANG_SHORT[langLock]} · ${LANG_LABEL[langLock]}`;
+      const locked = langsForLayout(langLock);
+      langPill.textContent =
+        locked.length === 1 ? `${LANG_SHORT[locked[0]]} · ${LANG_LABEL[locked[0]]}` : locked.map((l) => LANG_SHORT[l]).join(" | ");
     } else {
       langPill.hidden = true;
       langPill.textContent = "";
@@ -92,6 +121,7 @@ export function mountTv(root: HTMLElement, room: string, lang?: Lang): () => voi
 
   return () => {
     conn.close();
+    window.clearTimeout(leaveTimer);
     home?.removeEventListener("click", onHome);
   };
 }

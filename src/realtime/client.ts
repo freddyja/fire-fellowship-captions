@@ -19,8 +19,11 @@ export const RECONNECTING = "Reconnecting…";
 
 export type FloorResult = { ok: boolean; reason?: string };
 
+/** What a phone sends. listening is left out by a typed caption (no mic change). */
+export type RoomPush = Omit<RoomState, "listening"> & { listening?: boolean };
+
 export type RoomConnection = {
-  push(state: RoomState): void;
+  push(state: RoomPush): void;
   claimFloor(name?: string): Promise<boolean>;
   releaseFloor(): Promise<boolean>;
   forceRelease(): Promise<boolean>;
@@ -87,7 +90,7 @@ export function connectRoom(opts: {
   let probeTimer = 0;
   const clientId = opts.clientId ?? stableClientId(opts.role);
 
-  let queued: RoomState | null = null;
+  let queued: RoomPush | null = null;
   let floor: FloorState = emptyFloor();
   /** True while this tab holds (or should hold) the speaking turn. Re-claimed on every reconnect. */
   let wantFloor = false;

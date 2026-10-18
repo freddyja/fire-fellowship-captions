@@ -41,9 +41,12 @@ export function mountPin(root: HTMLElement, onUnlocked: () => void): () => void 
   let lockedUntil = 0;
   let lockTimer = 0;
   let message: () => string = () => "";
+  /** Wrong code / locked out: shown large on a red card, not as small gold text. */
+  let isError = false;
 
   const paintMsg = () => {
     msg.textContent = message();
+    msg.classList.toggle("is-error", isError && Boolean(msg.textContent));
   };
   const unbindLang = bindUiLangBar(root, paintMsg);
 
@@ -72,12 +75,14 @@ export function mountPin(root: HTMLElement, onUnlocked: () => void): () => void 
         window.clearInterval(lockTimer);
         setDisabled(false);
         message = () => t("pin.tryAgainNow");
+        isError = false;
         paintMsg();
         focusNext();
         return;
       }
       const time = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
       message = () => t("pin.locked", { time });
+      isError = true;
       paintMsg();
     };
     window.clearInterval(lockTimer);
@@ -91,6 +96,7 @@ export function mountPin(root: HTMLElement, onUnlocked: () => void): () => void 
     busy = true;
     setDisabled(true);
     message = () => t("pin.checking");
+    isError = false;
     paintMsg();
     const result = await login(pin);
     busy = false;
@@ -114,6 +120,7 @@ export function mountPin(root: HTMLElement, onUnlocked: () => void): () => void 
     } else {
       message = () => t("pin.error");
     }
+    isError = true;
     paintMsg();
     focusNext();
   };
