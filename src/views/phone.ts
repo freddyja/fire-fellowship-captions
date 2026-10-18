@@ -1,6 +1,7 @@
 import { brandBlock } from "../brand";
 import { applyI18n, readUiLang, subscribeUiLang, t, type UiStringKey } from "../ui-lang";
-import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText, previewCaption } from "../caption-history";
+import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText, previewCaption, settleUntranslated } from "../caption-history";
+import { createTypedTurn, wireListening } from "../typed-turn";
 import { escapeHtml } from "../dom";
 import { bindLocalSetup, localSetupInnerHtml } from "../local-setup";
 import { bindOfflineModeToggle, isOfflineMeeting } from "../offline-mode";
@@ -21,7 +22,10 @@ import {
   captionSpeaker,
   emptyFloor,
   emptyState,
+  DUAL_LAYOUTS,
   floorHeldByOther,
+  isLayout,
+  langsForLayout,
   isFloorHolder,
   isLang,
   keepsLocalCaptions,
@@ -63,7 +67,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let hydrated = false;
   let wakeLock: WakeLockSentinel | null = null;
   let copyLabelTimer = 0;
-  const copyLangTimers: Partial<Record<Lang, number>> = {};
+  const copyLangTimers: Partial<Record<Layout, number>> = {};
   let copyJoinTimer = 0;
   let smartViewMode = false;
   let captionsOnly = readCaptionsOnlyPref();
@@ -77,7 +81,18 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   let peerId: string | null = null;
   let floor: FloorState = emptyFloor();
 
-  const push = () => conn?.push(state);
+  // A typed caption borrows the turn without the mic; see typed-turn.ts.
+  const typedTurn = createTypedTurn({
+    holding: () => isFloorHolder(floor, peerId),
+    micOn: () => state.listening,
+    claim: async () => (await conn?.claimFloor("Host")) ?? false,
+    release: async () => {
+      await conn?.releaseFloor();
+      renderDynamic();
+    },
+  });
+
+  const push = () => conn?.push({ ...state, listening: wireListening(state.listening, typedTurn.active()) });
 
   const setState = (next: RoomState, sync = true) => {
     state = { ...next, floor };
@@ -104,9 +119,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
               <form class="topic-insert" data-topic-form>
                 <input name="topic" autocomplete="off" enterkeyhint="go" data-i18n-placeholder="host.askPlaceholder" placeholder="head of household, contentment, forgiveness…" />
                 <button class="primary topic-ask" data-ask type="submit" data-i18n="host.ask">Ask for topic</button>
-                <button class="secondary" data-set-topic type="button" data-i18n="host.set">Set</button>
+                <button class="secondary" data-set-topic type="button" data-i18n="host.set" data-i18n-aria="host.setAria">Show on TV</button>
               </form>
-              <p class="hint topic-ask-status" data-ask-status>Type a theme and tap <strong>Ask for topic</strong> — or tap a chip.</p>
+              <p class="hint topic-ask-status" data-ask-status hidden></p>
               <div class="topic-preview" data-topic-preview></div>
             </div>
           </div>
@@ -114,16 +129,6 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
         <div class="phone-side">
           <div class="controls">
-            <div class="meeting-mode">
-              <p class="control-label" data-i18n="home.meetingMode">Meeting mode</p>
-              <button class="chip" data-offline-mode type="button" aria-pressed="false" data-i18n="home.offline" data-i18n-aria="home.offlineAria" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
-                Offline / Local meeting
-              </button>
-              <p class="offline-banner" data-offline-banner hidden>
-                <span data-i18n="home.offlineLead">Offline translate (limited phrases). For full local setup see</span>
-                <button class="ghost setup-link" data-local-setup-open type="button" aria-haspopup="dialog" aria-controls="local-setup-dialog" data-i18n="home.laptopSteps">laptop steps</button>.
-              </p>
-            </div>
             <div>
               <p class="control-label" data-i18n="host.spokenLanguage">Spoken language</p>
               <div class="chips" data-source></div>
@@ -143,6 +148,21 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
                 Send to TV
               </button>
             </div>
+            <p class="hint host-option-hint" data-i18n="host.smartViewHint">Smart View mirrors this phone’s screen to the TV. Send to TV opens captions in the TV’s own browser.</p>
+            <details class="fold more-options" data-more-options>
+              <summary class="fold-summary" data-i18n="host.moreOptions">More options</summary>
+              <div class="fold-body meeting-mode">
+                <p class="control-label" data-i18n="home.meetingMode">Meeting mode</p>
+                <button class="chip" data-offline-mode type="button" aria-pressed="false" data-i18n="home.offline" data-i18n-aria="home.offlineAria" aria-label="Offline / Local meeting — use the built-in dictionary, no MyMemory">
+                  Offline / Local meeting
+                </button>
+                <p class="hint host-option-hint" data-i18n="host.offlineHint">Only if there is no internet. Translations then use a small built-in phrase list.</p>
+              </div>
+            </details>
+            <p class="offline-banner" data-offline-banner hidden>
+              <span data-i18n="home.offlineLead">Offline translate (limited phrases). For full local setup see</span>
+              <button class="ghost setup-link" data-local-setup-open type="button" aria-haspopup="dialog" aria-controls="local-setup-dialog" data-i18n="home.laptopSteps">laptop steps</button>.
+            </p>
           </div>
 
           <div class="mic-wrap">
@@ -202,6 +222,11 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
                 <h3 data-i18n="host.oneLanguage">One language per monitor</h3>
                 <p class="hint" data-i18n="host.oneLanguageHint">Same room. Each window shows only that language, full-screen captions. Other TVs and Smart View still follow the layout chips.</p>
                 <div class="send-tv-lang-list" data-send-tv-lang-list></div>
+              </section>
+              <section class="send-tv-langs send-tv-pairs">
+                <h3 data-i18n="host.twoLanguages">Two languages per screen</h3>
+                <p class="hint" data-i18n="host.twoLanguagesHint">Same room. That screen shows two languages side by side.</p>
+                <div class="send-tv-pair-list" data-send-tv-pair-list></div>
               </section>
             </div>
           </details>
@@ -291,6 +316,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     en: "host.layoutEn",
     es: "host.layoutEs",
     pt: "host.layoutPt",
+    "en-es": "host.layoutEnEs",
+    "en-pt": "host.layoutEnPt",
+    "es-pt": "host.layoutEsPt",
     "en-es-pt": "host.layoutAll",
   };
   layoutBox.innerHTML = HOST_LAYOUT_IDS.map((id) => {
@@ -312,6 +340,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const urlEl = root.querySelector("[data-send-tv-url]") as HTMLElement;
   const copyBtn = root.querySelector("[data-copy]") as HTMLButtonElement;
   const langList = root.querySelector("[data-send-tv-lang-list]") as HTMLElement;
+  const pairList = root.querySelector("[data-send-tv-pair-list]") as HTMLElement;
   const joinBtn = root.querySelector("[data-join-phones]") as HTMLButtonElement;
   const joinDialog = root.querySelector("[data-join-phones-dialog]") as HTMLDialogElement;
   const joinQr = root.querySelector("[data-join-phones-qr]") as HTMLElement;
@@ -334,6 +363,9 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   const setupOpen = root.querySelector("[data-local-setup-open]") as HTMLButtonElement;
   const setupClose = root.querySelector("[data-local-setup-close]") as HTMLButtonElement;
   const localSetup = root.querySelector("[data-local-setup]") as HTMLElement;
+
+  // Offline mode lives under "More options"; open it when it is already on so the host sees it.
+  if (isOfflineMeeting()) (root.querySelector("[data-more-options]") as HTMLDetailsElement).open = true;
 
   const paintLimitedBanner = () => {
     offlineBanner.hidden = !(isOfflineMeeting() || lastCaptionWasMock);
@@ -458,11 +490,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     askBtn.textContent = askBusy ? t("host.writing") : t("host.ask");
     els.topicInput.disabled = askBusy;
     setBtn.disabled = askBusy;
+    askStatus.hidden = !askBusy;
     if (askBusy) {
       askStatus.innerHTML = `${escapeHtml(t("host.writingFor", { query: askQuery }))} <button class="ghost topic-ask-cancel" data-cancel-ask type="button">${escapeHtml(t("chrome.cancel"))}</button>`;
       topicPreview.innerHTML = `<p class="hint">${escapeHtml(t("host.hangOn"))}</p>`;
     } else {
-      askStatus.innerHTML = t("host.askStatus");
+      // One help line only: the empty topic card already says how to pick a topic.
+      askStatus.innerHTML = "";
       topicPreview.innerHTML = renderTopicPreview(state.topic, state.sourceLang);
     }
   }
@@ -474,9 +508,19 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     renderDynamic();
   }
 
-  async function publishFinal(text: string, coalesce = true) {
+  async function publishFinal(text: string, coalesce = true, onSettled?: () => void) {
+    let handedOff = false;
+    try {
+      handedOff = await publishFinalInner(text, coalesce, onSettled);
+    } finally {
+      if (!handedOff) onSettled?.();
+    }
+  }
+
+  /** Returns true when the translation step took over calling onSettled. */
+  async function publishFinalInner(text: string, coalesce: boolean, onSettled?: () => void): Promise<boolean> {
     const spoken = text.trim();
-    if (!spoken || floorHeldByOther(floor, peerId)) return;
+    if (!spoken || floorHeldByOther(floor, peerId)) return false;
     const spokenAs = state.sourceLang;
     const speaker = captionSpeaker(floor.holderName, "host");
     liveInterim = "";
@@ -489,12 +533,13 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       id: crypto.randomUUID(),
       isFinal: true,
       speaker,
-      text: provisionalText(spoken),
+      text: provisionalText(spoken, from),
+      pending: true,
       at: Date.now(),
     };
     const before = state.lines;
     const lines = coalesce ? applyFinalLine(before, line, from) : appendFinalLine(before, line);
-    if (lines === before || lines.at(-1)?.text[from] !== spoken) return;
+    if (lines === before || lines.at(-1)?.text[from] !== spoken) return false;
     const lineId = lines.at(-1)!.id;
     setState({ ...state, lines });
     void (async () => {
@@ -508,15 +553,21 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         const patched = patchLineText(state.lines, lineId, translated, from);
         if (patched !== state.lines) setState({ ...state, lines: patched });
       } catch (err) {
-        console.warn("[captions] translation failed; original words stay", err);
+        console.warn("[captions] translation failed; original words shown instead", err);
+        if (epoch !== publishEpoch) return;
+        const settled = settleUntranslated(state.lines, lineId, from);
+        if (settled !== state.lines) setState({ ...state, lines: settled });
+      } finally {
+        onSettled?.();
       }
     })();
+    return true;
   }
 
   let publishQueue: Promise<void> = Promise.resolve();
-  const queuePublish = (text: string, coalesce = true) => {
+  const queuePublish = (text: string, coalesce = true, onSettled?: () => void) => {
     publishQueue = publishQueue
-      .then(() => publishFinal(text, coalesce))
+      .then(() => publishFinal(text, coalesce, onSettled))
       .catch((err) => console.warn("[captions] publish failed", err));
   };
 
@@ -542,7 +593,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
 
   const onMic = () => {
     error = "";
-    if (isFloorHolder(floor, peerId)) {
+    // Stop only when the mic is actually on. Holding the turn for a typed caption is not "listening".
+    if (isFloorHolder(floor, peerId) && state.listening) {
       stopLocalMic();
       pendingFinal = "";
       void (async () => {
@@ -577,6 +629,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         setState({ ...state, listening: false });
         return;
       }
+      // The mic owns the turn now; a typed caption in flight must not release it.
+      typedTurn.cancel();
       void requestWake();
       setState({ ...state, listening: true });
       const queued = pendingFinal.trim();
@@ -611,6 +665,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         setState({ ...state, listening: false });
         return;
       }
+      typedTurn.cancel();
       void requestWake();
       setState({ ...state, listening: true });
     })();
@@ -776,6 +831,19 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         </article>
       `;
     }).join("");
+    pairList.innerHTML = DUAL_LAYOUTS.map((pair) => {
+      const label = langsForLayout(pair).map((l) => LANG_SHORT[l]).join(" | ");
+      return `
+        <article class="send-tv-pair">
+          <p class="control-label">${escapeHtml(label)}</p>
+          <p class="send-tv-lang-url">${escapeHtml(plainTvUrl(room, pair))}</p>
+          <div class="send-tv-lang-actions">
+            <button class="secondary" data-copy-lang="${pair}" type="button">${escapeHtml(t("host.copyLangLink", { lang: label }))}</button>
+            <button class="ghost" data-open-lang="${pair}" type="button">${escapeHtml(t("host.open"))}</button>
+          </div>
+        </article>
+      `;
+    }).join("");
   };
 
   const paintJoinPhones = () => {
@@ -881,7 +949,8 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     const openBtn = target.closest<HTMLButtonElement>("[data-open-lang]");
     const copyLangBtn = target.closest<HTMLButtonElement>("[data-copy-lang]");
     const langValue = openBtn?.dataset.openLang ?? copyLangBtn?.dataset.copyLang;
-    if (!isLang(langValue)) return;
+    if (!isLayout(langValue)) return;
+    const langName = langsForLayout(langValue).map((l) => LANG_SHORT[l]).join(" | ");
     const url = tvUrl(room, langValue);
     if (openBtn) {
       window.open(url, `ff-tv-${langValue}`, "noopener");
@@ -889,10 +958,10 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     }
     if (!copyLangBtn) return;
     void (async () => {
-      const restore = t("host.copyLangLink", { lang: LANG_SHORT[langValue] });
+      const restore = t("host.copyLangLink", { lang: langName });
       try {
         await navigator.clipboard.writeText(url);
-        error = t("host.langCopied", { lang: LANG_SHORT[langValue] });
+        error = t("host.langCopied", { lang: langName });
         copyLangBtn.textContent = t("chrome.copied");
         window.clearTimeout(copyLangTimers[langValue]);
         copyLangTimers[langValue] = window.setTimeout(() => {
@@ -945,16 +1014,15 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
-      if (!isFloorHolder(floor, peerId)) {
-        const ok = (await conn?.claimFloor("Host")) ?? false;
-        if (!ok) {
-          error = someoneElseSpeaking(floor);
-          renderDynamic();
-          return;
-        }
+      // Borrow the turn for this line only. The mic state does not change.
+      const ok = await typedTurn.begin();
+      if (!ok) {
+        error = floorError();
+        renderDynamic();
+        return;
       }
       input.value = "";
-      queuePublish(text, false);
+      queuePublish(text, false, () => typedTurn.end());
     })();
   };
 
@@ -999,6 +1067,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
   copyJoinBtn.addEventListener("click", onCopyJoin);
   root.querySelector("[data-open-tv]")?.addEventListener("click", onOpenTv);
   langList.addEventListener("click", onLangActions);
+  pairList.addEventListener("click", onLangActions);
   copyBtn.addEventListener("click", onCopy);
   root.querySelector("[data-clear]")?.addEventListener("click", onClear);
   root.querySelector("[data-home]")?.addEventListener("click", onHome);
@@ -1020,6 +1089,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
       if (lost) {
         publishEpoch += 1;
         pendingFinal = "";
+        typedTurn.cancel();
         stopLocalMic();
         error = someoneElseSpeaking(next);
         setState({ ...state, listening: false }, false);
@@ -1115,6 +1185,7 @@ export function mountPhone(root: HTMLElement, room: string): () => void {
     onCloseLocalSetup();
     typeForm.removeEventListener("submit", onType);
     langList.removeEventListener("click", onLangActions);
+    pairList.removeEventListener("click", onLangActions);
     reclaimBtn.removeEventListener("click", onReclaim);
     joinBtn.removeEventListener("click", onJoinPhones);
     joinDialog.removeEventListener("click", onJoinDialogClick);

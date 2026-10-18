@@ -1,4 +1,4 @@
-import { joinSearch, parseRoute, parseTvLang, tvSearch } from "../src/router.ts";
+import { joinSearch, parseRoute, parseTvLang, parseTvLayout, tvSearch } from "../src/router.ts";
 import { detectSpeechCapability, isAppleMobile } from "../src/stt/capability.ts";
 import { createWebSpeechProvider } from "../src/stt/web-speech.ts";
 import {
@@ -29,6 +29,11 @@ assert(parseTvLang("fr") === undefined, "parseTvLang ignores unknown");
 assert(parseTvLang("en-es") === undefined, "parseTvLang ignores layout ids");
 assert(parseTvLang("") === undefined, "parseTvLang empty");
 assert(parseTvLang(null) === undefined, "parseTvLang null");
+assert(parseTvLayout("en-es") === "en-es", "parseTvLayout pair");
+assert(parseTvLayout("ES|EN") === "en-es", "parseTvLayout normalizes order and case");
+assert(parseTvLayout("pt,es") === "es-pt", "parseTvLayout comma pair");
+assert(parseTvLayout("all") === "en-es-pt", "parseTvLayout all");
+assert(parseTvLayout("en-fr") === undefined, "parseTvLayout rejects unknown");
 
 same(parseRoute(""), { view: "home", room: "" }, "empty search is home");
 same(parseRoute("?view=tv&room=ABCD"), { view: "tv", room: "ABCD" }, "TV without lang omits lang");
@@ -41,6 +46,11 @@ same(
   parseRoute("view=tv&room=ABCD&lang=PT"),
   { view: "tv", room: "ABCD", lang: "pt" },
   "TV lang is case-insensitive",
+);
+same(
+  parseRoute("?view=tv&room=ABCD&lang=en-pt"),
+  { view: "tv", room: "ABCD", lang: "en-pt" },
+  "TV lang= can be a two-language pair",
 );
 same(
   parseRoute("?view=tv&room=ABCD&lang=fr"),
@@ -73,6 +83,7 @@ assert(tvSearch("ABCD") === "view=tv&room=ABCD", "combined TV query has no lang"
 assert(tvSearch("ABCD", "es") === "view=tv&room=ABCD&lang=es", "per-language TV query");
 assert(tvSearch("ABCD", "en") === "view=tv&room=ABCD&lang=en", "en TV query");
 assert(tvSearch("ABCD", "pt") === "view=tv&room=ABCD&lang=pt", "pt TV query");
+assert(tvSearch("ABCD", "es-pt") === "view=tv&room=ABCD&lang=es-pt", "two-language TV query");
 assert(joinSearch("ABCD") === "view=join&room=ABCD", "brothers join query");
 
 assert(isAppleMobile("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", "iPhone", 5), "iPhone UA is Apple mobile");
@@ -548,7 +559,9 @@ assert(
   `refused restarts ask for a tap: ${iphoneRefusedSpeech.errors.join(" | ")}`,
 );
 
-assert(isWatchPref("all") && isWatchPref("es") && !isWatchPref("en-es") && !isWatchPref("fr"), "watch pref is all or one language");
+assert(isWatchPref("all") && isWatchPref("es") && isWatchPref("en-es") && !isWatchPref("en-es-pt") && !isWatchPref("fr"), "watch pref is all, one language, or a pair");
+same(langsForWatch("en-pt"), ["en", "pt"], "Watch=EN|PT is two panes");
+assert(layoutForWatch("es-pt") === "es-pt", "Watch=ES|PT paints the pair locally");
 same(langsForWatch("all"), ["en", "es", "pt"], "Watch=all is three panes");
 same(langsForWatch("es"), ["es"], "Watch=ES is the Spanish pane only");
 same(langsForWatch("en"), ["en"], "Watch=EN is the English pane only");
@@ -556,7 +569,7 @@ same(langsForWatch("pt"), ["pt"], "Watch=PT is the Portuguese pane only");
 assert(layoutForWatch("all") === "en-es-pt", "Watch=all paints the triple layout locally");
 assert(layoutForWatch("es") === "es", "Watch=ES paints a single Spanish layout locally");
 assert(layoutForWatch("es") !== "en-es-pt", "Watch=ES is not the room's three-pane layout");
-same(HOST_LAYOUT_IDS, ["en", "es", "pt", "en-es-pt"], "host TV layout chips are one language or all three");
+same(HOST_LAYOUT_IDS, ["en", "es", "pt", "en-es", "en-pt", "es-pt", "en-es-pt"], "host TV layout chips: one language, a pair, or all three");
 same(langsForLayout("en"), ["en"], "English layout is one pane");
 same(langsForLayout("es"), ["es"], "Spanish layout is one pane");
 same(langsForLayout("pt"), ["pt"], "Portuguese layout is one pane");

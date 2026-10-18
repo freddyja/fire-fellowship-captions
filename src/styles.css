@@ -6,7 +6,7 @@
   --ember-dim: rgba(226, 88, 34, 0.18);
   --gold: #e8b86d;
   --cream: #f4ead8;
-  --muted: #9a8b78;
+  --muted: #bfb09b;
   --line: #3a2e24;
   --danger: #d35c4a;
   --ok: #7cb389;
@@ -2881,4 +2881,196 @@ html[data-app-lang="pt"] .brand-compact .brand-tagline {
 
 @media (prefers-reduced-motion: reduce) {
   .pin-card.shake { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   v0.4.0 readability pass (non-technical walkthrough)
+   --------------------------------------------------------------------------- */
+
+/* Brand credit, tagline and sentence: a step larger and brighter (WCAG AA on the dark scene). */
+.brand-credit {
+  font-size: 0.95rem;
+  color: #e6dac6;
+}
+.brand-compact .brand-credit {
+  font-size: 0.78rem;
+  color: #d9ccb7;
+  opacity: 1;
+}
+.brand-tagline {
+  font-size: 0.8rem;
+}
+.brand-compact .brand-tagline {
+  font-size: 0.72rem;
+}
+html[data-app-lang="es"] .brand-compact .brand-tagline,
+html[data-app-lang="pt"] .brand-compact .brand-tagline {
+  font-size: 0.68rem;
+}
+.brand-subline {
+  font-size: 0.8rem;
+  color: #d4c6b2;
+}
+.brand-compact .brand-subline {
+  font-size: 0.74rem;
+}
+.tv-screen .brand-subline {
+  font-size: 0.74rem;
+  opacity: 1;
+}
+
+/* PIN pad: the wrong-code / lockout message is the one thing the reader must see. */
+.pin-help {
+  color: #ddd0bc;
+  font-size: 1rem;
+}
+.pin-msg {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffe2a8;
+}
+.pin-msg.is-error {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #ff9c86;
+  border-radius: 12px;
+  background: rgba(150, 40, 24, 0.55);
+  color: #fff3ef;
+}
+.pin-key-alt {
+  color: #ddd0bc;
+}
+
+/* Host screen: plain one-line hints and a collapsed "More options". */
+.host-option-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.more-options {
+  margin-top: 0.6rem;
+  border-top: 1px solid rgba(244, 234, 216, 0.16);
+}
+.more-options > .fold-summary {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #efe4d4;
+}
+.more-options .fold-body {
+  padding: 0.2rem 0 0.4rem;
+}
+.send-tv-pair-list {
+  display: grid;
+  gap: 0.6rem;
+}
+.send-tv-pair {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.send-tv-pair .control-label {
+  margin: 0;
+}
+
+/* Captions still being translated: a quiet placeholder, never the untranslated original. */
+.line.pending .line-text {
+  font-size: 0.55em;
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+/* TV big screen ----------------------------------------------------------- */
+
+/* Captions start at the top of the card and fill it; the newest line stays in view
+   because the pane follows the latest caption (caption-board.ts). */
+.tv-screen .lines > :first-child {
+  margin-top: 0;
+}
+.tv-screen .lines {
+  gap: 0.7rem;
+  /* Still scrollable (remote / touch), just no bar drawn across the captions. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tv-screen .lines::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.tv-screen .tv-board[data-count="1"] .line {
+  font-size: clamp(2.8rem, 6.4vw, 8rem);
+}
+.tv-screen .tv-board[data-count="2"] .line {
+  font-size: clamp(2rem, 4.4vw, 5.6rem);
+}
+.tv-screen .tv-board[data-count="3"] .line {
+  font-size: clamp(1.7rem, 3.2vw, 4rem);
+}
+.tv-screen .empty-caption {
+  font-size: clamp(1.3rem, 2.2vw, 2.2rem);
+}
+.tv-screen .window-label {
+  font-size: clamp(0.85rem, 1.15vw, 1.25rem);
+}
+
+/* Header readable from across the room. */
+.tv-screen .brand-compact .brand-text h1 {
+  font-size: clamp(1.5rem, 2.6vw, 2.6rem);
+}
+.tv-screen .tv-meta {
+  font-size: clamp(1rem, 1.35vw, 1.5rem);
+  color: #e6dac6;
+}
+.tv-screen .room-pill,
+.tv-screen .status-pill {
+  padding: 0.35rem 0.9rem;
+}
+.tv-screen .room-pill strong {
+  font-size: 1.15em;
+}
+.tv-screen .tv-meta .dot {
+  width: 0.7em;
+  height: 0.7em;
+}
+
+/* Leave is small and quiet on the TV, and needs a second tap (tv.ts). */
+.tv-screen .tv-leave {
+  min-height: 0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  opacity: 0.55;
+  border-color: transparent;
+}
+.tv-screen .tv-leave:hover,
+.tv-screen .tv-leave:focus-visible {
+  opacity: 1;
+}
+.tv-screen .tv-leave.is-armed {
+  opacity: 1;
+  font-size: 0.95rem;
+  color: #fff3ef;
+  background: rgba(150, 40, 24, 0.7);
+  border: 1px solid #ff9c86;
+}
+
+/* An empty language pill (no &lang=) must not draw an empty capsule. */
+.room-pill[hidden],
+.status-pill[hidden] {
+  display: none;
+}
+
+/* TV brand lines readable from the couch. */
+.tv-screen .brand-compact .brand-credit {
+  font-size: clamp(0.8rem, 0.95vw, 1.15rem);
+}
+.tv-screen .brand-compact .brand-tagline {
+  font-size: clamp(0.72rem, 0.85vw, 1.05rem);
+}
+.tv-screen .brand-subline {
+  font-size: clamp(0.74rem, 0.85vw, 1.05rem);
+  max-width: 34rem;
 }

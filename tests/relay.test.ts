@@ -128,3 +128,39 @@ describe("relay turn release", () => {
     expect((await a.next((m) => m.type === "pong")).type).toBe("pong");
   });
 });
+
+describe("relay v0.4.0", () => {
+  it("sends the recent captions to a phone that joins late", async () => {
+    const host = await join("phone", "host-tab-0001", "Host");
+    const lines = [1, 2, 3].map((n) => ({ id: `l${n}`, isFinal: true, text: { en: `line ${n}`, es: `línea ${n}`, pt: `linha ${n}` }, at: n }));
+    host.send({ type: "push", state: { room: "ABCD", layout: "en-es-pt", sourceLang: "en", listening: false, lines, topic: null } });
+    await new Promise((r) => setTimeout(r, 50));
+    const late = connect();
+    await late.opened;
+    late.send({ type: "join", room: "ABCD", role: "guest", name: "Pedro" });
+    const state = await late.next((m) => m.type === "state");
+    expect(state.state.lines.map((l: Msg) => l.text.en)).toEqual(["line 1", "line 2", "line 3"]);
+  });
+
+  it("a typed caption (no listening flag) keeps the turn for its translation, then release frees it", async () => {
+    const tv = await join("tv");
+    const guest = await join("guest", "guest-tab-0001", "Pedro");
+    guest.send({ type: "floor", action: "claim", rid: 1, name: "Pedro" });
+    await guest.next((m) => m.type === "floor" && m.rid === 1 && m.ok === true);
+    const base = { room: "ABCD", layout: "en-es-pt", sourceLang: "en", topic: null };
+    const pending = { id: "t1", isFinal: true, pending: true, text: { en: "Amen", es: "", pt: "" }, at: 1 };
+    guest.send({ type: "push", state: { ...base, lines: [pending] } });
+    const first = await tv.next((m) => m.type === "state" && m.state.lines?.length === 1);
+    expect(first.state.listening).toBe(false);
+    expect(first.state.floor.holderId).toBe(guest.peerId);
+    const done = { id: "t1", isFinal: true, text: { en: "Amen", es: "Amén", pt: "Amém" }, at: 1 };
+    guest.send({ type: "push", state: { ...base, lines: [done] } });
+    const second = await tv.next((m) => m.type === "state" && m.state.lines?.[0]?.text?.es === "Amén");
+    expect(second.state.lines[0].pending).toBeUndefined();
+    expect(second.state.listening).toBe(false);
+    guest.send({ type: "floor", action: "release", rid: 2 });
+    await guest.next((m) => m.type === "floor" && m.rid === 2 && m.ok === true);
+    const freed = await tv.next((m) => m.type === "floor" && m.floor.holderId === null);
+    expect(freed.floor.holderId).toBeNull();
+  });
+});

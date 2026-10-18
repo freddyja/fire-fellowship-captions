@@ -25,10 +25,39 @@ function lineClass(index: number, total: number, hasLive: boolean): string {
   return "line faded";
 }
 
+/** Pane-language placeholders, so a Spanish pane never shows English chrome. */
+const PANE_COPY: Record<"waiting" | "listening" | "translating", Record<Lang, string>> = {
+  waiting: { en: "Waiting for live speech…", es: "Esperando la voz en vivo…", pt: "Aguardando a fala ao vivo…" },
+  listening: { en: "Listening…", es: "Escuchando…", pt: "Ouvindo…" },
+  translating: { en: "translating…", es: "traduciendo…", pt: "traduzindo…" },
+};
+
 function speakerMarkup(name: string): string {
   const label = name.trim();
   if (!label) return "";
   return `<span class="line-speaker" data-speaker="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+}
+
+/**
+ * Which lines get a speaker label. One speaker all evening (usually "Host")
+ * gets none; with several, a name shows only where the speaker changes.
+ */
+export function speakerLabels(names: string[]): string[] {
+  const trimmed = names.map((name) => name.trim());
+  const distinct = new Set(trimmed.filter(Boolean));
+  if (distinct.size <= 1) return trimmed.map(() => "");
+  let previous = "";
+  return trimmed.map((name) => {
+    if (!name) return "";
+    const show = name !== previous;
+    previous = name;
+    return show ? name : "";
+  });
+}
+
+/** True when this line has words for the pane, or is still being translated into it. */
+export function lineShowsIn(line: CaptionLine, lang: Lang): boolean {
+  return Boolean(line.text[lang]?.trim()) || Boolean(line.pending);
 }
 
 function renderWindow(
@@ -37,25 +66,35 @@ function renderWindow(
   live: LiveCaption | null | undefined,
   activeSpeaker: string,
 ): string {
-  const visible = finalizedLines(lines).filter((line) => line.text[lang]?.trim());
+  const all = finalizedLines(lines);
   const liveText = live?.text.trim() ?? "";
-  const history =
-    visible.length === 0
-      ? ""
-      : visible
-          .map((line, index) => {
-            const latest = index === visible.length - 1;
-            const named = (line.speaker ?? "").trim() || (latest && !liveText ? activeSpeaker : "");
-            return `<p class="${lineClass(index, visible.length, Boolean(liveText))}">${speakerMarkup(named)}<span class="line-text">${escapeHtml(line.text[lang])}</span></p>`;
-          })
-          .join("");
+  // Names come from every line (not just this pane), so all panes agree on labels.
+  const names = all.map((line, index) => {
+    const latest = index === all.length - 1;
+    return (line.speaker ?? "").trim() || (latest && !liveText ? activeSpeaker : "");
+  });
+  if (liveText) names.push((live?.speaker ?? "").trim() || activeSpeaker);
+  const labels = speakerLabels(names);
+  const shown = all
+    .map((line, index) => ({ line, label: labels[index] ?? "" }))
+    .filter(({ line }) => lineShowsIn(line, lang));
+  const history = shown
+    .map(({ line, label }, index) => {
+      const words = line.text[lang]?.trim();
+      const cls = lineClass(index, shown.length, Boolean(liveText));
+      if (!words) {
+        return `<p class="${cls} pending">${speakerMarkup(label)}<span class="line-text">${escapeHtml(PANE_COPY.translating[lang])}</span></p>`;
+      }
+      return `<p class="${cls}">${speakerMarkup(label)}<span class="line-text">${escapeHtml(words)}</span></p>`;
+    })
+    .join("");
   let extra = "";
   if (liveText) {
-    const draft = lang === live?.sourceLang ? liveText : "Listening…";
-    const named = (live?.speaker ?? "").trim() || activeSpeaker;
-    extra = `<p class="line interim">${speakerMarkup(named)}<span class="line-text">${escapeHtml(draft)}</span></p>`;
-  } else if (visible.length === 0) {
-    extra = `<p class="empty-caption">Waiting for live speech…</p>`;
+    const draft = lang === live?.sourceLang ? liveText : PANE_COPY.listening[lang];
+    const label = labels[labels.length - 1] ?? "";
+    extra = `<p class="line interim">${speakerMarkup(label)}<span class="line-text">${escapeHtml(draft)}</span></p>`;
+  } else if (shown.length === 0) {
+    extra = `<p class="empty-caption">${escapeHtml(PANE_COPY.waiting[lang])}</p>`;
   }
   return `
     <section class="window" data-lang="${lang}" lang="${lang}">

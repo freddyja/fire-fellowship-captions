@@ -1,6 +1,7 @@
 import { brandBlock } from "../brand";
 import { bindUiLangBar, t, uiLangBarHtml } from "../ui-lang";
-import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText } from "../caption-history";
+import { appendFinalLine, applyFinalLine, finalizedLines, patchLineText, provisionalText, settleUntranslated } from "../caption-history";
+import { createTypedTurn, micButtonState, wireListening } from "../typed-turn";
 import { connectRoom, RECONNECTING, type RoomConnection } from "../realtime/client";
 import { goto } from "../router";
 import { detectSpeechCapability } from "../stt/capability";
@@ -70,12 +71,23 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
   let typeFallback = stt.preferType;
   let pendingFinal = "";
 
+  // A typed caption borrows the turn without the mic; see typed-turn.ts.
+  const typedTurn = createTypedTurn({
+    holding: () => isFloorHolder(floor, peerId),
+    micOn: () => state.listening,
+    claim: async () => (await conn?.claimFloor(displayName)) ?? false,
+    release: async () => {
+      await conn?.releaseFloor();
+      renderDynamic();
+    },
+  });
+
   const push = () =>
     conn?.push({
       ...state,
       sourceLang,
       floor,
-      listening: state.listening,
+      listening: wireListening(state.listening, typedTurn.active()),
     });
 
   root.innerHTML = `
@@ -158,6 +170,9 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     <button class="chip" type="button" data-watch="en" aria-pressed="false" data-i18n="join.enOnly">EN only</button>
     <button class="chip" type="button" data-watch="es" aria-pressed="false" data-i18n="join.esOnly">ES only</button>
     <button class="chip" type="button" data-watch="pt" aria-pressed="false" data-i18n="join.ptOnly">PT only</button>
+    <button class="chip" type="button" data-watch="en-es" aria-pressed="false" data-i18n="join.enEs">EN | ES</button>
+    <button class="chip" type="button" data-watch="en-pt" aria-pressed="false" data-i18n="join.enPt">EN | PT</button>
+    <button class="chip" type="button" data-watch="es-pt" aria-pressed="false" data-i18n="join.esPt">ES | PT</button>
     <button class="chip" type="button" data-watch="all" aria-pressed="false" data-i18n="join.allThree">All three</button>
   `;
 
@@ -187,6 +202,9 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     <button class="chip" type="button" data-setup-watch="en" aria-pressed="false" data-i18n="join.enOnly">EN only</button>
     <button class="chip" type="button" data-setup-watch="es" aria-pressed="false" data-i18n="join.esOnly">ES only</button>
     <button class="chip" type="button" data-setup-watch="pt" aria-pressed="false" data-i18n="join.ptOnly">PT only</button>
+    <button class="chip" type="button" data-setup-watch="en-es" aria-pressed="false" data-i18n="join.enEs">EN | ES</button>
+    <button class="chip" type="button" data-setup-watch="en-pt" aria-pressed="false" data-i18n="join.enPt">EN | PT</button>
+    <button class="chip" type="button" data-setup-watch="es-pt" aria-pressed="false" data-i18n="join.esPt">ES | PT</button>
     <button class="chip" type="button" data-setup-watch="all" aria-pressed="false" data-i18n="join.allThree">All three</button>
   `;
 
@@ -223,16 +241,18 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       connStatus === "live" ? `${guestNote}${tvNote}` : connStatus === "connecting" ? t("chrome.connecting") : t("chrome.reconnecting");
     els.status.textContent = holding && state.listening ? `${t("chrome.listening")} · ${connNote}` : connNote;
     els.dot.className = `dot ${holding && state.listening ? "listening" : connStatus === "live" ? "live" : "offline"}`;
+    // The button shows the microphone, not the turn: a typed caption leaves it on Start.
+    const micUi = micButtonState({ holding, micOn: state.listening, blocked });
     els.mic.hidden = !showMic;
-    els.mic.classList.toggle("hot", holding && state.listening);
-    els.mic.disabled = blocked;
-    els.mic.setAttribute("aria-pressed", String(holding && state.listening));
-    els.micLabel.textContent = holding ? t("chrome.stop") : blocked ? t("chrome.wait") : t("chrome.start");
+    els.mic.classList.toggle("hot", micUi.hot);
+    els.mic.disabled = micUi.disabled;
+    els.mic.setAttribute("aria-pressed", String(micUi.pressed));
+    els.micLabel.textContent = t(micUi.label === "stop" ? "chrome.stop" : micUi.label === "wait" ? "chrome.wait" : "chrome.start");
     if (blocked) {
       els.floor.textContent = someoneElseSpeaking(floor);
     } else if (holding && state.listening) {
       els.floor.textContent = typeFallback ? t("join.floorType") : t("join.floorSpeaking");
-    } else if (holding) {
+    } else if (holding && !typedTurn.active()) {
       els.floor.textContent = t("join.floorHolding");
     } else if (!showMic) {
       els.floor.textContent = t("join.floorTypeOnly");
@@ -306,7 +326,8 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       renderDynamic();
       return;
     }
-    if (isFloorHolder(floor, peerId)) {
+    // Stop only when the mic is actually on. Holding the turn for a typed caption is not "listening".
+    if (isFloorHolder(floor, peerId) && state.listening) {
       stopLocalMic();
       pendingFinal = "";
       void (async () => {
@@ -343,6 +364,8 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
+      // The mic owns the turn now; a typed caption in flight must not release it.
+      typedTurn.cancel();
       void requestWake();
       state = { ...state, listening: true, sourceLang, floor };
       renderDynamic();
@@ -353,26 +376,35 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
     })();
   };
 
-  async function publishFinal(text: string, coalesce = true) {
+  async function publishFinal(text: string, coalesce = true, onSettled?: () => void) {
+    let handedOff = false;
+    try {
+      handedOff = await publishFinalInner(text, coalesce, onSettled);
+    } finally {
+      if (!handedOff) onSettled?.();
+    }
+  }
+
+  /** Returns true when the translation step took over calling onSettled. */
+  async function publishFinalInner(text: string, coalesce: boolean, onSettled?: () => void): Promise<boolean> {
     const spoken = text.trim();
-    if (!spoken) return;
+    if (!spoken) return false;
     // Spoken at the moment this line was heard. A later chip tap must not
     // relabel it, and short Spanish ("mi esposa") has no detectLang hints.
     const spokenAs = sourceLang;
     if (floorHeldByOther(floor, peerId)) {
       error = someoneElseSpeaking(floor);
       renderDynamic();
-      return;
+      return false;
     }
     if (!isFloorHolder(floor, peerId)) {
+      // A spoken line that arrived before the turn was ours: claim it now (mic is on).
       const ok = (await conn?.claimFloor(displayName)) ?? false;
       if (!ok || !isFloorHolder(floor, peerId)) {
         error = someoneElseSpeaking(floor);
         renderDynamic();
-        return;
+        return false;
       }
-      state = { ...state, listening: true, sourceLang, floor };
-      push();
     }
     error = "";
     liveInterim = "";
@@ -385,14 +417,16 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
       id: crypto.randomUUID(),
       isFinal: true,
       speaker,
-      text: provisionalText(spoken),
+      text: provisionalText(spoken, from),
+      pending: true,
       at: Date.now(),
     };
     const before = state.lines;
     const lines = coalesce ? applyFinalLine(before, line, from) : appendFinalLine(before, line);
-    if (lines === before || lines.at(-1)?.text[from] !== spoken) return;
+    if (lines === before || lines.at(-1)?.text[from] !== spoken) return false;
     const lineId = lines.at(-1)!.id;
-    state = { ...state, lines, sourceLang: spokenAs, floor, listening: true };
+    // listening stays as it is: a typed caption must not switch the phone to "Listening".
+    state = { ...state, lines, sourceLang: spokenAs, floor };
     renderDynamic();
     push();
     void (async () => {
@@ -408,15 +442,24 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         if (isFloorHolder(floor, peerId)) push();
       } catch (err) {
-        console.warn("[captions] translation failed; original words stay", err);
+        console.warn("[captions] translation failed; original words shown instead", err);
+        if (epoch !== publishEpoch) return;
+        const settled = settleUntranslated(state.lines, lineId, from);
+        if (settled === state.lines) return;
+        state = { ...state, lines: settled };
+        renderDynamic();
+        if (isFloorHolder(floor, peerId)) push();
+      } finally {
+        onSettled?.();
       }
     })();
+    return true;
   }
 
   let publishQueue: Promise<void> = Promise.resolve();
-  const queuePublish = (text: string, coalesce = true) => {
+  const queuePublish = (text: string, coalesce = true, onSettled?: () => void) => {
     publishQueue = publishQueue
-      .then(() => publishFinal(text, coalesce))
+      .then(() => publishFinal(text, coalesce, onSettled))
       .catch((err) => console.warn("[captions] publish failed", err));
   };
 
@@ -514,18 +557,16 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         renderDynamic();
         return;
       }
-      if (!isFloorHolder(floor, peerId)) {
-        const ok = (await conn?.claimFloor(displayName)) ?? false;
-        if (!ok) {
-          error = someoneElseSpeaking(floor);
-          renderDynamic();
-          return;
-        }
-        state = { ...state, listening: true, sourceLang, floor };
-        push();
+      // Borrow the turn for this line only. The mic state does not change.
+      const ok = await typedTurn.begin();
+      if (!ok) {
+        error = conn?.lastFloorReason() === "offline" ? RECONNECTING : someoneElseSpeaking(floor);
+        renderDynamic();
+        return;
       }
+      state = { ...state, sourceLang, floor };
       typeInput.value = "";
-      queuePublish(text, false);
+      queuePublish(text, false, () => typedTurn.end());
     })();
   };
 
@@ -603,6 +644,7 @@ export function mountJoin(root: HTMLElement, room: string): () => void {
         if (lost) {
           publishEpoch += 1;
           pendingFinal = "";
+          typedTurn.cancel();
           stopLocalMic();
           error = someoneElseSpeaking(next);
         } else if (isFloorHolder(next, peerId) && error.startsWith("Someone else is speaking")) {

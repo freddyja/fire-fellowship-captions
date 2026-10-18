@@ -29,6 +29,11 @@ export type CaptionLine = {
   at: number;
   /** Display name of the person who said this line. Older lines keep theirs. */
   speaker?: string;
+  /**
+   * True while translations are still on the way. Only the spoken language has
+   * words; the other panes show a quiet "translating…" instead of the original.
+   */
+  pending?: boolean;
 };
 
 export type RoomState = {
@@ -78,11 +83,29 @@ export const LAYOUTS: { id: Layout; label: string; langs: Lang[] }[] = [
   { id: "en-es-pt", label: "EN/ES/PT", langs: ["en", "es", "pt"] },
 ];
 
+/** Chips on the host Watch language row: one language, two side by side, or all three. */
+export const HOST_LAYOUT_IDS = ["en", "es", "pt", "en-es", "en-pt", "es-pt", "en-es-pt"] as const satisfies readonly Layout[];
+
+export const DUAL_LAYOUTS = ["en-es", "en-pt", "es-pt"] as const satisfies readonly Layout[];
+
+export function isLayout(value: unknown): value is Layout {
+  return typeof value === "string" && LAYOUTS.some((item) => item.id === value);
+}
+
 /**
- * Chips on the host TV layout row. Dual layouts stay in LAYOUTS so a room
- * already set to EN|ES, EN|PT, or ES|PT still paints those panes.
+ * Read a layout from loose input such as a TV URL: "es", "en-es", "ES|EN",
+ * "pt,en", or "en-es-pt". Order and case do not matter; duplicates are dropped.
  */
-export const HOST_LAYOUT_IDS = ["en", "es", "pt", "en-es-pt"] as const satisfies readonly Layout[];
+export function parseLayout(value: string | null | undefined): Layout | undefined {
+  const raw = (value ?? "").trim().toLowerCase();
+  if (!raw) return undefined;
+  if (raw === "all") return "en-es-pt";
+  const parts = raw.split(/[\s,|/+_-]+/).filter(Boolean);
+  if (parts.length === 0 || !parts.every(isLang)) return undefined;
+  const picked = LANGS.filter((lang) => parts.includes(lang));
+  const id = picked.join("-");
+  return isLayout(id) ? id : undefined;
+}
 
 export const MAX_LINES = 8;
 
@@ -90,17 +113,16 @@ export function langsForLayout(layout: Layout): Lang[] {
   return LAYOUTS.find((item) => item.id === layout)?.langs ?? ["en", "es", "pt"];
 }
 
-/** Caption panes on one guest phone. "all" is EN, ES, and PT together. */
-export type WatchPref = "all" | Lang;
+/** Caption panes on one guest phone. "all" is EN, ES, and PT together; a pair shows two side by side. */
+export type WatchPref = "all" | Lang | (typeof DUAL_LAYOUTS)[number];
 
 export function isWatchPref(value: unknown): value is WatchPref {
-  return value === "all" || isLang(value);
+  return value === "all" || isLang(value) || (DUAL_LAYOUTS as readonly string[]).includes(String(value));
 }
 
 /** Languages that guest's phone paints. This is not the room layout. */
 export function langsForWatch(watch: WatchPref): Lang[] {
-  if (watch === "all") return ["en", "es", "pt"];
-  return [watch];
+  return langsForLayout(layoutForWatch(watch));
 }
 
 /** Display layout for that phone's caption board. Does not change the room. */

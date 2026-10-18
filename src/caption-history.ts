@@ -1,4 +1,4 @@
-import { MAX_LINES, type CaptionLine, type Lang } from "./types";
+import { LANGS, MAX_LINES, type CaptionLine, type Lang } from "./types";
 
 export const INTERIM_ID = "interim";
 
@@ -75,12 +75,35 @@ export function patchLineText(
     if (line.id !== id) return line;
     changed = true;
     // Keep the source words as shown; a coalesced revision may have replaced them.
-    return { ...line, text: { ...text, [sourceLang]: line.text[sourceLang] } };
+    const { pending: _pending, ...rest } = line;
+    return { ...rest, text: { ...text, [sourceLang]: line.text[sourceLang] } };
   });
   return changed ? next : lines;
 }
 
-/** Original words in every pane until translations arrive. */
-export function provisionalText(spoken: string): Record<Lang, string> {
-  return { en: spoken, es: spoken, pt: spoken };
+/**
+ * Translation failed or timed out: show the original words in the empty panes
+ * (better than an endless "translating…") and clear the pending flag.
+ */
+export function settleUntranslated(lines: CaptionLine[], id: string, sourceLang: Lang): CaptionLine[] {
+  let changed = false;
+  const next = lines.map((line) => {
+    if (line.id !== id || !line.pending) return line;
+    changed = true;
+    const spoken = line.text[sourceLang] ?? "";
+    const text = { ...line.text };
+    for (const lang of LANGS) if (!text[lang]?.trim()) text[lang] = spoken;
+    const { pending: _pending, ...rest } = line;
+    return { ...rest, text };
+  });
+  return changed ? next : lines;
+}
+
+/**
+ * Words for a line that was just heard or typed. Only the spoken language has
+ * them; the other panes stay empty (shown as "translating…") until the
+ * translation lands, instead of flashing the untranslated original.
+ */
+export function provisionalText(spoken: string, sourceLang: Lang): Record<Lang, string> {
+  return { en: "", es: "", pt: "", [sourceLang]: spoken } as Record<Lang, string>;
 }
